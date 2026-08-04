@@ -7,12 +7,17 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db import init_db
 from app.routes import news, prediction, prices
+from app import scheduler as bg_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    yield
+    bg_scheduler.start()
+    try:
+        yield
+    finally:
+        bg_scheduler.stop()
 
 
 app = FastAPI(

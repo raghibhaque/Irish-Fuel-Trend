@@ -1,40 +1,56 @@
 """Brent crude oil price fetcher.
 
-============================================================================
- !!! TODO: THIS IS A MOCK. REPLACE WITH REAL DATA SOURCE BEFORE RELYING ON
- !!! ANY PREDICTIONS. Candidate real sources (all free-tier):
- !!!   - EIA API series PET.RBRTE.D (Brent, daily, USD/bbl) — needs API key
- !!!   - FRED series DCOILBRENTEU                          — needs API key
- !!!   - yfinance library, ticker "BZ=F"                    — no key, brittle
- !!! Swap `ingest()` below to fetch from one of the above.
-============================================================================
+Primary source: Yahoo Finance ticker `BZ=F` (Brent crude front-month futures)
+via the `yfinance` library. Daily close in USD/bbl. Free, no API key. May
+break if Yahoo changes their unofficial endpoints — in that case we fall
+back to a MOCK generator so the pipeline keeps working.
 
-Current implementation: deterministic synthetic weekly series in USD/bbl,
-generated across the same date range as fuel_prices. Rows are marked
-`source = 'MOCK_BRENT_v1'` so real data can be identified & replaced later.
+Set env var `IRISH_FUEL_FORCE_MOCK_BRENT=1` to force the mock even when
+yfinance is reachable (useful for offline dev).
 """
 from __future__ import annotations
 
 import logging
 import math
+import os
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from app.db import connection
 
 logger = logging.getLogger(__name__)
 
-SOURCE_NAME = "MOCK_BRENT_v1"
+REAL_SOURCE = "YFINANCE_BZF"
+MOCK_SOURCE = "MOCK_BRENT_v1"
+YF_TICKER = "BZ=F"
 
-# Rough historical envelope for Brent (USD/bbl): min $20 (COVID), max $140 (2008/2022 spikes)
+# ---- mock generator config (fallback only) ----
 BASE_PRICE = 75.0
-DRIFT = 0.0
-VOLATILITY = 3.5   # USD stddev of weekly step
+VOLATILITY = 3.5
 FLOOR = 20.0
 CEIL = 140.0
 SEED = 42
 
 
+# --------------- REAL: yfinance ---------------
+def fetch_real_daily() -> list[tuple[date, float]]:
+    """Fetch full-history daily Brent close via yfinance. Raises on failure."""
+    import yfinance as yf  # imported lazily so mock path works without dep
+    ticker = yf.Ticker(YF_TICKER)
+    hist = ticker.history(period="max", interval="1d", auto_adjust=False)
+    if hist is None or hist.empty or "Close" not in hist.columns:
+        raise RuntimeError(f"yfinance returned empty history for {YF_TICKER}")
+    hist = hist[hist["Close"].notna()]
+    rows: list[tuple[date, float]] = []
+    for ts, close in hist["Close"].items():
+        # ts is a tz-aware Timestamp; convert to naive date
+        d = ts.date() if hasattr(ts, "date") else datetime.fromisoformat(str(ts)).date()
+        rows.append((d, round(float(close), 2)))
+    rows.sort(key=lambda t: t[0])
+    return rows
+
+
+# --------------- MOCK fallback ---------------
 def _fuel_price_date_range() -> tuple[date, date] | None:
     with connection() as conn:
         row = conn.execute(
@@ -42,14 +58,11 @@ def _fuel_price_date_range() -> tuple[date, date] | None:
         ).fetchone()
     if not row or not row[0]:
         return None
-    from datetime import datetime as _dt
-    return _dt.fromisoformat(row[0]).date(), _dt.fromisoformat(row[1]).date()
+    return datetime.fromisoformat(row[0]).date(), datetime.fromisoformat(row[1]).date()
 
 
 def _weekly_dates(start: date, end: date) -> list[date]:
-    """Weekly (7-day) samples from start through end inclusive."""
-    out = []
-    d = start
+    out, d = [], start
     while d <= end:
         out.append(d)
         d += timedelta(days=7)
@@ -57,24 +70,28 @@ def _weekly_dates(start: date, end: date) -> list[date]:
 
 
 def generate_mock_series(start: date, end: date) -> list[tuple[date, float]]:
-    """Deterministic smoothed random walk within [FLOOR, CEIL]."""
     rng = random.Random(SEED)
     dates = _weekly_dates(start, end)
     price = BASE_PRICE
     out: list[tuple[date, float]] = []
     for i, d in enumerate(dates):
-        # Long slow sinusoid + gaussian step, so the mock has both trend and noise.
-        trend = 15.0 * math.sin(i / 26.0)  # ~2yr cycle amplitude ±15
-        step = rng.gauss(DRIFT, VOLATILITY)
+        trend = 15.0 * math.sin(i / 26.0)
+        step = rng.gauss(0.0, VOLATILITY)
         price = price + step
-        # Anchor gently back toward BASE_PRICE + trend so it doesn't drift off.
         price = 0.85 * price + 0.15 * (BASE_PRICE + trend)
         price = max(FLOOR, min(CEIL, price))
         out.append((d, round(price, 2)))
     return out
 
 
-def upsert_prices(rows: list[tuple[date, float]]) -> int:
+# --------------- storage ---------------
+def _delete_source(source: str) -> int:
+    with connection() as conn:
+        cur = conn.execute("DELETE FROM brent_crude WHERE source = ?", (source,))
+        return cur.rowcount
+
+
+def upsert_prices(rows: list[tuple[date, float]], source: str) -> int:
     sql = """
         INSERT INTO brent_crude (date, price_usd_per_barrel, source)
         VALUES (?, ?, ?)
@@ -83,34 +100,45 @@ def upsert_prices(rows: list[tuple[date, float]]) -> int:
             source               = excluded.source,
             inserted_at          = CURRENT_TIMESTAMP;
     """
-    payload = [(d.isoformat(), price, SOURCE_NAME) for d, price in rows]
+    payload = [(d.isoformat(), price, source) for d, price in rows]
     with connection() as conn:
         conn.executemany(sql, payload)
     return len(payload)
 
 
 def ingest(force_download: bool = False) -> dict:
-    """MOCK: generate synthetic Brent weekly series over fuel_prices range."""
-    _ = force_download  # unused for mock
+    _ = force_download
+    force_mock = os.environ.get("IRISH_FUEL_FORCE_MOCK_BRENT") == "1"
+
+    if not force_mock:
+        try:
+            rows = fetch_real_daily()
+            # Clear any prior mock rows so mocks don't linger next to real data.
+            deleted = _delete_source(MOCK_SOURCE)
+            if deleted:
+                logger.info("Removed %d prior MOCK Brent rows.", deleted)
+            written = upsert_prices(rows, REAL_SOURCE)
+            return {
+                "mock": False,
+                "source": REAL_SOURCE,
+                "rows_written": written,
+                "date_range": (rows[0][0].isoformat(), rows[-1][0].isoformat()),
+                "latest_usd_per_barrel": rows[-1][1],
+            }
+        except Exception as e:
+            logger.warning("Real Brent fetch failed (%s). Falling back to MOCK.", e)
+
     rng = _fuel_price_date_range()
     if not rng:
-        raise RuntimeError(
-            "No fuel_prices rows present. Run bulletin ingest first so we know "
-            "which date range to generate mock Brent for."
-        )
+        raise RuntimeError("Cannot generate mock Brent: no fuel_prices rows.")
     start, end = rng
-    logger.warning(
-        "USING MOCK BRENT DATA (source=%s). Swap for real EIA/FRED/yfinance source.",
-        SOURCE_NAME,
-    )
+    logger.warning("USING MOCK BRENT DATA (source=%s).", MOCK_SOURCE)
     series = generate_mock_series(start, end)
-    written = upsert_prices(series)
+    written = upsert_prices(series, MOCK_SOURCE)
     return {
         "mock": True,
-        "source": SOURCE_NAME,
+        "source": MOCK_SOURCE,
         "rows_written": written,
         "date_range": (series[0][0].isoformat(), series[-1][0].isoformat()),
         "latest_usd_per_barrel": series[-1][1],
-        "min_usd_per_barrel": min(p for _, p in series),
-        "max_usd_per_barrel": max(p for _, p in series),
     }

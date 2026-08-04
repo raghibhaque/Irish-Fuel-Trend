@@ -12,7 +12,7 @@ import logging
 import sys
 
 from app.db import init_db
-from app.data_sources import eu_oil_bulletin, fx_rates, brent_crude
+from app.data_sources import eu_oil_bulletin, fx_rates, brent_crude, news_monitor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", nargs="?", default="all",
-                        choices=["all", "bulletin", "fx", "brent"])
+                        choices=["all", "bulletin", "fx", "brent", "news"])
     parser.add_argument("--force", action="store_true",
                         help="force re-download of cached raw files")
     args = parser.parse_args()
@@ -37,7 +37,12 @@ def main() -> int:
 
     if args.source in ("all", "brent"):
         summary = brent_crude.ingest(force_download=args.force)
-        print("Brent (MOCK):", summary)
+        label = "MOCK" if summary.get("mock") else "REAL"
+        print(f"Brent ({label}):", summary)
+
+    if args.source in ("all", "news"):
+        summary = news_monitor.ingest()
+        print("News (RSS):", summary)
 
     return 0
 

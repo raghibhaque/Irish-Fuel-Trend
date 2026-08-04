@@ -1,0 +1,61 @@
+{
+  "_comment": "Irish fuel tax change events. Add rows as new budget measures are announced. Positive delta_eur_per_l = price increase, negative = cut. 'category' is one of: excise, carbon_tax, vat, nora_levy. 'delta_eur_per_l' is the change in that component per litre (VAT-inclusive if applicable). Source column keeps a link/note for auditability. Only the fuel columns you affect need a non-zero delta.",
+  "events": [
+    {
+      "effective_date": "2022-03-10",
+      "category": "excise",
+      "description": "Emergency excise cut in response to Ukraine-invasion price spike",
+      "delta_eur_per_l": {"petrol": -0.20, "diesel": -0.15},
+      "source": "Dept of Finance / Revenue announcement"
+    },
+    {
+      "effective_date": "2022-05-01",
+      "category": "excise",
+      "description": "Additional emergency excise cut",
+      "delta_eur_per_l": {"petrol": -0.15, "diesel": -0.10},
+      "source": "Dept of Finance"
+    },
+    {
+      "effective_date": "2023-06-01",
+      "category": "excise",
+      "description": "Partial reversal of emergency excise cut (stage 1)",
+      "delta_eur_per_l": {"petrol": 0.06, "diesel": 0.05},
+      "source": "Budget 2023 mid-year adjustment"
+    },
+    {
+      "effective_date": "2023-09-01",
+      "category": "excise",
+      "description": "Partial reversal of emergency excise cut (stage 2)",
+      "delta_eur_per_l": {"petrol": 0.07, "diesel": 0.05},
+      "source": "Budget 2023 mid-year adjustment"
+    },
+    {
+      "effective_date": "2023-10-31",
+      "category": "excise",
+      "description": "Final reversal of emergency excise cut",
+      "delta_eur_per_l": {"petrol": 0.08, "diesel": 0.06},
+      "source": "Revenue"
+    },
+    {
+      "effective_date": "2023-10-11",
+      "category": "carbon_tax",
+      "description": "Carbon tax rate rise from €48.50 to €56 per tonne CO2 (Budget 2024)",
+      "delta_eur_per_l": {"petrol": 0.024, "diesel": 0.021},
+      "source": "Budget 2024"
+    },
+    {
+      "effective_date": "2024-10-09",
+      "category": "carbon_tax",
+      "description": "Carbon tax rate rise from €56 to €63.50 per tonne CO2 (Budget 2025)",
+      "delta_eur_per_l": {"petrol": 0.024, "diesel": 0.021},
+      "source": "Budget 2025"
+    },
+    {
+      "effective_date": "2025-10-08",
+      "category": "carbon_tax",
+      "description": "Carbon tax rate rise from €63.50 to €71 per tonne CO2 (Budget 2026)",
+      "delta_eur_per_l": {"petrol": 0.024, "diesel": 0.021},
+      "source": "Budget 2026"
+    }
+  ]
+}
