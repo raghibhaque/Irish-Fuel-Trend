@@ -12,6 +12,9 @@ env/
 data/*.db
 data/*.db-journal
 
+# Downloaded raw source files (regenerable via ingest.py)
+data/raw/
+
 # IDE
 .vscode/
 .idea/
