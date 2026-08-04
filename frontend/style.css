@@ -1,0 +1,255 @@
+:root {
+    --bg: #0f1419;
+    --surface: #171d24;
+    --surface-2: #1e2630;
+    --border: #263140;
+    --text: #e6edf3;
+    --text-dim: #9aa7b4;
+    --accent: #4ea1ff;
+    --up: #ff6b6b;
+    --down: #4ecb71;
+    --flat: #c9a227;
+    --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    --radius: 14px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.site-header {
+    padding: 40px 0 24px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #131920 0%, var(--bg) 100%);
+}
+.site-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+}
+.tagline {
+    margin: 6px 0 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+}
+
+main {
+    padding: 32px 24px 64px;
+    display: grid;
+    gap: 40px;
+}
+
+h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+}
+h2 .muted { color: var(--text-dim); font-weight: 400; font-size: 0.9rem; }
+
+/* ---------------- current prices ---------------- */
+.current-prices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+.price-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+    align-items: baseline;
+    box-shadow: var(--shadow);
+}
+.price-card .label {
+    grid-column: 1 / 2;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.price-card .value {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    font-size: 3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+}
+.price-card .unit {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    align-self: end;
+    padding-bottom: 10px;
+}
+.price-card .asof {
+    grid-column: 1 / 3;
+    grid-row: 3 / 4;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+/* ---------------- chart ---------------- */
+.chart-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+.chart-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+.chart-controls select {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+.chart-wrap {
+    position: relative;
+    height: 360px;
+}
+
+/* ---------------- predictions ---------------- */
+.pred-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+.pred-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+.pred-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.pred-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+}
+.trend-pill {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+}
+.trend-pill[data-trend="up"]   { background: rgba(255, 107, 107, 0.15); color: var(--up);   border-color: rgba(255, 107, 107, 0.35); }
+.trend-pill[data-trend="down"] { background: rgba( 78, 203, 113, 0.15); color: var(--down); border-color: rgba( 78, 203, 113, 0.35); }
+.trend-pill[data-trend="flat"] { background: rgba(201, 162,  39, 0.15); color: var(--flat); border-color: rgba(201, 162,  39, 0.35); }
+
+.pred-explain {
+    margin: 0 0 16px;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+.pred-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 0;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--border);
+}
+.pred-meta > div { margin: 0; }
+.pred-meta dt {
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.pred-meta dd {
+    margin: 4px 0 0;
+    font-size: 1rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.notes {
+    margin: 16px 0 0;
+    padding: 12px 16px;
+    background: rgba(201, 162, 39, 0.08);
+    border: 1px solid rgba(201, 162, 39, 0.25);
+    border-radius: 10px;
+    color: var(--flat);
+    font-size: 0.85rem;
+}
+.notes:empty { display: none; }
+
+/* ---------------- news ---------------- */
+.news-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+.news-list li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: grid;
+    gap: 4px;
+}
+.news-list li.empty {
+    color: var(--text-dim);
+    font-style: italic;
+}
+.news-list a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+.news-list a:hover { text-decoration: underline; }
+.news-list .meta {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}
+
+/* ---------------- footer ---------------- */
+.site-footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 0;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}

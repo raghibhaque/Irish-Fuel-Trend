@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irish Fuel Trend</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap">
+            <h1>Irish Fuel Trend</h1>
+            <p class="tagline">
+                Weekly petrol &amp; diesel price direction for Ireland — from EU Oil Bulletin, ECB &amp; Brent crude.
+            </p>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <section class="current-prices" id="current-prices">
+            <article class="price-card" data-fuel="petrol">
+                <span class="label">Petrol (95)</span>
+                <span class="value" id="current-petrol">—</span>
+                <span class="unit">EUR / L</span>
+                <span class="asof" id="asof-petrol"></span>
+            </article>
+            <article class="price-card" data-fuel="diesel">
+                <span class="label">Diesel</span>
+                <span class="value" id="current-diesel">—</span>
+                <span class="unit">EUR / L</span>
+                <span class="asof" id="asof-diesel"></span>
+            </article>
+        </section>
+
+        <section class="chart-section">
+            <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
+            <div class="chart-controls">
+                <label>Show
+                    <select id="chart-range">
+                        <option value="26" selected>6 months</option>
+                        <option value="52">1 year</option>
+                        <option value="156">3 years</option>
+                        <option value="520">10 years</option>
+                        <option value="1200">All</option>
+                    </select>
+                </label>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="price-chart"></canvas>
+            </div>
+        </section>
+
+        <section class="predictions">
+            <h2>Next 1–3 weeks</h2>
+            <div class="pred-grid">
+                <article class="pred-card" id="pred-petrol">
+                    <header>
+                        <h3>Petrol</h3>
+                        <span class="trend-pill" data-trend="flat">…</span>
+                    </header>
+                    <p class="pred-explain">Loading…</p>
+                    <dl class="pred-meta">
+                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                    </dl>
+                </article>
+                <article class="pred-card" id="pred-diesel">
+                    <header>
+                        <h3>Diesel</h3>
+                        <span class="trend-pill" data-trend="flat">…</span>
+                    </header>
+                    <p class="pred-explain">Loading…</p>
+                    <dl class="pred-meta">
+                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                    </dl>
+                </article>
+            </div>
+            <p class="notes" id="prediction-notes"></p>
+        </section>
+
+        <section class="news">
+            <h2>Recent oil-relevant news</h2>
+            <ul id="news-list" class="news-list">
+                <li class="empty">No news items yet — RSS monitor not wired up (step 8).</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Data: EU Commission Weekly Oil Bulletin · European Central Bank · Brent (MOCK)</span>
+        </div>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>
