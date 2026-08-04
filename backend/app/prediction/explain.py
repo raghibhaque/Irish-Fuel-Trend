@@ -44,20 +44,22 @@ def explain(pred: TrendPrediction, mock_brent: bool = False) -> str:
     parts = [TREND_HEAD[pred.trend]]
 
     parts.append(
-        f"Brent crude {_pct(f['brent_ret_2w'])} over the prior 2 weeks "
-        f"(from ${f['brent_lag2_usd_per_bbl']:.2f} to ${f['brent_lag1_usd_per_bbl']:.2f}/bbl)."
+        f"Brent-in-EUR {_pct(f['brent_eur_ret_2w'])} over the prior 2 weeks "
+        f"and {_pct(f['brent_eur_ret_6w'])} over the prior 6 weeks "
+        f"(currently €{f['brent_eur_per_bbl_current']:.2f}/bbl)."
     )
     parts.append(
-        f"EUR/USD {_pct(f['eur_usd_ret_2w'])} over the same window "
-        f"(from {f['eur_usd_lag2']:.4f} to {f['eur_usd_lag1']:.4f})."
+        f"Last week's wholesale {pred.fuel_type} return was "
+        f"{_pct(f['prev_wholesale_return'])}."
     )
 
     parts.append(_tax_sentence(pred.fuel_type, pred.as_of))
 
     parts.append(
-        f"Model estimate: {_pct(pred.predicted_weekly_return)} weekly change, "
-        f"confidence {pred.confidence:.0%}, in-sample R² {pred.r2:.2f}, "
-        f"trained on {pred.n_train} weeks."
+        f"Model estimate: {_pct(pred.predicted_weekly_return)} weekly change "
+        f"in wholesale {pred.fuel_type}, confidence {pred.confidence:.0%}, "
+        f"in-sample R² {pred.r2:.2f}, trained on {pred.n_train} weeks. "
+        f"Pump price direction follows wholesale with a short lag."
     )
 
     if mock_brent:

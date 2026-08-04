@@ -26,13 +26,14 @@ class PricesResponse(BaseModel):
 
 
 class PredictionFeatures(BaseModel):
-    brent_ret_2w: float
-    eur_usd_ret_2w: float
-    brent_lag1_usd_per_bbl: float
-    brent_lag2_usd_per_bbl: float
-    eur_usd_lag1: float
-    eur_usd_lag2: float
-    latest_price_eur_per_l: float
+    brent_eur_ret_1w: float
+    brent_eur_ret_2w: float
+    brent_eur_ret_4w: float
+    brent_eur_ret_6w: float
+    prev_wholesale_return: float
+    brent_eur_per_bbl_current: float
+    brent_eur_per_bbl_lag1: float
+    latest_wholesale_eur_per_l: float
 
 
 class Prediction(BaseModel):

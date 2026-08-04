@@ -1,51 +1,64 @@
-"""Trend prediction model.
+"""Trend prediction model — v2.
 
-v1 approach: weekly OLS regression of pump-price weekly return on lagged Brent
-and lagged EUR/USD returns. The predicted next-week return is bucketed into a
-trend label: up / down / flat.
+Modelling target: **wholesale** weekly return (EU Bulletin's pre-tax price).
+Rationale: pump price = wholesale + fixed excise + carbon tax + NORA levy,
+then VAT applied. The tax stack is largely flat per litre and dilutes the
+crude-driven signal in the return series. Modelling wholesale isolates the
+part of the price that actually moves with crude and FX.
 
-Intentionally simple. The value is the end-to-end pipeline + explanation
-layer, not model sophistication.
+Direction/trend of wholesale return is the same as pump return, so the
+up/down/flat label transfers directly to what the driver at the pump sees
+(with a small time lag as retailers pass through the change).
 
-NOTE: brent_crude is currently MOCK, so predictions are structurally correct
-but not economically meaningful yet. Swap in real Brent data (see TODO in
-data_sources/brent_crude.py) and the exact same code will produce real
-predictions.
+Features:
+    brent_eur_ret_1w  Brent (EUR/bbl) return over prior 1 week
+    brent_eur_ret_2w  Brent (EUR/bbl) return over prior 2 weeks
+    brent_eur_ret_4w  Brent (EUR/bbl) return over prior 4 weeks
+    brent_eur_ret_6w  Brent (EUR/bbl) return over prior 6 weeks
+    prev_return        wholesale return from the previous week (AR(1) term)
+
+Regressor: Ridge (alpha=1.0). Regularises the correlated multi-lag features
+without sacrificing interpretability.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge
 
 from app.db import connection
 
-# Threshold on predicted weekly return to classify trend
-FLAT_BAND = 0.005   # ±0.5% weekly = "flat"
+FLAT_BAND = 0.005  # ±0.5% weekly wholesale return = "flat"
 
-BRENT_LAG_WEEKS = 2   # crude typically flows through to pump price in 1–3 weeks
-FX_LAG_WEEKS    = 2
+FEATURE_COLS = [
+    "brent_eur_ret_1w",
+    "brent_eur_ret_2w",
+    "brent_eur_ret_4w",
+    "brent_eur_ret_6w",
+    "prev_return",
+]
 
 
 @dataclass
 class TrendPrediction:
     fuel_type: str
     as_of: date
-    trend: str                     # 'up' | 'down' | 'flat'
-    predicted_weekly_return: float # decimal, e.g. 0.012 = +1.2%
-    confidence: float              # 0..1, based on |return| / typical stdev
-    features: dict                 # snapshot of feature values used
-    r2: float                      # in-sample R^2 of training fit
-    n_train: int                   # training row count
+    trend: str
+    predicted_weekly_return: float
+    confidence: float
+    features: dict
+    r2: float
+    n_train: int
+    coefficients: dict
 
 
 def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     with connection() as conn:
         prices = pd.read_sql_query(
-            "SELECT date, fuel_type, price_eur_per_litre FROM fuel_prices "
-            "WHERE country='IE' ORDER BY date",
+            "SELECT date, fuel_type, price_eur_per_litre, price_wo_tax_eur_per_litre "
+            "FROM fuel_prices WHERE country='IE' ORDER BY date",
             conn,
             parse_dates=["date"],
         )
@@ -62,63 +75,63 @@ def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return prices, brent, fx
 
 
-def _weekly_fx(fx: pd.DataFrame, sample_dates: pd.DatetimeIndex) -> pd.Series:
-    """For each sample date, return the most recent fx ≤ that date (asof join)."""
-    fx_sorted = fx.sort_values("date").set_index("date")["eur_usd"]
-    return fx_sorted.reindex(sample_dates, method="ffill")
+def _brent_eur_series(brent: pd.DataFrame, fx: pd.DataFrame) -> pd.Series:
+    """Daily Brent expressed in EUR/bbl (usd / eur_usd_rate)."""
+    br = brent.set_index("date")["price_usd_per_barrel"].sort_index()
+    fx_s = fx.set_index("date")["eur_usd"].sort_index()
+    fx_aligned = fx_s.reindex(br.index, method="ffill")
+    return (br / fx_aligned).dropna()
 
 
 def build_dataset(fuel_type: str) -> pd.DataFrame:
-    """Return one row per week with target + feature columns."""
     prices, brent, fx = _load_frames()
 
-    px = (
+    price_series = (
         prices[prices["fuel_type"] == fuel_type]
-        .set_index("date")["price_eur_per_litre"]
+        .dropna(subset=["price_wo_tax_eur_per_litre"])
+        .set_index("date")["price_wo_tax_eur_per_litre"]
         .sort_index()
     )
-    br = brent.set_index("date")["price_usd_per_barrel"].sort_index()
 
-    df = pd.DataFrame({"price": px})
-    df["price_prev"] = df["price"].shift(1)
-    df["target_ret"] = df["price"] / df["price_prev"] - 1  # this-week's return
+    df = pd.DataFrame({"wholesale": price_series})
+    df["wholesale_prev"] = df["wholesale"].shift(1)
+    df["target_ret"] = df["wholesale"] / df["wholesale_prev"] - 1
+    df["prev_return"] = df["target_ret"].shift(1)
 
-    # Align Brent to the fuel_prices weekly index using asof (nearest ≤ date)
-    br_asof = br.reindex(df.index, method="ffill")
-    df["brent"]        = br_asof
-    df["brent_lag1"]   = br_asof.shift(1)
-    df["brent_lag2"]   = br_asof.shift(2)
-    df["brent_ret_2w"] = df["brent_lag1"] / df["brent_lag2"] - 1
+    brent_eur_daily = _brent_eur_series(brent, fx)
+    # Sample daily Brent-in-EUR onto the weekly fuel index using ffill
+    brent_eur_weekly = brent_eur_daily.reindex(df.index, method="ffill")
 
-    fx_asof = _weekly_fx(fx, df.index)
-    df["eur_usd"]        = fx_asof
-    df["eur_usd_lag1"]   = fx_asof.shift(1)
-    df["eur_usd_lag2"]   = fx_asof.shift(2)
-    df["eur_usd_ret_2w"] = df["eur_usd_lag1"] / df["eur_usd_lag2"] - 1
+    df["brent_eur"]        = brent_eur_weekly
+    df["brent_eur_lag1"]   = brent_eur_weekly.shift(1)
+    df["brent_eur_lag2"]   = brent_eur_weekly.shift(2)
+    df["brent_eur_lag4"]   = brent_eur_weekly.shift(4)
+    df["brent_eur_lag6"]   = brent_eur_weekly.shift(6)
+    df["brent_eur_ret_1w"] = df["brent_eur_lag1"] / df["brent_eur_lag2"] - 1
+    df["brent_eur_ret_2w"] = df["brent_eur_lag1"] / brent_eur_weekly.shift(3) - 1
+    df["brent_eur_ret_4w"] = df["brent_eur_lag1"] / df["brent_eur_lag4"] - 1
+    df["brent_eur_ret_6w"] = df["brent_eur_lag1"] / df["brent_eur_lag6"] - 1
 
-    return df.dropna(subset=["target_ret", "brent_ret_2w", "eur_usd_ret_2w"])
+    keep = ["wholesale", "target_ret", "brent_eur", "brent_eur_lag1"] + FEATURE_COLS
+    return df[keep].dropna()
 
 
 def train_and_predict(fuel_type: str) -> TrendPrediction:
     df = build_dataset(fuel_type)
-    if len(df) < 20:
-        raise RuntimeError(
-            f"Not enough rows to train ({len(df)}). Need at least 20 weeks."
-        )
+    if len(df) < 30:
+        raise RuntimeError(f"Not enough rows to train ({len(df)}). Need 30+.")
 
-    feature_cols = ["brent_ret_2w", "eur_usd_ret_2w"]
-    X = df[feature_cols].values
+    X = df[FEATURE_COLS].values
     y = df["target_ret"].values
-    model = LinearRegression()
+
+    model = Ridge(alpha=1.0)
     model.fit(X, y)
     r2 = float(model.score(X, y))
 
-    # Predict for the most recent row's features
     latest = df.iloc[-1]
-    x_next = latest[feature_cols].values.reshape(1, -1)
+    x_next = latest[FEATURE_COLS].values.reshape(1, -1)
     predicted_ret = float(model.predict(x_next)[0])
 
-    # Trend bucket
     if predicted_ret > FLAT_BAND:
         trend = "up"
     elif predicted_ret < -FLAT_BAND:
@@ -126,19 +139,22 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     else:
         trend = "flat"
 
-    # Confidence: |predicted return| relative to historical stdev of weekly returns
     std_ret = float(df["target_ret"].std()) or 1e-6
     confidence = min(1.0, abs(predicted_ret) / (2 * std_ret))
 
     features = {
-        "brent_ret_2w": float(latest["brent_ret_2w"]),
-        "eur_usd_ret_2w": float(latest["eur_usd_ret_2w"]),
-        "brent_lag1_usd_per_bbl": float(latest["brent_lag1"]),
-        "brent_lag2_usd_per_bbl": float(latest["brent_lag2"]),
-        "eur_usd_lag1": float(latest["eur_usd_lag1"]),
-        "eur_usd_lag2": float(latest["eur_usd_lag2"]),
-        "latest_price_eur_per_l": float(latest["price"]),
+        "brent_eur_ret_1w": float(latest["brent_eur_ret_1w"]),
+        "brent_eur_ret_2w": float(latest["brent_eur_ret_2w"]),
+        "brent_eur_ret_4w": float(latest["brent_eur_ret_4w"]),
+        "brent_eur_ret_6w": float(latest["brent_eur_ret_6w"]),
+        "prev_wholesale_return": float(latest["prev_return"]),
+        "brent_eur_per_bbl_current": float(latest["brent_eur"]),
+        "brent_eur_per_bbl_lag1": float(latest["brent_eur_lag1"]),
+        "latest_wholesale_eur_per_l": float(latest["wholesale"]),
     }
+
+    coefficients = {name: float(coef) for name, coef in zip(FEATURE_COLS, model.coef_)}
+    coefficients["_intercept"] = float(model.intercept_)
 
     return TrendPrediction(
         fuel_type=fuel_type,
@@ -149,4 +165,5 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         features=features,
         r2=r2,
         n_train=len(df),
+        coefficients=coefficients,
     )

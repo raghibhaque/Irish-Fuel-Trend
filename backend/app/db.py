@@ -15,13 +15,14 @@ DB_PATH = Path(__file__).resolve().parents[2] / "data" / "fuel_trend.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS fuel_prices (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    date                DATE    NOT NULL,
-    country             TEXT    NOT NULL DEFAULT 'IE',
-    fuel_type           TEXT    NOT NULL,       -- 'petrol' | 'diesel'
-    price_eur_per_litre REAL    NOT NULL,
-    source              TEXT    NOT NULL,
-    inserted_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+    date                       DATE    NOT NULL,
+    country                    TEXT    NOT NULL DEFAULT 'IE',
+    fuel_type                  TEXT    NOT NULL,       -- 'petrol' | 'diesel'
+    price_eur_per_litre        REAL    NOT NULL,       -- pump price (with taxes)
+    price_wo_tax_eur_per_litre REAL,                   -- wholesale (net of duties+taxes)
+    source                     TEXT    NOT NULL,
+    inserted_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(date, country, fuel_type)
 );
 CREATE INDEX IF NOT EXISTS ix_fuel_prices_date ON fuel_prices(date);
@@ -75,9 +76,20 @@ def connection() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def _column_exists(conn: sqlite3.Connection, table: str, col: str) -> bool:
+    return any(row["name"] == col for row in conn.execute(f"PRAGMA table_info({table})"))
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Idempotent, forward-only migrations for pre-existing DBs."""
+    if not _column_exists(conn, "fuel_prices", "price_wo_tax_eur_per_litre"):
+        conn.execute("ALTER TABLE fuel_prices ADD COLUMN price_wo_tax_eur_per_litre REAL;")
+
+
 def init_db() -> None:
     with connection() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
 if __name__ == "__main__":

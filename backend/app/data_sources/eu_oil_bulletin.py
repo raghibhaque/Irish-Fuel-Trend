@@ -28,8 +28,14 @@ CACHE_PATH = Path(__file__).resolve().parents[3] / "data" / "raw" / "eu_oil_bull
 
 SOURCE_NAME = "EU_WEEKLY_OIL_BULLETIN"
 COUNTRY = "IE"
-PETROL_COL = "IE_price_with_tax_euro95"
-DIESEL_COL = "IE_price_with_tax_diesel"
+
+# "Prices with taxes" sheet — pump-price columns
+PETROL_COL_WITH = "IE_price_with_tax_euro95"
+DIESEL_COL_WITH = "IE_price_with_tax_diesel"
+
+# "Prices wo taxes" sheet — wholesale (net of duties+taxes)
+PETROL_COL_WO = "IE_price_wo_tax_euro95"
+DIESEL_COL_WO = "IE_price_wo_tax_diesel"
 
 # Rows 1 (long names) + 2 (units) below the header row must be dropped before parsing.
 HEADER_JUNK_ROWS = 2
@@ -71,54 +77,72 @@ def download_bulletin(force: bool = False) -> Path:
     return CACHE_PATH
 
 
-def parse_ireland_prices(xlsx_path: Path) -> pd.DataFrame:
-    """Return DataFrame with columns: date, petrol, diesel (both EUR/L)."""
-    raw = pd.read_excel(xlsx_path, sheet_name="Prices with taxes", header=0, engine="openpyxl")
-    # Drop the two descriptive rows immediately below the header row.
+def _parse_sheet(xlsx_path: Path, sheet_name: str, petrol_col: str, diesel_col: str,
+                 out_petrol: str, out_diesel: str) -> pd.DataFrame:
+    raw = pd.read_excel(xlsx_path, sheet_name=sheet_name, header=0, engine="openpyxl")
     df = raw.iloc[HEADER_JUNK_ROWS:].copy()
-
-    date_col = df.columns[0]  # first column is the date column
-    if PETROL_COL not in df.columns or DIESEL_COL not in df.columns:
+    date_col = df.columns[0]
+    if petrol_col not in df.columns or diesel_col not in df.columns:
         raise RuntimeError(
-            f"Expected columns {PETROL_COL!r} and {DIESEL_COL!r} not found. "
-            f"Got: {list(df.columns)[:8]}..."
+            f"Expected columns {petrol_col!r} and {diesel_col!r} not found in sheet "
+            f"{sheet_name!r}. Got: {list(df.columns)[:8]}..."
         )
-
     out = pd.DataFrame({
-        "date": pd.to_datetime(df[date_col], errors="coerce").dt.date,
-        "petrol_per_1000l": pd.to_numeric(df[PETROL_COL], errors="coerce"),
-        "diesel_per_1000l": pd.to_numeric(df[DIESEL_COL], errors="coerce"),
+        "date":         pd.to_datetime(df[date_col], errors="coerce").dt.date,
+        out_petrol:     pd.to_numeric(df[petrol_col], errors="coerce") / 1000.0,
+        out_diesel:     pd.to_numeric(df[diesel_col], errors="coerce") / 1000.0,
     })
-    out = out.dropna(subset=["date"])
-    # Convert EUR / 1000L → EUR / L
-    out["petrol"] = out["petrol_per_1000l"] / 1000.0
-    out["diesel"] = out["diesel_per_1000l"] / 1000.0
-    out = out[["date", "petrol", "diesel"]].sort_values("date").reset_index(drop=True)
-    return out
+    return out.dropna(subset=["date"])
 
 
-def _iter_rows(df: pd.DataFrame) -> Iterable[tuple[date, str, float]]:
+def parse_ireland_prices(xlsx_path: Path) -> pd.DataFrame:
+    """Return DataFrame: date, petrol, diesel, petrol_wo_tax, diesel_wo_tax (EUR/L)."""
+    with_tax = _parse_sheet(
+        xlsx_path, "Prices with taxes",
+        PETROL_COL_WITH, DIESEL_COL_WITH,
+        "petrol", "diesel",
+    )
+    wo_tax = _parse_sheet(
+        xlsx_path, "Prices wo taxes",
+        PETROL_COL_WO, DIESEL_COL_WO,
+        "petrol_wo_tax", "diesel_wo_tax",
+    )
+    merged = pd.merge(with_tax, wo_tax, on="date", how="left")
+    return merged.sort_values("date").reset_index(drop=True)
+
+
+def _iter_rows(df: pd.DataFrame) -> Iterable[tuple[date, str, float, float | None]]:
     for _, row in df.iterrows():
         d = row["date"]
-        if pd.notna(row["petrol"]):
-            yield d, "petrol", float(row["petrol"])
-        if pd.notna(row["diesel"]):
-            yield d, "diesel", float(row["diesel"])
+        for fuel, with_col, wo_col in [
+            ("petrol", "petrol", "petrol_wo_tax"),
+            ("diesel", "diesel", "diesel_wo_tax"),
+        ]:
+            price = row.get(with_col)
+            if pd.isna(price):
+                continue
+            wo = row.get(wo_col)
+            wo_val: float | None = None if pd.isna(wo) else float(wo)
+            yield d, fuel, float(price), wo_val
 
 
 def upsert_prices(df: pd.DataFrame) -> int:
     """Insert or update fuel_prices rows. Returns count written."""
     sql = """
-        INSERT INTO fuel_prices (date, country, fuel_type, price_eur_per_litre, source)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO fuel_prices (
+            date, country, fuel_type, price_eur_per_litre,
+            price_wo_tax_eur_per_litre, source
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(date, country, fuel_type)
-        DO UPDATE SET price_eur_per_litre = excluded.price_eur_per_litre,
-                      source              = excluded.source,
-                      inserted_at         = CURRENT_TIMESTAMP;
+        DO UPDATE SET price_eur_per_litre        = excluded.price_eur_per_litre,
+                      price_wo_tax_eur_per_litre = excluded.price_wo_tax_eur_per_litre,
+                      source                     = excluded.source,
+                      inserted_at                = CURRENT_TIMESTAMP;
     """
     payload = [
-        (d.isoformat(), COUNTRY, fuel, price, SOURCE_NAME)
-        for d, fuel, price in _iter_rows(df)
+        (d.isoformat(), COUNTRY, fuel, price, wo, SOURCE_NAME)
+        for d, fuel, price, wo in _iter_rows(df)
     ]
     with connection() as conn:
         conn.executemany(sql, payload)
@@ -130,10 +154,13 @@ def ingest(force_download: bool = False) -> dict:
     xlsx_path = download_bulletin(force=force_download)
     df = parse_ireland_prices(xlsx_path)
     rows_written = upsert_prices(df)
+    latest = df.iloc[-1]
     return {
         "rows_written": rows_written,
         "weeks_parsed": len(df),
         "date_range": (df["date"].min().isoformat(), df["date"].max().isoformat()),
-        "latest_petrol_eur_per_l": round(float(df.iloc[-1]["petrol"]), 4),
-        "latest_diesel_eur_per_l": round(float(df.iloc[-1]["diesel"]), 4),
+        "latest_petrol_eur_per_l": round(float(latest["petrol"]), 4),
+        "latest_diesel_eur_per_l": round(float(latest["diesel"]), 4),
+        "latest_petrol_wholesale": None if pd.isna(latest.get("petrol_wo_tax")) else round(float(latest["petrol_wo_tax"]), 4),
+        "latest_diesel_wholesale": None if pd.isna(latest.get("diesel_wo_tax")) else round(float(latest["diesel_wo_tax"]), 4),
     }
