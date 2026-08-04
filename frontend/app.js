@@ -135,15 +135,18 @@ async function loadNews() {
     }
     list.innerHTML = data.items.map(item => {
         const when = new Date(item.published_at).toLocaleString("en-IE");
-        const summary = item.summary ? `<p class="news-summary">${escapeHtml(item.summary)}</p>` : "";
+        const sumTxt = stripHtml(item.summary);
+        const summary = sumTxt ? `<p class="news-summary">${escapeHtml(sumTxt)}</p>` : "";
         const matched = item.matched_keywords
             ? `<p class="news-matched">Matched: ${escapeHtml(item.matched_keywords)}</p>` : "";
         return `
         <li>
             <details>
                 <summary>
-                    <span class="news-title">${escapeHtml(item.title)}</span>
-                    <span class="meta">${escapeHtml(item.source)} · ${when}</span>
+                    <div class="news-summary-row">
+                        <span class="news-title">${escapeHtml(item.title)}</span>
+                        <span class="meta">${escapeHtml(item.source)} · ${when}</span>
+                    </div>
                 </summary>
                 <div class="news-body">
                     ${summary}
@@ -159,6 +162,14 @@ function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
+}
+
+// RSS summaries arrive as HTML fragments (<p>, <a>, <ul>, entities). Strip
+// markup to plain text so it renders cleanly inside the collapsible card.
+function stripHtml(s) {
+    if (!s) return "";
+    const doc = new DOMParser().parseFromString(String(s), "text/html");
+    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
 }
 
 // ------------------ boot ------------------
