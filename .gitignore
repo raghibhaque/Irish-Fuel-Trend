@@ -15,6 +15,9 @@ data/*.db-journal
 # Downloaded raw source files (regenerable via ingest.py)
 data/raw/
 
+# Generated static JSON exports (regenerable via export_static.py or CI)
+frontend/data/
+
 # IDE
 .vscode/
 .idea/

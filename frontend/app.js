@@ -1,7 +1,5 @@
-// Dashboard controller — hits /api/prices, /api/prediction, /api/news
-// and renders into the elements in index.html.
-
-const API = ""; // same-origin — FastAPI serves the frontend
+// Dashboard controller. Reads static JSON snapshots from ./data/*.json so the
+// same bundle works both under FastAPI (local dev) and GitHub Pages (static).
 
 const fmtEur = (v) => (v == null ? "—" : `€${v.toFixed(3)}`);
 const fmtPct = (v) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
@@ -11,24 +9,40 @@ const fmtDate = (iso) => {
 };
 
 let chart = null;
+let priceData = null;   // full history, cached in memory; range selector filters this
 
 async function jget(path) {
-    const r = await fetch(`${API}${path}`);
+    const r = await fetch(path, { cache: "no-cache" });
     if (!r.ok) throw new Error(`${path} → ${r.status}`);
     return r.json();
 }
 
 // ------------------ prices + chart ------------------
+function sliceByWeeks(series, weeks) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - weeks * 7);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    const points = series.points.filter(p => p.date >= cutoffIso);
+    return {
+        ...series,
+        points,
+        latest: points.length ? points[points.length - 1] : null,
+    };
+}
+
 async function loadPrices(weeks = 26) {
-    const data = await jget(`/api/prices?weeks=${weeks}`);
+    if (!priceData) priceData = await jget("data/prices.json");
+    const view = {
+        petrol: sliceByWeeks(priceData.petrol, weeks),
+        diesel: sliceByWeeks(priceData.diesel, weeks),
+    };
 
-    // current price cards use the latest points
-    document.getElementById("current-petrol").textContent = fmtEur(data.petrol.latest?.price_eur_per_litre);
-    document.getElementById("current-diesel").textContent = fmtEur(data.diesel.latest?.price_eur_per_litre);
-    document.getElementById("asof-petrol").textContent = data.petrol.latest ? `as of ${fmtDate(data.petrol.latest.date)}` : "";
-    document.getElementById("asof-diesel").textContent = data.diesel.latest ? `as of ${fmtDate(data.diesel.latest.date)}` : "";
+    document.getElementById("current-petrol").textContent = fmtEur(view.petrol.latest?.price_eur_per_litre);
+    document.getElementById("current-diesel").textContent = fmtEur(view.diesel.latest?.price_eur_per_litre);
+    document.getElementById("asof-petrol").textContent = view.petrol.latest ? `as of ${fmtDate(view.petrol.latest.date)}` : "";
+    document.getElementById("asof-diesel").textContent = view.diesel.latest ? `as of ${fmtDate(view.diesel.latest.date)}` : "";
 
-    renderChart(data);
+    renderChart(view);
 }
 
 function renderChart(data) {
@@ -97,7 +111,7 @@ function renderChart(data) {
 
 // ------------------ prediction ------------------
 async function loadPrediction() {
-    const data = await jget("/api/prediction");
+    const data = await jget("data/prediction.json");
     ["petrol", "diesel"].forEach(fuel => {
         const p = data[fuel];
         const card = document.getElementById(`pred-${fuel}`);
@@ -113,10 +127,10 @@ async function loadPrediction() {
 
 // ------------------ news ------------------
 async function loadNews() {
-    const data = await jget("/api/news?limit=20");
+    const data = await jget("data/news.json");
     const list = document.getElementById("news-list");
     if (!data.items || data.items.length === 0) {
-        list.innerHTML = `<li class="empty">No news items yet — RSS monitor not wired up (step 8).</li>`;
+        list.innerHTML = `<li class="empty">No news items yet.</li>`;
         return;
     }
     list.innerHTML = data.items.map(item => `
