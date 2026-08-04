@@ -133,11 +133,26 @@ async function loadNews() {
         list.innerHTML = `<li class="empty">No news items yet.</li>`;
         return;
     }
-    list.innerHTML = data.items.map(item => `
+    list.innerHTML = data.items.map(item => {
+        const when = new Date(item.published_at).toLocaleString("en-IE");
+        const summary = item.summary ? `<p class="news-summary">${escapeHtml(item.summary)}</p>` : "";
+        const matched = item.matched_keywords
+            ? `<p class="news-matched">Matched: ${escapeHtml(item.matched_keywords)}</p>` : "";
+        return `
         <li>
-            <a href="${item.url}" target="_blank" rel="noopener">${escapeHtml(item.title)}</a>
-            <span class="meta">${escapeHtml(item.source)} · ${new Date(item.published_at).toLocaleString("en-IE")}${item.matched_keywords ? ` · matched: ${escapeHtml(item.matched_keywords)}` : ""}</span>
-        </li>`).join("");
+            <details>
+                <summary>
+                    <span class="news-title">${escapeHtml(item.title)}</span>
+                    <span class="meta">${escapeHtml(item.source)} · ${when}</span>
+                </summary>
+                <div class="news-body">
+                    ${summary}
+                    ${matched}
+                    <p><a href="${item.url}" target="_blank" rel="noopener">Read on ${escapeHtml(item.source)} ↗</a></p>
+                </div>
+            </details>
+        </li>`;
+    }).join("");
 }
 
 function escapeHtml(s) {
