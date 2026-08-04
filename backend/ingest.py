@@ -12,7 +12,7 @@ import logging
 import sys
 
 from app.db import init_db
-from app.data_sources import eu_oil_bulletin, fx_rates, brent_crude, news_monitor
+from app.data_sources import eu_oil_bulletin, fx_rates, brent_crude, news_monitor, fuelwatch_ie
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", nargs="?", default="all",
-                        choices=["all", "bulletin", "fx", "brent", "news"])
+                        choices=["all", "bulletin", "fx", "brent", "news", "fuelwatch"])
     parser.add_argument("--force", action="store_true",
                         help="force re-download of cached raw files")
     args = parser.parse_args()
@@ -43,6 +43,10 @@ def main() -> int:
     if args.source in ("all", "news"):
         summary = news_monitor.ingest()
         print("News (RSS):", summary)
+
+    if args.source in ("all", "fuelwatch"):
+        summary = fuelwatch_ie.ingest()
+        print("FuelWatch.ie (daily crowd-sourced):", summary)
 
     return 0
 

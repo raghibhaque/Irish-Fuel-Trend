@@ -2,6 +2,7 @@
 
 Refresh cadence:
     news        every 10 min
+    fuelwatch   daily at 06:00 UTC (crowd-sourced daily averages, one aggregate per day)
     fx          daily at 16:30 UTC (after ECB publishes)
     brent       daily at 22:00 UTC (after markets close)
     bulletin    weekly, Monday 10:00 UTC (EU updates roughly weekly)
@@ -16,7 +17,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.data_sources import brent_crude, eu_oil_bulletin, fx_rates, news_monitor
+from app.data_sources import brent_crude, eu_oil_bulletin, fuelwatch_ie, fx_rates, news_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,10 @@ def start() -> BackgroundScheduler:
     sched.add_job(_safe(news_monitor.ingest, "news"),
                   IntervalTrigger(minutes=10),
                   id="news", replace_existing=True, max_instances=1)
+
+    sched.add_job(_safe(fuelwatch_ie.ingest, "fuelwatch"),
+                  CronTrigger(hour=6, minute=0),
+                  id="fuelwatch", replace_existing=True, max_instances=1)
 
     sched.add_job(_safe(fx_rates.ingest, "fx"),
                   CronTrigger(hour=16, minute=30),
