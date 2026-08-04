@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# SQLite database file
+data/*.db
+data/*.db-journal
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code local config
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Env
+.env
+.env.local
