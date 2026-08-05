@@ -51,6 +51,43 @@ CREATE TABLE IF NOT EXISTS refined_products (
 );
 CREATE INDEX IF NOT EXISTS ix_refined_products_symbol_date ON refined_products(symbol, date);
 
+-- Per-county median pump prices, snapshotted daily from FuelWatch's
+-- county_price_rankings RPC. The upstream returns a trailing-window median
+-- with no date of its own, so snapshot_date records when *we* pulled it —
+-- this table is the only county history that exists anywhere.
+CREATE TABLE IF NOT EXISTS county_prices (
+    snapshot_date        DATE    NOT NULL,
+    county               TEXT    NOT NULL,
+    fuel_type            TEXT    NOT NULL,       -- 'petrol' | 'diesel'
+    median_eur_per_litre REAL    NOT NULL,
+    station_count        INTEGER NOT NULL,       -- stations behind the median
+    window_days          INTEGER NOT NULL,       -- trailing window it covers
+    source               TEXT    NOT NULL,
+    inserted_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (snapshot_date, county, fuel_type, window_days)
+);
+CREATE INDEX IF NOT EXISTS ix_county_prices_lookup
+    ON county_prices(county, fuel_type, snapshot_date);
+
+CREATE TABLE IF NOT EXISTS county_stations (
+    snapshot_date       DATE    NOT NULL,
+    station_id          TEXT    NOT NULL,
+    fuel_type           TEXT    NOT NULL,
+    name                TEXT    NOT NULL,
+    brand               TEXT,
+    county              TEXT,
+    price_eur_per_litre REAL    NOT NULL,
+    -- TEXT, not TIMESTAMP: upstream sends ISO-8601 with a 'T' separator and a
+    -- UTC offset, which sqlite3's declared-type TIMESTAMP converter cannot
+    -- parse. Stored verbatim and formatted client-side.
+    reported_at         TEXT,
+    source              TEXT    NOT NULL,
+    inserted_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (snapshot_date, station_id, fuel_type)
+);
+CREATE INDEX IF NOT EXISTS ix_county_stations_county
+    ON county_stations(county, fuel_type, snapshot_date);
+
 CREATE TABLE IF NOT EXISTS news_events (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     published_at TIMESTAMP NOT NULL,

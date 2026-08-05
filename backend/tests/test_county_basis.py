@@ -1,0 +1,261 @@
+"""Tests for the county basis decomposition.
+
+All pure arithmetic — no network, no database, no fixtures. The numbers in
+`RANKING_ROWS` are real 30-day petrol medians pulled from FuelWatch on
+2026-08-05, so the reference check below is against live-shaped data.
+"""
+from __future__ import annotations
+
+import math
+
+import pytest
+
+from app.prediction import county
+
+
+# county, median EUR/L, station count — real 30-day petrol rows.
+RANKING_ROWS = [
+    {"county": "Dublin",    "median_eur_per_litre": 1.813, "station_count": 57},
+    {"county": "Cork",      "median_eur_per_litre": 1.809, "station_count": 43},
+    {"county": "Kerry",     "median_eur_per_litre": 1.859, "station_count": 31},
+    {"county": "Waterford", "median_eur_per_litre": 1.800, "station_count": 19},
+    {"county": "Wicklow",   "median_eur_per_litre": 1.759, "station_count": 10},
+    {"county": "Donegal",   "median_eur_per_litre": 1.859, "station_count": 3},
+]
+
+NATIONAL = {
+    "trend": "up",
+    "predicted_weekly_return": 0.012,
+    "confidence": 0.71,
+    "r2": 0.18,
+    "current_pump_eur_per_l": 1.800,
+    "predicted_pump_eur_per_l": 1.820,
+    "predicted_pump_low_eur_per_l": 1.800,
+    "predicted_pump_high_eur_per_l": 1.840,
+    "predicted_pump_3w_eur_per_l": 1.860,
+}
+
+
+def _row(county_name: str, window_days: int = 30) -> dict:
+    src = next(r for r in RANKING_ROWS if r["county"] == county_name)
+    return {**src, "fuel_type": "petrol", "window_days": window_days}
+
+
+# ----------------------------- national_reference -----------------------------
+
+def test_national_reference_matches_hand_computed_weighted_mean():
+    expected = sum(r["median_eur_per_litre"] * r["station_count"] for r in RANKING_ROWS) \
+        / sum(r["station_count"] for r in RANKING_ROWS)
+    assert county.national_reference(RANKING_ROWS) == pytest.approx(expected)
+
+
+def test_national_reference_is_station_weighted_not_a_plain_mean():
+    """Dublin's 57 stations must outweigh Donegal's 3."""
+    plain = sum(r["median_eur_per_litre"] for r in RANKING_ROWS) / len(RANKING_ROWS)
+    assert county.national_reference(RANKING_ROWS) != pytest.approx(plain)
+
+
+def test_raw_basis_sums_to_zero_when_station_weighted():
+    """The point of a same-pool reference: offsets cancel across the pool."""
+    ref = county.national_reference(RANKING_ROWS)
+    weighted = sum(
+        county.raw_basis(r["median_eur_per_litre"], ref) * r["station_count"]
+        for r in RANKING_ROWS
+    )
+    assert weighted == pytest.approx(0.0, abs=1e-9)
+
+
+def test_national_reference_ignores_zero_station_rows():
+    rows = RANKING_ROWS + [{"county": "Ghost", "median_eur_per_litre": 9.99,
+                            "station_count": 0}]
+    assert county.national_reference(rows) == pytest.approx(
+        county.national_reference(RANKING_ROWS)
+    )
+
+
+def test_national_reference_rejects_empty_pool():
+    with pytest.raises(ValueError):
+        county.national_reference([])
+
+
+# ---------------------------------- shrink -----------------------------------
+
+def test_shrink_is_monotone_in_station_count():
+    values = [county.shrink(0.05, n) for n in (1, 3, 10, 30, 57)]
+    assert values == sorted(values)
+    assert all(v < 0.05 for v in values)
+
+
+def test_shrink_half_point_is_at_k_stations():
+    assert county.shrink(0.06, 10, k=10.0) == pytest.approx(0.03)
+
+
+def test_shrink_returns_zero_with_no_stations():
+    assert county.shrink(0.05, 0) == 0.0
+
+
+def test_shrink_preserves_sign():
+    assert county.shrink(-0.04, 20) < 0
+    assert county.shrink(0.04, 20) > 0
+
+
+# -------------------------------- widen_band ---------------------------------
+
+def test_widen_band_shrinks_toward_national_as_sample_grows():
+    bands = [county.widen_band(0.02, n) for n in (1, 3, 10, 30, 57)]
+    assert bands == sorted(bands, reverse=True)
+
+
+def test_widen_band_always_exceeds_the_national_band():
+    for n in (0, 1, 3, 10, 57, 500):
+        assert county.widen_band(0.02, n) > 0.02
+
+
+def test_widen_band_combines_in_quadrature():
+    expected = math.sqrt(0.02 ** 2 + (county.SIGMA_STATION_EUR / math.sqrt(9)) ** 2)
+    assert county.widen_band(0.02, 9) == pytest.approx(expected)
+
+
+def test_widen_band_degrades_to_full_dispersion_with_no_stations():
+    expected = math.sqrt(0.02 ** 2 + county.SIGMA_STATION_EUR ** 2)
+    assert county.widen_band(0.02, 0) == pytest.approx(expected)
+
+
+# -------------------------------- select_row ---------------------------------
+
+def test_select_row_prefers_the_primary_window():
+    rows = [_row("Cork", window_days=180), _row("Cork", window_days=30)]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 30
+    assert chosen["stale"] is False
+
+
+def test_select_row_falls_back_to_the_wide_window_and_flags_stale():
+    chosen = county.select_row([_row("Cork", window_days=180)])
+    assert chosen["window_days"] == 180
+    assert chosen["stale"] is True
+
+
+def test_select_row_raises_for_a_county_with_no_median_anywhere():
+    with pytest.raises(county.UnknownCountyError):
+        county.select_row([])
+
+
+def test_primary_window_default_matches_what_the_ingest_actually_writes():
+    """These live in two modules; a silent divergence would break the fallback."""
+    from app.data_sources import fuelwatch_counties
+
+    assert county.PRIMARY_WINDOW_DAYS == fuelwatch_counties.PRIMARY_WINDOW_DAYS
+
+
+# --------------------------- build_county_prediction --------------------------
+
+def test_prediction_inherits_national_direction_unchanged():
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Cork")]), ref)
+    assert out["trend"] == NATIONAL["trend"]
+    assert out["predicted_weekly_return"] == NATIONAL["predicted_weekly_return"]
+
+
+def test_cheap_county_lands_below_the_national_price():
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Wicklow")]), ref)
+    assert out["basis_eur_per_litre"] < 0
+    assert out["current_pump_eur_per_l"] < NATIONAL["current_pump_eur_per_l"]
+    assert out["predicted_pump_eur_per_l"] < NATIONAL["predicted_pump_eur_per_l"]
+
+
+def test_every_price_field_moves_by_exactly_the_basis():
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Kerry")]), ref)
+    basis = out["basis_eur_per_litre"]
+    for field in ("current_pump_eur_per_l", "predicted_pump_eur_per_l",
+                  "predicted_pump_3w_eur_per_l"):
+        assert out[field] == pytest.approx(NATIONAL[field] + basis)
+
+
+def test_thin_county_is_flagged_and_its_offset_is_heavily_shrunk():
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Donegal")]), ref)
+    assert out["low_sample"] is True
+    assert out["station_count"] == 3
+    # n=3, K=10 keeps 3/13 of the raw offset.
+    assert abs(out["basis_eur_per_litre"]) < abs(out["basis_raw_eur_per_litre"]) / 4
+
+
+def test_well_sampled_county_is_not_flagged_and_keeps_most_of_its_offset():
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Dublin")]), ref)
+    assert out["low_sample"] is False
+    assert abs(out["basis_eur_per_litre"]) > abs(out["basis_raw_eur_per_litre"]) * 0.8
+
+
+def test_thin_county_gets_a_wider_band_than_a_well_sampled_one():
+    ref = county.national_reference(RANKING_ROWS)
+    thin = county.build_county_prediction(NATIONAL, county.select_row([_row("Donegal")]), ref)
+    thick = county.build_county_prediction(NATIONAL, county.select_row([_row("Dublin")]), ref)
+    width = lambda o: o["predicted_pump_high_eur_per_l"] - o["predicted_pump_low_eur_per_l"]
+    assert width(thin) > width(thick)
+
+
+def test_crowd_median_is_reported_separately_from_the_translated_price():
+    """The card shows both; they are on different measurement scales."""
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Cork")]), ref)
+    assert out["crowd_median_eur_per_litre"] == 1.809
+    assert out["current_pump_eur_per_l"] != out["crowd_median_eur_per_litre"]
+
+
+def test_anchor_pins_the_level_to_the_displayed_national_price():
+    """Without this the county lands ~10c off the site's own national headline.
+
+    The model trains on EU Bulletin weeks; the dashboard headlines the freshest
+    observed pump price. The county level must follow the headline.
+    """
+    ref = county.national_reference(RANKING_ROWS)
+    row = county.select_row([_row("Dublin")])
+    anchored = county.build_county_prediction(NATIONAL, row, ref, anchor_pump=1.864)
+    basis = anchored["basis_eur_per_litre"]
+    assert anchored["current_pump_eur_per_l"] == pytest.approx(1.864 + basis)
+
+
+def test_anchor_shifts_the_level_but_preserves_the_models_movement():
+    ref = county.national_reference(RANKING_ROWS)
+    row = county.select_row([_row("Dublin")])
+    plain = county.build_county_prediction(NATIONAL, row, ref)
+    anchored = county.build_county_prediction(NATIONAL, row, ref, anchor_pump=1.864)
+
+    step = lambda o: o["predicted_pump_eur_per_l"] - o["current_pump_eur_per_l"]
+    step_3w = lambda o: o["predicted_pump_3w_eur_per_l"] - o["current_pump_eur_per_l"]
+    assert step(anchored) == pytest.approx(step(plain))
+    assert step_3w(anchored) == pytest.approx(step_3w(plain))
+
+    offset = 1.864 - NATIONAL["current_pump_eur_per_l"]
+    for field in ("current_pump_eur_per_l", "predicted_pump_eur_per_l",
+                  "predicted_pump_3w_eur_per_l"):
+        assert anchored[field] == pytest.approx(plain[field] + offset)
+
+
+def test_movement_carried_matches_the_national_models_own_step():
+    ref = county.national_reference(RANKING_ROWS)
+    row = county.select_row([_row("Cork")])
+    out = county.build_county_prediction(NATIONAL, row, ref, anchor_pump=1.90)
+    national_step = NATIONAL["predicted_pump_eur_per_l"] - NATIONAL["current_pump_eur_per_l"]
+    assert out["predicted_pump_eur_per_l"] - out["current_pump_eur_per_l"] \
+        == pytest.approx(national_step)
+
+
+def test_omitting_the_anchor_falls_back_to_the_model_base():
+    ref = county.national_reference(RANKING_ROWS)
+    row = county.select_row([_row("Cork")])
+    out = county.build_county_prediction(NATIONAL, row, ref)
+    assert out["current_pump_eur_per_l"] == pytest.approx(
+        NATIONAL["current_pump_eur_per_l"] + out["basis_eur_per_litre"]
+    )
+
+
+def test_band_stays_centred_on_the_prediction():
+    ref = county.national_reference(RANKING_ROWS)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Cork")]), ref)
+    midpoint = (out["predicted_pump_low_eur_per_l"] + out["predicted_pump_high_eur_per_l"]) / 2
+    assert midpoint == pytest.approx(out["predicted_pump_eur_per_l"])

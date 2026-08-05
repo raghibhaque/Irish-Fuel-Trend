@@ -32,6 +32,12 @@ The dashboard runs **two ways from the same codebase**:
   APScheduler job; under GitHub Pages they're refreshed by an Actions cron.
 - **Idempotent upserts** — every fetcher uses `ON CONFLICT DO UPDATE`, so a
   re-run is safe and only writes changed rows.
+- **County localisation without a county model** — FuelWatch publishes a
+  current county median but no county history, so nothing can be trained per
+  county. Instead the national forecast is shifted by a measured *basis*,
+  computed against a station-weighted reference drawn from the same RPC rows
+  so crowd-vs-bulletin method bias cancels, then shrunk by `n/(n+10)` so a
+  three-station county can't advertise a six-cent gap.
 
 ---
 
@@ -59,6 +65,7 @@ learning surface small.
 | -------------------- | ------------- | ----------------------------------------------------------------- |
 | EU Weekly Oil Bulletin | Weekly (Mon) | Authoritative Irish retail petrol/diesel prices, with and without duties + VAT. Since 2005. |
 | FuelWatch.ie         | Daily         | Crowd-sourced pump reports aggregated to a national daily average. Fills the gap between weekly bulletins. |
+| FuelWatch.ie (county) | Daily        | Per-county median via `county_price_rankings`, plus station-level prices via `cheapest_reported_stations`. Trailing-window aggregates with **no history upstream** — we snapshot them daily to build our own. |
 | ECB                  | Daily         | EUR/USD reference rate.                                           |
 | Yahoo Finance        | Daily         | Brent crude futures (`BZ=F`). Falls back to a deterministic mock when the feed is unreachable. |
 | Curated RSS feeds    | Every 10 min  | Oil-relevant news, keyword-filtered.                              |
@@ -98,6 +105,7 @@ its own cadence — you don't need to keep re-running `ingest.py`.
 python ingest.py                    # all sources
 python ingest.py bulletin           # EU Oil Bulletin only
 python ingest.py fuelwatch          # FuelWatch daily
+python ingest.py counties           # FuelWatch county medians + stations
 python ingest.py fx                 # ECB EUR/USD
 python ingest.py brent              # Brent futures
 python ingest.py news               # RSS feeds
@@ -114,6 +122,7 @@ python ingest.py all --force        # force re-download of cached raw files
 | `GET /api/prices?weeks=N`           | Historical petrol/diesel series with latest snapshot    |
 | `GET /api/prediction`               | Trend, weekly return forecast, confidence, R², explanation |
 | `GET /api/news?limit=N`             | Oil-relevant news items, most recent first              |
+| `GET /api/counties[?county=Cork]`   | Per-county median, basis, localised forecast, cheapest stations |
 
 Full response schemas live in `backend/app/models.py` and are visible in the
 auto-generated OpenAPI docs at `/docs`.
@@ -159,22 +168,30 @@ petrolpredictor/
 │       ├── scheduler.py            APScheduler jobs
 │       ├── data_sources/
 │       │   ├── eu_oil_bulletin.py  Weekly EU authoritative feed
-│       │   ├── fuelwatch_ie.py     Daily crowd-sourced (auto-discovers Supabase)
+│       │   ├── fuelwatch_client.py Supabase creds discovery + RPC/REST helpers
+│       │   ├── fuelwatch_ie.py     Daily crowd-sourced national average
+│       │   ├── fuelwatch_counties.py County medians + station prices
 │       │   ├── fx_rates.py         ECB EUR/USD
 │       │   ├── brent_crude.py      Yahoo Finance Brent (with mock fallback)
 │       │   ├── news_monitor.py     RSS keyword monitor
 │       │   └── tax_calendar.py     Static Irish tax event calendar
 │       ├── prediction/
 │       │   ├── model.py            Feature engineering + regression
+│       │   ├── county.py           Basis decomposition (pure functions)
 │       │   └── explain.py          Natural-language explanation
 │       └── routes/
 │           ├── prices.py           /api/prices
 │           ├── prediction.py       /api/prediction
+│           ├── counties.py         /api/counties
 │           └── news.py             /api/news
+├── backend/tests/                  pytest — county basis math
 ├── frontend/
-│   ├── index.html                  Semantic markup, relative asset paths
+│   ├── index.html                  National dashboard
+│   ├── county.html                 County Fuel Predictor
 │   ├── style.css                   Dark theme, hand-tuned
-│   ├── app.js                      Reads data/*.json, filters chart range
+│   ├── shared.js                   Formatters, chart theme, sparklines
+│   ├── app.js                      National page controller
+│   ├── county.js                   County page controller
 │   └── data/                       Generated JSON snapshots (gitignored)
 ├── data/                           SQLite file (gitignored)
 └── docs/                           Design specs
@@ -213,6 +230,19 @@ petrolpredictor/
 - [x] APScheduler background refresh
 - [x] Daily crowd-sourced Irish pump data (FuelWatch.ie)
 - [x] Static export + GitHub Pages CI
+- [x] County-level breakdown + County Fuel Predictor page
 - [ ] Confidence intervals on the forecast rather than a single point return
-- [ ] County-level breakdown (FuelWatch exposes this)
+- [ ] Retire the reconstructed county line once ~8 weeks of real snapshots exist
+- [ ] Per-county model, once there is a county target series to train on (~6 months)
+- [ ] Estimate the shrinkage `K` and `σ_station` from data instead of priors
+- [ ] Reconcile the two national "current price" anchors (see below)
 - [ ] Alerting when the model's confidence drops sharply
+
+### Known inconsistency
+
+The national dashboard headlines the latest **FuelWatch** row while the
+prediction card is anchored to the latest **EU Bulletin** row, which is up to
+a week older and on a different measurement scale. On 2026-08-05 that was
+€1.864 against €1.758 for petrol. The county page sidesteps it by anchoring
+its level to the FuelWatch number and carrying the model's movement as a
+delta, but the underlying disagreement on the national page is unresolved.

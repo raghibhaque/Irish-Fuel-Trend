@@ -388,6 +388,139 @@ h2 .muted { color: var(--text-dim); font-weight: 400; font-size: 0.9rem; }
 .news-list .news-summary { color: var(--text-dim); }
 .news-list .news-matched { font-size: 0.78rem; color: var(--text-dim); }
 
+/* ---------------- site nav ---------------- */
+.site-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 18px;
+}
+.site-nav a {
+    padding: 6px 14px;
+    border-radius: 999px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.site-nav a:hover { color: var(--text); background: var(--surface-2); }
+.site-nav a.active {
+    color: var(--accent);
+    background: rgba(78, 161, 255, 0.10);
+    border-color: rgba(78, 161, 255, 0.30);
+}
+
+/* ---------------- county picker ---------------- */
+.county-picker {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+}
+.county-picker label {
+    display: grid;
+    gap: 6px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+}
+.county-picker select {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 600;
+    min-width: 220px;
+}
+.county-picker select option:disabled { color: var(--text-dim); }
+.picker-meta {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- low-sample / stale warning ---------------- */
+.sample-warn {
+    margin: 0;
+    padding: 12px 16px;
+    background: rgba(201, 162, 39, 0.08);
+    border: 1px solid rgba(201, 162, 39, 0.25);
+    border-radius: 10px;
+    color: var(--flat);
+    font-size: 0.85rem;
+}
+.sample-warn[hidden] { display: none; }
+
+/* ---------------- chart caveat ---------------- */
+.chart-caveat {
+    margin: -6px 0 14px;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    max-width: 72ch;
+}
+
+/* ---------------- cheapest stations ---------------- */
+.station-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+.station-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+.station-col h3 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+}
+.station-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 8px;
+}
+.station-list li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+}
+.station-list li:first-child { border-top: none; }
+.station-list li.empty {
+    color: var(--text-dim);
+    font-style: italic;
+    grid-template-columns: 1fr;
+}
+.station-name  { color: var(--text); font-size: 0.92rem; }
+.station-price {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    align-self: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+.station-when { color: var(--text-dim); font-size: 0.75rem; }
+
 /* ---------------- footer ---------------- */
 .site-footer {
     border-top: 1px solid var(--border);

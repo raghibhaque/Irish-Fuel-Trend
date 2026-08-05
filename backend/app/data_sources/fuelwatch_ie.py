@@ -5,10 +5,8 @@ Prices are crowd-sourced from drivers reporting real forecourt prices.
 Not an official government feed — used to fill the daily gap between the
 authoritative but weekly EU Oil Bulletin releases.
 
-Endpoint discovered by extracting the Supabase URL + anon JWT from the SPA
-JavaScript bundle. Both are public (shipped to every browser). The bundle
-filename is hash-suffixed and rotates on redeploy, so we auto-discover it
-from the app's HTML each run rather than hard-coding.
+Credential discovery and HTTP live in `fuelwatch_client` — see that module for
+why the Supabase URL and anon key are scraped rather than pinned.
 
 Data path:
     daily_price_snapshots
@@ -22,68 +20,33 @@ Data path:
 from __future__ import annotations
 
 import logging
-import re
-from datetime import date
 from typing import Iterable
 
-import requests
-
+from app.data_sources import fuelwatch_client
 from app.db import connection
 
 logger = logging.getLogger(__name__)
-
-APP_URL = "https://app.fuelwatch.ie/"
-SUPABASE_URL_RE = re.compile(r"https://[a-z0-9]+\.supabase\.co")
-JWT_RE = re.compile(r"eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}")
-BUNDLE_RE = re.compile(r'src="(/_expo/static/js/web/entry-[^"]+\.js)"')
 
 SNAPSHOTS_PATH = "/rest/v1/daily_price_snapshots"
 
 SOURCE_NAME = "FUELWATCH_IE"
 COUNTRY = "IE"
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (irish-fuel-trend/0.1; +https://github.com/)",
-}
-
 # Only backfill this many recent days into fuel_prices. Older dates are
 # already covered authoritatively by the EU Oil Bulletin, no point overwriting.
 DEFAULT_LOOKBACK_DAYS = 60
 
 
-def _discover_supabase_creds() -> tuple[str, str]:
-    """Scrape the SPA HTML + JS bundle to recover the Supabase URL and anon key."""
-    r = requests.get(APP_URL, headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    bundle_match = BUNDLE_RE.search(r.text)
-    if not bundle_match:
-        raise RuntimeError("Could not find Expo JS bundle URL in FuelWatch app HTML.")
-    bundle_url = APP_URL.rstrip("/") + bundle_match.group(1)
-
-    b = requests.get(bundle_url, headers=HEADERS, timeout=60)
-    b.raise_for_status()
-    url_match = SUPABASE_URL_RE.search(b.text)
-    key_match = JWT_RE.search(b.text)
-    if not url_match or not key_match:
-        raise RuntimeError("Could not extract Supabase URL/anon key from bundle.")
-    return url_match.group(0), key_match.group(0)
-
-
 def fetch_daily_snapshots(limit: int = DEFAULT_LOOKBACK_DAYS) -> list[dict]:
     """Return list of daily average rows, newest first."""
-    base, key = _discover_supabase_creds()
-    r = requests.get(
-        base + SNAPSHOTS_PATH,
+    return fuelwatch_client.rest_get(
+        SNAPSHOTS_PATH,
         params={
             "select": "snapshot_date,petrol_avg,diesel_avg,petrol_count,diesel_count,total_count",
             "order": "snapshot_date.desc",
             "limit": str(limit),
         },
-        headers={"apikey": key, "Authorization": f"Bearer {key}"},
-        timeout=30,
     )
-    r.raise_for_status()
-    return r.json()
 
 
 def _iter_rows(snapshots: list[dict]) -> Iterable[tuple[str, str, float]]:

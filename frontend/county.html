@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irish Fuel Trend</title>
+    <title>County Fuel Predictor — Irish Fuel Trend</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -11,17 +11,27 @@
     <header class="site-header">
         <div class="wrap">
             <nav class="site-nav">
-                <a href="index.html" class="active" aria-current="page">Ireland</a>
-                <a href="county.html">County</a>
+                <a href="index.html">Ireland</a>
+                <a href="county.html" class="active" aria-current="page">County</a>
             </nav>
-            <h1>Irish Fuel Trend</h1>
+            <h1>County Fuel Predictor</h1>
             <p class="tagline">
-                Weekly petrol &amp; diesel price direction for Ireland — from EU Oil Bulletin, ECB &amp; Brent crude.
+                Petrol &amp; diesel localised to your county — crowd-sourced county medians
+                offset against the national forecast.
             </p>
         </div>
     </header>
 
     <main class="wrap">
+        <section class="county-picker">
+            <label>County
+                <select id="county-select"></select>
+            </label>
+            <p class="picker-meta" id="picker-meta"></p>
+        </section>
+
+        <p class="sample-warn" id="sample-warn" hidden></p>
+
         <section class="current-prices" id="current-prices">
             <article class="price-card" data-fuel="petrol">
                 <span class="label">Petrol (95)</span>
@@ -40,7 +50,7 @@
         </section>
 
         <section class="fillup-calc">
-            <h2>Fill-up impact <span class="muted">(vs 3-week outlook)</span></h2>
+            <h2>Fill-up impact <span class="muted">(vs 3-week outlook, county prices)</span></h2>
             <div class="calc-row">
                 <label>Tank litres
                     <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
@@ -60,7 +70,13 @@
         </section>
 
         <section class="chart-section">
-            <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
+            <h2>Historical trend <span class="muted" id="chart-subtitle">(reconstructed)</span></h2>
+            <p class="chart-caveat">
+                No county price history exists upstream — the feed publishes only a current
+                trailing median. The lines below are the national series shifted by this
+                county's measured offset. Dots are real county snapshots, recorded daily
+                from the day this page shipped.
+            </p>
             <div class="chart-controls">
                 <label>Show
                     <select id="chart-range">
@@ -78,7 +94,7 @@
         </section>
 
         <section class="predictions">
-            <h2>Next 1–3 weeks</h2>
+            <h2>Next 1–3 weeks <span class="muted">in <span id="pred-county-name">—</span></span></h2>
             <div class="pred-grid">
                 <article class="pred-card" id="pred-petrol">
                     <header>
@@ -89,15 +105,13 @@
                     <dl class="pred-meta">
                         <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
                         <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>County offset</dt><dd class="pred-basis">—</dd></div>
+                        <div><dt>Crowd median</dt><dd class="pred-median">—</dd></div>
                         <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
                         <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
                         <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
                     </dl>
-                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
-                        <span class="bt-label">Recent calls</span>
-                        <ul class="bt-list"></ul>
-                    </div>
                 </article>
                 <article class="pred-card" id="pred-diesel">
                     <header>
@@ -108,35 +122,44 @@
                     <dl class="pred-meta">
                         <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
                         <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>County offset</dt><dd class="pred-basis">—</dd></div>
+                        <div><dt>Crowd median</dt><dd class="pred-median">—</dd></div>
                         <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
                         <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
                         <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
                     </dl>
-                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
-                        <span class="bt-label">Recent calls</span>
-                        <ul class="bt-list"></ul>
-                    </div>
                 </article>
             </div>
             <p class="notes" id="prediction-notes"></p>
         </section>
 
-        <section class="news">
-            <h2>Recent oil-relevant news</h2>
-            <ul id="news-list" class="news-list">
-                <li class="empty">No news items yet — RSS monitor not wired up (step 8).</li>
-            </ul>
+        <section class="stations">
+            <h2>Cheapest reported stations <span class="muted">in <span id="stations-county-name">—</span></span></h2>
+            <div class="station-grid">
+                <div class="station-col">
+                    <h3>Petrol</h3>
+                    <ul class="station-list" id="stations-petrol"></ul>
+                </div>
+                <div class="station-col">
+                    <h3>Diesel</h3>
+                    <ul class="station-list" id="stations-diesel"></ul>
+                </div>
+            </div>
         </section>
     </main>
 
     <footer class="site-footer">
         <div class="wrap">
-            <span>Data: EU Commission Weekly Oil Bulletin · European Central Bank · Brent (MOCK)</span>
+            <span>
+                County medians &amp; station prices: FuelWatch.ie (crowd-sourced, 30-day trailing).
+                National series: EU Commission Weekly Oil Bulletin.
+                Direction is the national model's — this page localises the level, not the movement.
+            </span>
         </div>
     </footer>
 
     <script src="shared.js?v=1"></script>
-    <script src="app.js?v=4"></script>
+    <script src="county.js?v=1"></script>
 </body>
 </html>

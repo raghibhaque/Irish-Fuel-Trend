@@ -69,6 +69,20 @@ def export(out_dir: Path) -> dict:
         news.raise_for_status()
         _write(out_dir / "news.json", news.json())
 
+        # 503s until the first county ingest has run — degrade like prediction.
+        counties = client.get("/api/counties")
+        if counties.status_code == 200:
+            _write(out_dir / "counties.json", counties.json())
+        else:
+            logger.warning("counties endpoint returned %s: %s",
+                           counties.status_code, counties.text[:200])
+            _write(out_dir / "counties.json", {
+                "counties": [],
+                "national_reference": [],
+                "counties_without_data": [],
+                "notes": ["County data unavailable: HTTP " + str(counties.status_code)],
+            })
+
     return {"out_dir": str(out_dir)}
 
 

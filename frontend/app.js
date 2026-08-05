@@ -1,36 +1,13 @@
-// Dashboard controller. Reads static JSON snapshots from ./data/*.json so the
-// same bundle works both under FastAPI (local dev) and GitHub Pages (static).
-
-const fmtEur = (v) => (v == null ? "—" : `€${v.toFixed(3)}`);
-const fmtPct = (v) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
-const fmtDate = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-IE", { year: "numeric", month: "short", day: "numeric" });
-};
+// National dashboard controller. Reads static JSON snapshots from ./data/*.json
+// so the same bundle works both under FastAPI (local dev) and GitHub Pages
+// (static). Formatting, chart theme, and sparkline helpers live in shared.js,
+// which county.js also uses.
 
 let chart = null;
 let priceData = null;   // full history, cached in memory; range selector filters this
 let predictionData = null;  // cached so calculator can react to input changes without refetch
 
-async function jget(path) {
-    const r = await fetch(path, { cache: "no-cache" });
-    if (!r.ok) throw new Error(`${path} → ${r.status}`);
-    return r.json();
-}
-
 // ------------------ prices + chart ------------------
-function sliceByWeeks(series, weeks) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - weeks * 7);
-    const cutoffIso = cutoff.toISOString().slice(0, 10);
-    const points = series.points.filter(p => p.date >= cutoffIso);
-    return {
-        ...series,
-        points,
-        latest: points.length ? points[points.length - 1] : null,
-    };
-}
-
 async function loadPrices(weeks = 26) {
     if (!priceData) priceData = await jget("data/prices.json");
     const view = {
@@ -51,28 +28,6 @@ async function loadPrices(weeks = 26) {
     renderChart(view);
 }
 
-function renderSparkline(elId, pts) {
-    const svg = document.getElementById(elId);
-    if (!svg || pts.length < 2) return;
-    const vals = pts.map(p => p.price_eur_per_litre);
-    const lo = Math.min(...vals);
-    const hi = Math.max(...vals);
-    const range = (hi - lo) || 1;
-    const W = 200, H = 40, PAD = 2;
-    const x = (i) => (i / (vals.length - 1)) * (W - 2 * PAD) + PAD;
-    const y = (v) => H - PAD - ((v - lo) / range) * (H - 2 * PAD);
-    const line = vals.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-    const fill = `M${x(0).toFixed(1)},${(H - PAD).toFixed(1)} ` +
-                 vals.map((v, i) => `L${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ") +
-                 ` L${x(vals.length - 1).toFixed(1)},${(H - PAD).toFixed(1)} Z`;
-    svg.innerHTML = `<path class="fill" d="${fill}"/><path d="${line}"/>`;
-}
-
-const fmtDMY = (iso) => {
-    const [y, m, d] = iso.split("-");
-    return `${d}/${m}/${y.slice(2)}`;
-};
-
 function renderChart(data) {
     const labels = data.petrol.points.map(p => fmtDMY(p.date));
     const petrol = data.petrol.points.map(p => p.price_eur_per_litre);
@@ -89,8 +44,8 @@ function renderChart(data) {
                 {
                     label: "Petrol (95)",
                     data: petrol,
-                    borderColor: "#4ea1ff",
-                    backgroundColor: "rgba(78, 161, 255, 0.08)",
+                    borderColor: FUEL_COLORS.petrol.line,
+                    backgroundColor: FUEL_COLORS.petrol.fill,
                     tension: 0.25,
                     pointRadius: 0,
                     borderWidth: 2,
@@ -99,8 +54,8 @@ function renderChart(data) {
                 {
                     label: "Diesel",
                     data: diesel,
-                    borderColor: "#ffb454",
-                    backgroundColor: "rgba(255, 180, 84, 0.06)",
+                    borderColor: FUEL_COLORS.diesel.line,
+                    backgroundColor: FUEL_COLORS.diesel.fill,
                     tension: 0.25,
                     pointRadius: 0,
                     borderWidth: 2,
@@ -108,32 +63,7 @@ function renderChart(data) {
                 },
             ],
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: "index", intersect: false },
-            plugins: {
-                legend: { labels: { color: "#e6edf3" } },
-                tooltip: {
-                    callbacks: {
-                        label: (c) => `${c.dataset.label}: €${c.parsed.y.toFixed(3)}/L`,
-                    },
-                },
-            },
-            scales: {
-                x: {
-                    ticks: { color: "#9aa7b4", maxTicksLimit: 10, autoSkip: true },
-                    grid:  { color: "rgba(255,255,255,0.04)" },
-                },
-                y: {
-                    ticks: {
-                        color: "#9aa7b4",
-                        callback: (v) => `€${v.toFixed(2)}`,
-                    },
-                    grid: { color: "rgba(255,255,255,0.04)" },
-                },
-            },
-        },
+        options: baseChartOptions(),
     });
 }
 
@@ -227,20 +157,6 @@ async function loadNews() {
             </details>
         </li>`;
     }).join("");
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[c]));
-}
-
-// RSS summaries arrive as HTML fragments (<p>, <a>, <ul>, entities). Strip
-// markup to plain text so it renders cleanly inside the collapsible card.
-function stripHtml(s) {
-    if (!s) return "";
-    const doc = new DOMParser().parseFromString(String(s), "text/html");
-    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
 }
 
 // ------------------ boot ------------------

@@ -76,6 +76,69 @@ class PredictionResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class CountyStation(BaseModel):
+    name: str
+    brand: Optional[str] = None
+    price_eur_per_litre: float
+    reported_at: Optional[str] = None      # ISO-8601 from upstream, kept verbatim
+
+
+class CountyObservation(BaseModel):
+    """One day's snapshot of a county median — the county history we build ourselves."""
+    date: date
+    median_eur_per_litre: float
+    station_count: int
+
+
+class CountyFuelSnapshot(BaseModel):
+    fuel_type: Literal["petrol", "diesel"]
+    crowd_median_eur_per_litre: float      # raw 30d crowd-sourced median
+    station_count: int
+    window_days: int                       # trailing window the median covers
+    stale: bool                            # True when falling back to the wide window
+    low_sample: bool                       # True below the station threshold
+    basis_eur_per_litre: float             # shrunk offset vs the same-pool national ref
+    basis_raw_eur_per_litre: float
+
+    # Prediction fields are absent when the national model can't run — the page
+    # still renders prices and history in that case.
+    trend: Optional[Literal["up", "down", "flat"]] = None
+    predicted_weekly_return: Optional[float] = None
+    confidence: Optional[float] = None
+    r2: Optional[float] = None
+    current_pump_eur_per_l: Optional[float] = None
+    predicted_pump_eur_per_l: Optional[float] = None
+    predicted_pump_low_eur_per_l: Optional[float] = None
+    predicted_pump_high_eur_per_l: Optional[float] = None
+    predicted_pump_3w_eur_per_l: Optional[float] = None
+
+    observations: list[CountyObservation] = Field(default_factory=list)
+    stations: list[CountyStation] = Field(default_factory=list)
+
+
+class CountyEntry(BaseModel):
+    county: str
+    petrol: Optional[CountyFuelSnapshot] = None
+    diesel: Optional[CountyFuelSnapshot] = None
+
+
+class NationalReference(BaseModel):
+    """Station-weighted mean of county medians — the basis is measured against this."""
+    fuel_type: Literal["petrol", "diesel"]
+    window_days: int
+    median_eur_per_litre: float
+    station_count: int
+
+
+class CountiesResponse(BaseModel):
+    generated_at: datetime
+    snapshot_date: date
+    counties: list[CountyEntry]
+    national_reference: list[NationalReference]
+    counties_without_data: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class NewsItem(BaseModel):
     published_at: datetime
     source: str
