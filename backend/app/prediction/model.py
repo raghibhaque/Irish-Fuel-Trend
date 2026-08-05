@@ -49,6 +49,14 @@ FEATURE_COLS = [
 
 GAL_PER_BBL = 42.0  # US barrel conversion for aligning refined-product prices with Brent
 
+# Irish VAT on road fuels. Duties + carbon + NORA levy are fixed per litre, so
+# a Δ in wholesale flows through to pump as Δwholesale * (1 + VAT).
+VAT_RATE_IE = 0.23
+
+# Interquartile band width for the price prediction interval (~50% likelihood).
+# 0.6745 = Φ⁻¹(0.75) under the Normal residual assumption.
+BAND_Z_50PCT = 0.6745
+
 # fuel -> refined product symbol used as its downstream proxy
 FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
 
@@ -68,6 +76,10 @@ class TrendPrediction:
     n_train: int
     coefficients: dict
     product_symbol: str
+    current_pump_eur_per_l: float
+    predicted_pump_eur_per_l: float
+    predicted_pump_low_eur_per_l: float   # 50% interquartile band lower bound
+    predicted_pump_high_eur_per_l: float  # 50% interquartile band upper bound
 
 
 def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -119,14 +131,16 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     prices, brent, fx, refined = _load_frames()
     product_symbol = FUEL_PRODUCT[fuel_type]
 
-    price_series = (
+    fuel_rows = (
         prices[prices["fuel_type"] == fuel_type]
         .dropna(subset=["price_wo_tax_eur_per_litre"])
-        .set_index("date")["price_wo_tax_eur_per_litre"]
+        .set_index("date")
         .sort_index()
     )
+    price_series = fuel_rows["price_wo_tax_eur_per_litre"]
+    pump_series  = fuel_rows["price_eur_per_litre"]
 
-    df = pd.DataFrame({"wholesale": price_series})
+    df = pd.DataFrame({"wholesale": price_series, "pump": pump_series})
     df["wholesale_prev"] = df["wholesale"].shift(1)
     df["target_ret"] = df["wholesale"] / df["wholesale_prev"] - 1
     df["prev_return"] = df["target_ret"].shift(1)
@@ -163,7 +177,7 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
         df["crack_spread_eur"]      = crack_daily.shift(1)
         df["crack_spread_ret_4w"]   = crack_daily.shift(1) - crack_daily.shift(5)
 
-    keep = ["wholesale", "target_ret", "brent_eur", "brent_eur_lag1",
+    keep = ["wholesale", "pump", "target_ret", "brent_eur", "brent_eur_lag1",
             "product_eur", "product_eur_lag1", "crack_spread_eur"] + FEATURE_COLS
     return df[keep].dropna()
 
@@ -246,6 +260,18 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     # Naturally high when |prediction| is large vs typical error, low when not.
     confidence = _direction_probability(predicted_ret, resid_std, r2_cv)
 
+    # Price prediction: pump Δ = wholesale × Δreturn × (1 + VAT), since Irish
+    # duties + carbon + NORA levy are fixed per litre and VAT applies to the
+    # whole stack. 50% band uses the OOS residual std scaled by Φ⁻¹(0.75).
+    current_wholesale = float(latest["wholesale"])
+    current_pump      = float(latest["pump"])
+    pump_multiplier   = 1.0 + VAT_RATE_IE
+    delta_pump        = current_wholesale * predicted_ret * pump_multiplier
+    band_half         = current_wholesale * resid_std * BAND_Z_50PCT * pump_multiplier
+    predicted_pump    = current_pump + delta_pump
+    pump_low          = predicted_pump - band_half
+    pump_high         = predicted_pump + band_half
+
     features = {
         "brent_eur_ret_2w": float(latest["brent_eur_ret_2w"]),
         "brent_eur_ret_6w": float(latest["brent_eur_ret_6w"]),
@@ -275,4 +301,8 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         n_train=len(df),
         coefficients=coefficients,
         product_symbol=FUEL_PRODUCT[fuel_type],
+        current_pump_eur_per_l=current_pump,
+        predicted_pump_eur_per_l=predicted_pump,
+        predicted_pump_low_eur_per_l=pump_low,
+        predicted_pump_high_eur_per_l=pump_high,
     )

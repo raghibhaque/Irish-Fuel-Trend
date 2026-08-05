@@ -126,6 +126,11 @@ async function loadPrediction() {
         card.querySelector(".pred-delta").textContent = fmtPct(p.predicted_weekly_return);
         card.querySelector(".pred-conf").textContent  = `${Math.round(p.confidence * 100)}%`;
         card.querySelector(".pred-r2").textContent    = p.r2.toFixed(2);
+        const arrow = p.predicted_pump_eur_per_l >= p.current_pump_eur_per_l ? "▲" : "▼";
+        card.querySelector(".pred-price").textContent =
+            `€${p.predicted_pump_eur_per_l.toFixed(3)} ${arrow} (from €${p.current_pump_eur_per_l.toFixed(3)})`;
+        card.querySelector(".pred-band").textContent =
+            `€${p.predicted_pump_low_eur_per_l.toFixed(3)} – €${p.predicted_pump_high_eur_per_l.toFixed(3)}`;
     });
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
 }

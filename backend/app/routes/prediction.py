@@ -34,6 +34,10 @@ def _predict_for(fuel_type: str, mock_brent: bool) -> Prediction:
         r2_in_sample=pred.r2_in_sample,
         n_train=pred.n_train,
         product_symbol=pred.product_symbol,
+        current_pump_eur_per_l=pred.current_pump_eur_per_l,
+        predicted_pump_eur_per_l=pred.predicted_pump_eur_per_l,
+        predicted_pump_low_eur_per_l=pred.predicted_pump_low_eur_per_l,
+        predicted_pump_high_eur_per_l=pred.predicted_pump_high_eur_per_l,
         features=PredictionFeatures(**pred.features),
         explanation=explanation,
     )

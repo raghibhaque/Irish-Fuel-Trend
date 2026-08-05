@@ -49,6 +49,10 @@ class Prediction(BaseModel):
     r2_in_sample: float
     n_train: int
     product_symbol: str          # 'RBOB' | 'ULSD'
+    current_pump_eur_per_l: float
+    predicted_pump_eur_per_l: float
+    predicted_pump_low_eur_per_l: float
+    predicted_pump_high_eur_per_l: float
     features: PredictionFeatures
     explanation: str
 
