@@ -62,6 +62,10 @@ FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
 
 CV_SPLITS = 5
 
+# How many most-recent weeks to backtest with expanding-window one-step-ahead
+# predictions for the UI "recent calls" strip.
+BACKTEST_WEEKS = 8
+
 
 @dataclass
 class TrendPrediction:
@@ -81,6 +85,7 @@ class TrendPrediction:
     predicted_pump_low_eur_per_l: float   # 50% interquartile band lower bound
     predicted_pump_high_eur_per_l: float  # 50% interquartile band upper bound
     predicted_pump_3w_eur_per_l: float    # ~3-week horizon, compounded weekly return
+    backtest: list                        # list[dict] of recent one-step-ahead calls vs actual
 
 
 def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -229,6 +234,46 @@ def _direction_probability(predicted_ret: float, resid_std: float, r2_cv: float)
     return max(0.5, min(0.999, p))
 
 
+def _expanding_backtest(df: pd.DataFrame, weeks: int, alpha: float = 1.0) -> list[dict]:
+    """One-step-ahead expanding-window predictions for the last `weeks` rows.
+
+    For each of the last `weeks` weeks, train Ridge on all data up to (but
+    excluding) that week, predict, and record predicted vs actual return + the
+    implied pump price shift. Gives an honest "here's what the model would have
+    said in real time" strip for the UI.
+    """
+    X_all = df[FEATURE_COLS].values
+    y_all = df["target_ret"].values
+    wholesale_all = df["wholesale"].values
+    pump_all = df["pump"].values
+    dates = list(df.index)
+    n = len(df)
+    start = max(30, n - weeks)  # ensure at least 30 training rows for the first call
+    out: list[dict] = []
+    for i in range(start, n):
+        m = Ridge(alpha=alpha)
+        m.fit(X_all[:i], y_all[:i])
+        pred = float(m.predict(X_all[i:i+1])[0])
+        actual = float(y_all[i])
+        # Pump-price movement implied by the prediction for week i, using the
+        # wholesale price at week i-1 (the info the model would have had).
+        base_wholesale = float(wholesale_all[i-1])
+        prev_pump      = float(pump_all[i-1])
+        actual_pump    = float(pump_all[i])
+        predicted_pump = prev_pump + base_wholesale * pred * (1.0 + VAT_RATE_IE)
+        direction_hit  = (pred >= 0) == (actual >= 0)
+        d = dates[i]
+        out.append({
+            "date": d.date().isoformat() if hasattr(d, "date") else str(d),
+            "actual_return": actual,
+            "predicted_return": pred,
+            "actual_pump_eur_per_l": actual_pump,
+            "predicted_pump_eur_per_l": predicted_pump,
+            "direction_correct": bool(direction_hit),
+        })
+    return out
+
+
 def train_and_predict(fuel_type: str) -> TrendPrediction:
     df = build_dataset(fuel_type)
     if len(df) < 30:
@@ -236,6 +281,8 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
 
     X = df[FEATURE_COLS].values
     y = df["target_ret"].values
+
+    backtest = _expanding_backtest(df, BACKTEST_WEEKS)
 
     # Honest accuracy first — walk-forward CV on the same feature matrix.
     r2_cv, resid_std = _walk_forward_stats(X, y)
@@ -311,4 +358,5 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         predicted_pump_low_eur_per_l=pump_low,
         predicted_pump_high_eur_per_l=pump_high,
         predicted_pump_3w_eur_per_l=predicted_pump_3w,
+        backtest=backtest,
     )

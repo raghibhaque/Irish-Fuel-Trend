@@ -10,6 +10,7 @@ const fmtDate = (iso) => {
 
 let chart = null;
 let priceData = null;   // full history, cached in memory; range selector filters this
+let predictionData = null;  // cached so calculator can react to input changes without refetch
 
 async function jget(path) {
     const r = await fetch(path, { cache: "no-cache" });
@@ -42,7 +43,29 @@ async function loadPrices(weeks = 26) {
     document.getElementById("asof-petrol").textContent = view.petrol.latest ? `as of ${fmtDate(view.petrol.latest.date)}` : "";
     document.getElementById("asof-diesel").textContent = view.diesel.latest ? `as of ${fmtDate(view.diesel.latest.date)}` : "";
 
+    // Sparklines always use the last 12 weeks from the full series, not the
+    // range-filtered view, so they stay stable when the user swaps ranges.
+    renderSparkline("spark-petrol", priceData.petrol.points.slice(-12));
+    renderSparkline("spark-diesel", priceData.diesel.points.slice(-12));
+
     renderChart(view);
+}
+
+function renderSparkline(elId, pts) {
+    const svg = document.getElementById(elId);
+    if (!svg || pts.length < 2) return;
+    const vals = pts.map(p => p.price_eur_per_litre);
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const range = (hi - lo) || 1;
+    const W = 200, H = 40, PAD = 2;
+    const x = (i) => (i / (vals.length - 1)) * (W - 2 * PAD) + PAD;
+    const y = (v) => H - PAD - ((v - lo) / range) * (H - 2 * PAD);
+    const line = vals.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    const fill = `M${x(0).toFixed(1)},${(H - PAD).toFixed(1)} ` +
+                 vals.map((v, i) => `L${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ") +
+                 ` L${x(vals.length - 1).toFixed(1)},${(H - PAD).toFixed(1)} Z`;
+    svg.innerHTML = `<path class="fill" d="${fill}"/><path d="${line}"/>`;
 }
 
 const fmtDMY = (iso) => {
@@ -117,6 +140,7 @@ function renderChart(data) {
 // ------------------ prediction ------------------
 async function loadPrediction() {
     const data = await jget("data/prediction.json");
+    predictionData = data;
     ["petrol", "diesel"].forEach(fuel => {
         const p = data[fuel];
         const card = document.getElementById(`pred-${fuel}`);
@@ -133,8 +157,43 @@ async function loadPrediction() {
             `€${p.predicted_pump_low_eur_per_l.toFixed(3)} – €${p.predicted_pump_high_eur_per_l.toFixed(3)}`;
         card.querySelector(".pred-price-3w").textContent =
             `€${p.predicted_pump_3w_eur_per_l.toFixed(3)}`;
+        renderBacktest(card.querySelector(".bt-list"), p.backtest || []);
     });
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
+    updateCalculator();
+}
+
+function renderBacktest(list, points) {
+    if (!list) return;
+    list.innerHTML = points.map(pt => {
+        const dir  = pt.predicted_return >= 0 ? "up" : "down";
+        const act  = pt.actual_return >= 0 ? "up" : "down";
+        const err  = (pt.actual_pump_eur_per_l - pt.predicted_pump_eur_per_l);
+        const errS = `${err >= 0 ? "+" : ""}${err.toFixed(3)}`;
+        const tip  = `${fmtDMY(pt.date)}\nPredicted ${dir} (${fmtPct(pt.predicted_return)}) → €${pt.predicted_pump_eur_per_l.toFixed(3)}\nActual ${act} (${fmtPct(pt.actual_return)}) → €${pt.actual_pump_eur_per_l.toFixed(3)}\nError €${errS}`;
+        return `<li data-hit="${pt.direction_correct}" title="${escapeHtml(tip)}"></li>`;
+    }).join("");
+}
+
+// ------------------ fill-up calculator ------------------
+function updateCalculator() {
+    if (!predictionData) return;
+    const fuel   = document.getElementById("calc-fuel").value;
+    const litres = parseFloat(document.getElementById("calc-litres").value) || 0;
+    const p = predictionData[fuel];
+    if (!p) return;
+    const nowCost   = litres * p.current_pump_eur_per_l;
+    const thenCost  = litres * p.predicted_pump_3w_eur_per_l;
+    const diff      = thenCost - nowCost;
+    const sign      = diff > 0.005 ? "up" : diff < -0.005 ? "down" : "flat";
+    const verb      = diff > 0 ? "more" : diff < 0 ? "less" : "same";
+    document.getElementById("calc-now").textContent  = `Today: €${nowCost.toFixed(2)}`;
+    document.getElementById("calc-then").textContent = `In ~3 weeks: €${thenCost.toFixed(2)}`;
+    const diffEl = document.getElementById("calc-diff");
+    diffEl.textContent = diff === 0
+        ? "Difference: €0.00"
+        : `Difference: €${diff >= 0 ? "+" : ""}${diff.toFixed(2)} (${verb})`;
+    diffEl.setAttribute("data-sign", sign);
 }
 
 // ------------------ news ------------------
@@ -188,6 +247,8 @@ function stripHtml(s) {
 document.getElementById("chart-range").addEventListener("change", (e) => {
     loadPrices(parseInt(e.target.value, 10)).catch(console.error);
 });
+document.getElementById("calc-litres").addEventListener("input", updateCalculator);
+document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
 
 Promise.all([loadPrices(26), loadPrediction(), loadNews()])
     .catch(err => console.error("Dashboard load failed:", err));

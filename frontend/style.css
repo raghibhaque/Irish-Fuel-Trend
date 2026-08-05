@@ -102,13 +102,107 @@ h2 .muted { color: var(--text-dim); font-weight: 400; font-size: 0.9rem; }
     align-self: end;
     padding-bottom: 10px;
 }
-.price-card .asof {
+.price-card .sparkline {
     grid-column: 1 / 3;
     grid-row: 3 / 4;
+    width: 100%;
+    height: 40px;
+    margin-top: 8px;
+    color: var(--accent);
+    overflow: visible;
+}
+.price-card[data-fuel="diesel"] .sparkline { color: #ffb454; }
+.price-card .sparkline path { fill: none; stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.price-card .sparkline .fill { fill: currentColor; opacity: 0.12; stroke: none; }
+
+.price-card .asof {
+    grid-column: 1 / 3;
+    grid-row: 4 / 5;
     color: var(--text-dim);
     font-size: 0.8rem;
     margin-top: 4px;
 }
+
+/* ---------------- fill-up calculator ---------------- */
+.fillup-calc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+.calc-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 20px;
+    align-items: end;
+}
+.calc-row label {
+    display: grid;
+    gap: 6px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+}
+.calc-row input, .calc-row select {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+}
+.calc-row input { width: 90px; }
+.calc-output {
+    display: grid;
+    gap: 4px;
+    justify-items: end;
+    font-variant-numeric: tabular-nums;
+}
+.calc-line { color: var(--text-dim); font-size: 0.9rem; }
+.calc-line.strong { color: var(--text); font-weight: 700; font-size: 1.1rem; }
+.calc-line.strong[data-sign="up"]   { color: var(--up); }
+.calc-line.strong[data-sign="down"] { color: var(--down); }
+@media (max-width: 640px) {
+    .calc-row { grid-template-columns: 1fr 1fr; }
+    .calc-output { grid-column: 1 / 3; justify-items: start; margin-top: 8px; }
+}
+
+/* ---------------- backtest strip ---------------- */
+.backtest-strip {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 8px;
+}
+.bt-label {
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.bt-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+.bt-list li {
+    aspect-ratio: 1 / 1;
+    border-radius: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: help;
+}
+.bt-list li[data-hit="true"]  { background: rgba( 78, 203, 113, 0.35); border-color: rgba( 78, 203, 113, 0.55); }
+.bt-list li[data-hit="false"] { background: rgba(255, 107, 107, 0.30); border-color: rgba(255, 107, 107, 0.50); }
 
 /* ---------------- chart ---------------- */
 .chart-section {
@@ -185,12 +279,13 @@ h2 .muted { color: var(--text-dim); font-weight: 400; font-size: 0.9rem; }
 }
 .pred-meta {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 20px;
     margin: 0;
     padding: 16px 0 0;
     border-top: 1px solid var(--border);
 }
+.pred-meta dd { word-break: break-word; }
 .pred-meta > div { margin: 0; }
 .pred-meta dt {
     color: var(--text-dim);

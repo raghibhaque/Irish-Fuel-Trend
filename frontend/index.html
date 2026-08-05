@@ -23,14 +23,36 @@
                 <span class="label">Petrol (95)</span>
                 <span class="value" id="current-petrol">—</span>
                 <span class="unit">EUR / L</span>
+                <svg class="sparkline" id="spark-petrol" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
                 <span class="asof" id="asof-petrol"></span>
             </article>
             <article class="price-card" data-fuel="diesel">
                 <span class="label">Diesel</span>
                 <span class="value" id="current-diesel">—</span>
                 <span class="unit">EUR / L</span>
+                <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
                 <span class="asof" id="asof-diesel"></span>
             </article>
+        </section>
+
+        <section class="fillup-calc">
+            <h2>Fill-up impact <span class="muted">(vs 3-week outlook)</span></h2>
+            <div class="calc-row">
+                <label>Tank litres
+                    <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
+                </label>
+                <label>Fuel
+                    <select id="calc-fuel">
+                        <option value="petrol" selected>Petrol</option>
+                        <option value="diesel">Diesel</option>
+                    </select>
+                </label>
+                <div class="calc-output">
+                    <span class="calc-line" id="calc-now">Today: —</span>
+                    <span class="calc-line" id="calc-then">In ~3 weeks: —</span>
+                    <span class="calc-line strong" id="calc-diff">Difference: —</span>
+                </div>
+            </div>
         </section>
 
         <section class="chart-section">
@@ -68,6 +90,10 @@
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
                         <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
                     </dl>
+                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
+                        <span class="bt-label">Recent calls</span>
+                        <ul class="bt-list"></ul>
+                    </div>
                 </article>
                 <article class="pred-card" id="pred-diesel">
                     <header>
@@ -83,6 +109,10 @@
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
                         <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
                     </dl>
+                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
+                        <span class="bt-label">Recent calls</span>
+                        <ul class="bt-list"></ul>
+                    </div>
                 </article>
             </div>
             <p class="notes" id="prediction-notes"></p>

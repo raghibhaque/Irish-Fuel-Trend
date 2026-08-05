@@ -25,6 +25,15 @@ class PricesResponse(BaseModel):
     diesel: FuelPriceSeries
 
 
+class BacktestPoint(BaseModel):
+    date: date
+    actual_return: float
+    predicted_return: float
+    actual_pump_eur_per_l: float
+    predicted_pump_eur_per_l: float
+    direction_correct: bool
+
+
 class PredictionFeatures(BaseModel):
     brent_eur_ret_2w: float
     brent_eur_ret_6w: float
@@ -54,6 +63,7 @@ class Prediction(BaseModel):
     predicted_pump_low_eur_per_l: float
     predicted_pump_high_eur_per_l: float
     predicted_pump_3w_eur_per_l: float
+    backtest: list[BacktestPoint] = Field(default_factory=list)
     features: PredictionFeatures
     explanation: str
 
