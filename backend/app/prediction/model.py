@@ -27,6 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+import math
+
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
@@ -153,17 +155,21 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     return df[keep].dropna()
 
 
-def _walk_forward_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
-    """Mean out-of-sample R² across TimeSeriesSplit folds.
+def _walk_forward_stats(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> tuple[float, float]:
+    """Mean out-of-sample R² and pooled residual std across TimeSeriesSplit folds.
 
-    Returns NaN-safe 0.0 if the series is too short to split meaningfully.
+    Residual std is the standard deviation of (y_test - y_pred) pooled across
+    every OOS fold — the honest one-step-ahead forecast error the model
+    actually makes on unseen weeks. Used to build a calibrated probability
+    that the sign of the next return matches the model's prediction.
     """
     n = len(y)
     n_splits = min(CV_SPLITS, max(2, n // 20))
     if n_splits < 2 or n < 20:
-        return 0.0
+        return 0.0, float(np.std(y)) or 1e-6
     tscv = TimeSeriesSplit(n_splits=n_splits)
     scores: list[float] = []
+    residuals: list[np.ndarray] = []
     for train_idx, test_idx in tscv.split(X):
         if len(train_idx) < 10 or len(test_idx) < 2:
             continue
@@ -172,7 +178,27 @@ def _walk_forward_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
         # sklearn returns R² which can go negative for poor fits — that IS the
         # honest signal; do not clip.
         scores.append(float(m.score(X[test_idx], y[test_idx])))
-    return float(np.mean(scores)) if scores else 0.0
+        residuals.append(y[test_idx] - m.predict(X[test_idx]))
+    r2 = float(np.mean(scores)) if scores else 0.0
+    resid_std = float(np.std(np.concatenate(residuals))) if residuals else float(np.std(y))
+    return r2, max(resid_std, 1e-6)
+
+
+def _direction_probability(predicted_ret: float, resid_std: float, r2_cv: float) -> float:
+    """P(actual return has same sign as prediction) under a Normal residual model.
+
+    Formula: Φ(|ŷ| / σ) where σ is the OOS residual std. If the model has
+    demonstrated no OOS skill (r2_cv <= 0) it is not trustworthy regardless
+    of |ŷ|, so we shrink toward 0.5 (a coin flip) proportional to r2 shortfall.
+    Never below 0.5 (below-50% means predicting the wrong direction — we would
+    flip the trend label instead).
+    """
+    z = abs(predicted_ret) / resid_std
+    p_raw = 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))  # Φ(z)
+    skill = max(0.0, min(1.0, r2_cv))
+    # Shrink toward coin flip when skill is weak, but never below 0.5.
+    p = 0.5 + (p_raw - 0.5) * (0.5 + 0.5 * skill)
+    return max(0.5, min(0.999, p))
 
 
 def train_and_predict(fuel_type: str) -> TrendPrediction:
@@ -184,7 +210,7 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     y = df["target_ret"].values
 
     # Honest accuracy first — walk-forward CV on the same feature matrix.
-    r2_cv = _walk_forward_r2(X, y)
+    r2_cv, resid_std = _walk_forward_stats(X, y)
 
     # Fit final model on all data for the forward prediction.
     model = Ridge(alpha=1.0)
@@ -202,13 +228,10 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     else:
         trend = "flat"
 
-    # Confidence combines signal size vs volatility AND how well the model
-    # actually generalises out-of-sample. A model with r2_cv<=0 has learned
-    # nothing useful — confidence should collapse regardless of prediction size.
-    std_ret = float(df["target_ret"].std()) or 1e-6
-    signal_strength = min(1.0, abs(predicted_ret) / (2 * std_ret))
-    skill = max(0.0, min(1.0, r2_cv))
-    confidence = signal_strength * skill
+    # Calibrated probability that the actual return has the same sign as the
+    # prediction, given the OOS residual std and demonstrated OOS skill.
+    # Naturally high when |prediction| is large vs typical error, low when not.
+    confidence = _direction_probability(predicted_ret, resid_std, r2_cv)
 
     features = {
         "brent_eur_ret_2w": float(latest["brent_eur_ret_2w"]),
