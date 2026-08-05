@@ -26,13 +26,14 @@ class PricesResponse(BaseModel):
 
 
 class PredictionFeatures(BaseModel):
-    brent_eur_ret_1w: float
     brent_eur_ret_2w: float
-    brent_eur_ret_4w: float
     brent_eur_ret_6w: float
+    product_eur_ret_1w: float
+    product_eur_ret_4w: float
     prev_wholesale_return: float
     brent_eur_per_bbl_current: float
     brent_eur_per_bbl_lag1: float
+    product_eur_per_gal_current: float
     latest_wholesale_eur_per_l: float
 
 
@@ -42,8 +43,10 @@ class Prediction(BaseModel):
     trend: Literal["up", "down", "flat"]
     predicted_weekly_return: float
     confidence: float = Field(ge=0.0, le=1.0)
-    r2: float
+    r2: float                    # walk-forward out-of-sample R² (can be negative)
+    r2_in_sample: float
     n_train: int
+    product_symbol: str          # 'RBOB' | 'ULSD'
     features: PredictionFeatures
     explanation: str
 

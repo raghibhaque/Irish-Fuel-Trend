@@ -1,44 +1,53 @@
-"""Trend prediction model — v2.
+"""Trend prediction model — v3.
 
 Modelling target: **wholesale** weekly return (EU Bulletin's pre-tax price).
 Rationale: pump price = wholesale + fixed excise + carbon tax + NORA levy,
 then VAT applied. The tax stack is largely flat per litre and dilutes the
 crude-driven signal in the return series. Modelling wholesale isolates the
-part of the price that actually moves with crude and FX.
+part of the price that actually moves with crude, refining margin, and FX.
 
-Direction/trend of wholesale return is the same as pump return, so the
-up/down/flat label transfers directly to what the driver at the pump sees
-(with a small time lag as retailers pass through the change).
+Features (per fuel):
+    brent_eur_ret_2w   Brent (EUR/bbl) return over prior 2 weeks
+    brent_eur_ret_6w   Brent (EUR/bbl) return over prior 6 weeks
+    product_eur_ret_1w  Refined-product (EUR/gal) return, prior 1 week
+    product_eur_ret_4w  Refined-product (EUR/gal) return, prior 4 weeks
+    prev_return         wholesale return from the previous week (AR(1) term)
 
-Features:
-    brent_eur_ret_1w  Brent (EUR/bbl) return over prior 1 week
-    brent_eur_ret_2w  Brent (EUR/bbl) return over prior 2 weeks
-    brent_eur_ret_4w  Brent (EUR/bbl) return over prior 4 weeks
-    brent_eur_ret_6w  Brent (EUR/bbl) return over prior 6 weeks
-    prev_return        wholesale return from the previous week (AR(1) term)
+Product = RBOB for petrol, ULSD (NY heating oil) for diesel. Refined-product
+futures move with refining margins that pure crude misses.
 
-Regressor: Ridge (alpha=1.0). Regularises the correlated multi-lag features
-without sacrificing interpretability.
+Regressor: Ridge (alpha=1.0). Regularises correlated multi-lag features.
+
+Accuracy reporting: walk-forward CV via `TimeSeriesSplit` (5 folds) produces
+`r2_cv` — the honest out-of-sample number. In-sample `r2_in_sample` is kept
+for transparency but should never drive user-facing confidence.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
 
+import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
+from sklearn.model_selection import TimeSeriesSplit
 
 from app.db import connection
 
 FLAT_BAND = 0.005  # ±0.5% weekly wholesale return = "flat"
 
 FEATURE_COLS = [
-    "brent_eur_ret_1w",
     "brent_eur_ret_2w",
-    "brent_eur_ret_4w",
     "brent_eur_ret_6w",
+    "product_eur_ret_1w",
+    "product_eur_ret_4w",
     "prev_return",
 ]
+
+# fuel -> refined product symbol used as its downstream proxy
+FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
+
+CV_SPLITS = 5
 
 
 @dataclass
@@ -49,12 +58,14 @@ class TrendPrediction:
     predicted_weekly_return: float
     confidence: float
     features: dict
-    r2: float
+    r2: float                 # out-of-sample (walk-forward CV) — user-facing
+    r2_in_sample: float       # kept for transparency / debugging
     n_train: int
     coefficients: dict
+    product_symbol: str
 
 
-def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     with connection() as conn:
         prices = pd.read_sql_query(
             "SELECT date, fuel_type, price_eur_per_litre, price_wo_tax_eur_per_litre "
@@ -72,19 +83,36 @@ def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             conn,
             parse_dates=["date"],
         )
-    return prices, brent, fx
+        refined = pd.read_sql_query(
+            "SELECT date, symbol, price_usd_per_gal FROM refined_products ORDER BY date",
+            conn,
+            parse_dates=["date"],
+        )
+    return prices, brent, fx, refined
+
+
+def _to_eur(usd_series: pd.Series, fx: pd.DataFrame) -> pd.Series:
+    fx_s = fx.set_index("date")["eur_usd"].sort_index()
+    fx_aligned = fx_s.reindex(usd_series.index, method="ffill")
+    return (usd_series / fx_aligned).dropna()
 
 
 def _brent_eur_series(brent: pd.DataFrame, fx: pd.DataFrame) -> pd.Series:
-    """Daily Brent expressed in EUR/bbl (usd / eur_usd_rate)."""
     br = brent.set_index("date")["price_usd_per_barrel"].sort_index()
-    fx_s = fx.set_index("date")["eur_usd"].sort_index()
-    fx_aligned = fx_s.reindex(br.index, method="ffill")
-    return (br / fx_aligned).dropna()
+    return _to_eur(br, fx)
+
+
+def _product_eur_series(refined: pd.DataFrame, fx: pd.DataFrame, symbol: str) -> pd.Series:
+    sub = refined[refined["symbol"] == symbol]
+    if sub.empty:
+        return pd.Series(dtype=float)
+    s = sub.set_index("date")["price_usd_per_gal"].sort_index()
+    return _to_eur(s, fx)
 
 
 def build_dataset(fuel_type: str) -> pd.DataFrame:
-    prices, brent, fx = _load_frames()
+    prices, brent, fx, refined = _load_frames()
+    product_symbol = FUEL_PRODUCT[fuel_type]
 
     price_series = (
         prices[prices["fuel_type"] == fuel_type]
@@ -99,21 +127,52 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     df["prev_return"] = df["target_ret"].shift(1)
 
     brent_eur_daily = _brent_eur_series(brent, fx)
-    # Sample daily Brent-in-EUR onto the weekly fuel index using ffill
     brent_eur_weekly = brent_eur_daily.reindex(df.index, method="ffill")
-
     df["brent_eur"]        = brent_eur_weekly
     df["brent_eur_lag1"]   = brent_eur_weekly.shift(1)
-    df["brent_eur_lag2"]   = brent_eur_weekly.shift(2)
-    df["brent_eur_lag4"]   = brent_eur_weekly.shift(4)
-    df["brent_eur_lag6"]   = brent_eur_weekly.shift(6)
-    df["brent_eur_ret_1w"] = df["brent_eur_lag1"] / df["brent_eur_lag2"] - 1
     df["brent_eur_ret_2w"] = df["brent_eur_lag1"] / brent_eur_weekly.shift(3) - 1
-    df["brent_eur_ret_4w"] = df["brent_eur_lag1"] / df["brent_eur_lag4"] - 1
-    df["brent_eur_ret_6w"] = df["brent_eur_lag1"] / df["brent_eur_lag6"] - 1
+    df["brent_eur_ret_6w"] = df["brent_eur_lag1"] / brent_eur_weekly.shift(7) - 1
 
-    keep = ["wholesale", "target_ret", "brent_eur", "brent_eur_lag1"] + FEATURE_COLS
+    prod_eur_daily = _product_eur_series(refined, fx, product_symbol)
+    if prod_eur_daily.empty:
+        # Refined product series missing — leave columns as NaN so dropna
+        # removes affected rows; if all removed, train_and_predict raises.
+        df["product_eur"] = np.nan
+        df["product_eur_lag1"] = np.nan
+        df["product_eur_ret_1w"] = np.nan
+        df["product_eur_ret_4w"] = np.nan
+    else:
+        prod_eur_weekly = prod_eur_daily.reindex(df.index, method="ffill")
+        df["product_eur"]        = prod_eur_weekly
+        df["product_eur_lag1"]   = prod_eur_weekly.shift(1)
+        df["product_eur_ret_1w"] = df["product_eur_lag1"] / prod_eur_weekly.shift(2) - 1
+        df["product_eur_ret_4w"] = df["product_eur_lag1"] / prod_eur_weekly.shift(5) - 1
+
+    keep = ["wholesale", "target_ret", "brent_eur", "brent_eur_lag1",
+            "product_eur", "product_eur_lag1"] + FEATURE_COLS
     return df[keep].dropna()
+
+
+def _walk_forward_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
+    """Mean out-of-sample R² across TimeSeriesSplit folds.
+
+    Returns NaN-safe 0.0 if the series is too short to split meaningfully.
+    """
+    n = len(y)
+    n_splits = min(CV_SPLITS, max(2, n // 20))
+    if n_splits < 2 or n < 20:
+        return 0.0
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    scores: list[float] = []
+    for train_idx, test_idx in tscv.split(X):
+        if len(train_idx) < 10 or len(test_idx) < 2:
+            continue
+        m = Ridge(alpha=alpha)
+        m.fit(X[train_idx], y[train_idx])
+        # sklearn returns R² which can go negative for poor fits — that IS the
+        # honest signal; do not clip.
+        scores.append(float(m.score(X[test_idx], y[test_idx])))
+    return float(np.mean(scores)) if scores else 0.0
 
 
 def train_and_predict(fuel_type: str) -> TrendPrediction:
@@ -124,9 +183,13 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     X = df[FEATURE_COLS].values
     y = df["target_ret"].values
 
+    # Honest accuracy first — walk-forward CV on the same feature matrix.
+    r2_cv = _walk_forward_r2(X, y)
+
+    # Fit final model on all data for the forward prediction.
     model = Ridge(alpha=1.0)
     model.fit(X, y)
-    r2 = float(model.score(X, y))
+    r2_in_sample = float(model.score(X, y))
 
     latest = df.iloc[-1]
     x_next = latest[FEATURE_COLS].values.reshape(1, -1)
@@ -139,17 +202,23 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     else:
         trend = "flat"
 
+    # Confidence combines signal size vs volatility AND how well the model
+    # actually generalises out-of-sample. A model with r2_cv<=0 has learned
+    # nothing useful — confidence should collapse regardless of prediction size.
     std_ret = float(df["target_ret"].std()) or 1e-6
-    confidence = min(1.0, abs(predicted_ret) / (2 * std_ret))
+    signal_strength = min(1.0, abs(predicted_ret) / (2 * std_ret))
+    skill = max(0.0, min(1.0, r2_cv))
+    confidence = signal_strength * skill
 
     features = {
-        "brent_eur_ret_1w": float(latest["brent_eur_ret_1w"]),
         "brent_eur_ret_2w": float(latest["brent_eur_ret_2w"]),
-        "brent_eur_ret_4w": float(latest["brent_eur_ret_4w"]),
         "brent_eur_ret_6w": float(latest["brent_eur_ret_6w"]),
+        "product_eur_ret_1w": float(latest["product_eur_ret_1w"]),
+        "product_eur_ret_4w": float(latest["product_eur_ret_4w"]),
         "prev_wholesale_return": float(latest["prev_return"]),
         "brent_eur_per_bbl_current": float(latest["brent_eur"]),
         "brent_eur_per_bbl_lag1": float(latest["brent_eur_lag1"]),
+        "product_eur_per_gal_current": float(latest["product_eur"]),
         "latest_wholesale_eur_per_l": float(latest["wholesale"]),
     }
 
@@ -163,7 +232,9 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         predicted_weekly_return=predicted_ret,
         confidence=confidence,
         features=features,
-        r2=r2,
+        r2=r2_cv,
+        r2_in_sample=r2_in_sample,
         n_train=len(df),
         coefficients=coefficients,
+        product_symbol=FUEL_PRODUCT[fuel_type],
     )

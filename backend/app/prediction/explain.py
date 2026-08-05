@@ -49,6 +49,12 @@ def explain(pred: TrendPrediction, mock_brent: bool = False) -> str:
         f"(currently €{f['brent_eur_per_bbl_current']:.2f}/bbl)."
     )
     parts.append(
+        f"{pred.product_symbol} refined-product proxy "
+        f"(€{f['product_eur_per_gal_current']:.2f}/gal) "
+        f"{_pct(f['product_eur_ret_1w'])} last week, "
+        f"{_pct(f['product_eur_ret_4w'])} over 4 weeks."
+    )
+    parts.append(
         f"Last week's wholesale {pred.fuel_type} return was "
         f"{_pct(f['prev_wholesale_return'])}."
     )
@@ -58,7 +64,8 @@ def explain(pred: TrendPrediction, mock_brent: bool = False) -> str:
     parts.append(
         f"Model estimate: {_pct(pred.predicted_weekly_return)} weekly change "
         f"in wholesale {pred.fuel_type}, confidence {pred.confidence:.0%}, "
-        f"in-sample R² {pred.r2:.2f}, trained on {pred.n_train} weeks. "
+        f"walk-forward R² {pred.r2:.2f} (in-sample {pred.r2_in_sample:.2f}), "
+        f"trained on {pred.n_train} weeks. "
         f"Pump price direction follows wholesale with a short lag."
     )
 

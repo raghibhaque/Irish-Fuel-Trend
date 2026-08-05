@@ -31,7 +31,9 @@ def _predict_for(fuel_type: str, mock_brent: bool) -> Prediction:
         predicted_weekly_return=pred.predicted_weekly_return,
         confidence=pred.confidence,
         r2=pred.r2,
+        r2_in_sample=pred.r2_in_sample,
         n_train=pred.n_train,
+        product_symbol=pred.product_symbol,
         features=PredictionFeatures(**pred.features),
         explanation=explanation,
     )

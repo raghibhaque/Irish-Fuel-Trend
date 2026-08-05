@@ -17,7 +17,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.data_sources import brent_crude, eu_oil_bulletin, fuelwatch_ie, fx_rates, news_monitor
+from app.data_sources import brent_crude, eu_oil_bulletin, fuelwatch_ie, fx_rates, news_monitor, refined_products
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,10 @@ def start() -> BackgroundScheduler:
     sched.add_job(_safe(brent_crude.ingest, "brent"),
                   CronTrigger(hour=22, minute=0),
                   id="brent", replace_existing=True, max_instances=1)
+
+    sched.add_job(_safe(refined_products.ingest, "refined"),
+                  CronTrigger(hour=22, minute=15),
+                  id="refined", replace_existing=True, max_instances=1)
 
     sched.add_job(_safe(eu_oil_bulletin.ingest, "bulletin"),
                   CronTrigger(day_of_week="mon", hour=10, minute=0),

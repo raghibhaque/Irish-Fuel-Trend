@@ -41,6 +41,16 @@ CREATE TABLE IF NOT EXISTS brent_crude (
     inserted_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS refined_products (
+    date                DATE NOT NULL,
+    symbol              TEXT NOT NULL,          -- 'RBOB' | 'ULSD'
+    price_usd_per_gal   REAL NOT NULL,
+    source              TEXT NOT NULL,
+    inserted_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (date, symbol)
+);
+CREATE INDEX IF NOT EXISTS ix_refined_products_symbol_date ON refined_products(symbol, date);
+
 CREATE TABLE IF NOT EXISTS news_events (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     published_at TIMESTAMP NOT NULL,
