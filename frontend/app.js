@@ -45,8 +45,13 @@ async function loadPrices(weeks = 26) {
     renderChart(view);
 }
 
+const fmtDMY = (iso) => {
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y.slice(2)}`;
+};
+
 function renderChart(data) {
-    const labels = data.petrol.points.map(p => p.date);
+    const labels = data.petrol.points.map(p => fmtDMY(p.date));
     const petrol = data.petrol.points.map(p => p.price_eur_per_litre);
     const diesel = data.diesel.points.map(p => p.price_eur_per_litre);
 
