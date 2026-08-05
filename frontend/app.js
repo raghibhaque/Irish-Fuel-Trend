@@ -251,4 +251,5 @@ document.getElementById("calc-litres").addEventListener("input", updateCalculato
 document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
 
 Promise.all([loadPrices(26), loadPrediction(), loadNews()])
+    .then(() => updateCalculator())
     .catch(err => console.error("Dashboard load failed:", err));
