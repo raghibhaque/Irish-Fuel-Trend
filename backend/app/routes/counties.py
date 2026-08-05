@@ -60,24 +60,6 @@ def _national_predictions() -> tuple[dict, list[str]]:
     return {f: getattr(resp, f).model_dump() for f in FUELS}, list(resp.notes)
 
 
-def _latest_national_pump(conn) -> dict[str, float]:
-    """Freshest observed national pump price per fuel — the county level's anchor.
-
-    This is the same row the national dashboard headlines. The prediction
-    model's own `current_pump_eur_per_l` is the last EU Bulletin week, which
-    can sit ~10c away on a different measurement scale; anchoring here keeps
-    the county page from contradicting the site's national number. See
-    `prediction/county.build_county_prediction`.
-    """
-    rows = conn.execute(
-        "SELECT fuel_type, price_eur_per_litre FROM fuel_prices f "
-        "WHERE country='IE' AND date = ("
-        "  SELECT MAX(date) FROM fuel_prices WHERE country='IE' AND fuel_type = f.fuel_type"
-        ")"
-    ).fetchall()
-    return {r["fuel_type"]: float(r["price_eur_per_litre"]) for r in rows}
-
-
 def _load_snapshot_rows(conn, snapshot_date: str) -> list[dict]:
     rows = conn.execute(
         "SELECT county, fuel_type, median_eur_per_litre, station_count, window_days "
@@ -146,8 +128,7 @@ def _national_references(rows: list[dict]) -> dict[tuple[str, int], float]:
 
 
 def _build_snapshot(fuel: str, rows: list[dict], refs, national: dict,
-                    anchors: dict[str, float], observations,
-                    stations) -> CountyFuelSnapshot | None:
+                    observations, stations) -> CountyFuelSnapshot | None:
     try:
         chosen = county_mod.select_row(rows, primary_window=PRIMARY_WINDOW_DAYS)
     except county_mod.UnknownCountyError:
@@ -158,9 +139,7 @@ def _build_snapshot(fuel: str, rows: list[dict], refs, national: dict,
         return None
 
     if national:
-        payload = county_mod.build_county_prediction(
-            national[fuel], chosen, ref, anchor_pump=anchors.get(fuel)
-        )
+        payload = county_mod.build_county_prediction(national[fuel], chosen, ref)
     else:
         # No national model: still report the measured level and offset.
         basis_raw = county_mod.raw_basis(chosen["median_eur_per_litre"], ref)
@@ -199,7 +178,6 @@ def get_counties(
         since = (_as_date(snapshot_date) - timedelta(days=OBSERVED_DAYS)).isoformat()
         observations = _load_observations(conn, since)
         stations = _load_stations(conn, _latest_snapshot_date(conn, "county_stations"))
-        anchors = _latest_national_pump(conn)
 
     national, notes = _national_predictions()
     refs = _national_references(rows)
@@ -223,7 +201,7 @@ def get_counties(
             county=name,
             **{
                 fuel: _build_snapshot(fuel, by_county[name].get(fuel, []), refs,
-                                      national, anchors, observations, stations)
+                                      national, observations, stations)
                 for fuel in FUELS
             },
         )

@@ -206,52 +206,31 @@ def test_crowd_median_is_reported_separately_from_the_translated_price():
     assert out["current_pump_eur_per_l"] != out["crowd_median_eur_per_litre"]
 
 
-def test_anchor_pins_the_level_to_the_displayed_national_price():
-    """Without this the county lands ~10c off the site's own national headline.
+def test_county_level_tracks_the_national_payload_exactly():
+    """The national payload is the only source of truth for the price level.
 
-    The model trains on EU Bulletin weeks; the dashboard headlines the freshest
-    observed pump price. The county level must follow the headline.
+    `model._latest_observed_pump` decides which observation that is; this
+    module must not second-guess it, or the county page drifts away from the
+    site's own national headline.
     """
     ref = county.national_reference(RANKING_ROWS)
-    row = county.select_row([_row("Dublin")])
-    anchored = county.build_county_prediction(NATIONAL, row, ref, anchor_pump=1.864)
-    basis = anchored["basis_eur_per_litre"]
-    assert anchored["current_pump_eur_per_l"] == pytest.approx(1.864 + basis)
+    for name in ("Dublin", "Wicklow", "Donegal"):
+        out = county.build_county_prediction(NATIONAL, county.select_row([_row(name)]), ref)
+        basis = out["basis_eur_per_litre"]
+        assert out["current_pump_eur_per_l"] == pytest.approx(
+            NATIONAL["current_pump_eur_per_l"] + basis
+        )
 
 
-def test_anchor_shifts_the_level_but_preserves_the_models_movement():
+def test_county_carries_the_national_models_movement_unchanged():
     ref = county.national_reference(RANKING_ROWS)
-    row = county.select_row([_row("Dublin")])
-    plain = county.build_county_prediction(NATIONAL, row, ref)
-    anchored = county.build_county_prediction(NATIONAL, row, ref, anchor_pump=1.864)
-
-    step = lambda o: o["predicted_pump_eur_per_l"] - o["current_pump_eur_per_l"]
-    step_3w = lambda o: o["predicted_pump_3w_eur_per_l"] - o["current_pump_eur_per_l"]
-    assert step(anchored) == pytest.approx(step(plain))
-    assert step_3w(anchored) == pytest.approx(step_3w(plain))
-
-    offset = 1.864 - NATIONAL["current_pump_eur_per_l"]
-    for field in ("current_pump_eur_per_l", "predicted_pump_eur_per_l",
-                  "predicted_pump_3w_eur_per_l"):
-        assert anchored[field] == pytest.approx(plain[field] + offset)
-
-
-def test_movement_carried_matches_the_national_models_own_step():
-    ref = county.national_reference(RANKING_ROWS)
-    row = county.select_row([_row("Cork")])
-    out = county.build_county_prediction(NATIONAL, row, ref, anchor_pump=1.90)
+    out = county.build_county_prediction(NATIONAL, county.select_row([_row("Cork")]), ref)
     national_step = NATIONAL["predicted_pump_eur_per_l"] - NATIONAL["current_pump_eur_per_l"]
+    national_step_3w = NATIONAL["predicted_pump_3w_eur_per_l"] - NATIONAL["current_pump_eur_per_l"]
     assert out["predicted_pump_eur_per_l"] - out["current_pump_eur_per_l"] \
         == pytest.approx(national_step)
-
-
-def test_omitting_the_anchor_falls_back_to_the_model_base():
-    ref = county.national_reference(RANKING_ROWS)
-    row = county.select_row([_row("Cork")])
-    out = county.build_county_prediction(NATIONAL, row, ref)
-    assert out["current_pump_eur_per_l"] == pytest.approx(
-        NATIONAL["current_pump_eur_per_l"] + out["basis_eur_per_litre"]
-    )
+    assert out["predicted_pump_3w_eur_per_l"] - out["current_pump_eur_per_l"] \
+        == pytest.approx(national_step_3w)
 
 
 def test_band_stays_centred_on_the_prediction():

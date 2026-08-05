@@ -88,6 +88,25 @@ class TrendPrediction:
     backtest: list                        # list[dict] of recent one-step-ahead calls vs actual
 
 
+def _latest_observed_pump(fuel_type: str) -> float | None:
+    """Freshest observed pump price, whatever source produced it.
+
+    The model can only *train* on rows carrying a wholesale price, i.e. EU
+    Bulletin weeks. But the newest row in `fuel_prices` is usually a FuelWatch
+    daily, up to a week fresher, and that is the number the dashboard
+    headlines. Anchoring the forecast here keeps a single current price across
+    the whole site; the predicted movement is unaffected because every delta
+    below is derived from wholesale, not from the anchor.
+    """
+    with connection() as conn:
+        row = conn.execute(
+            "SELECT price_eur_per_litre FROM fuel_prices "
+            "WHERE country='IE' AND fuel_type=? ORDER BY date DESC LIMIT 1",
+            (fuel_type,),
+        ).fetchone()
+    return float(row["price_eur_per_litre"]) if row else None
+
+
 def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     with connection() as conn:
         prices = pd.read_sql_query(
@@ -312,7 +331,10 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     # duties + carbon + NORA levy are fixed per litre and VAT applies to the
     # whole stack. 50% band uses the OOS residual std scaled by Φ⁻¹(0.75).
     current_wholesale = float(latest["wholesale"])
-    current_pump      = float(latest["pump"])
+    # Anchor on the freshest observed pump price rather than the last row the
+    # model could train on — see _latest_observed_pump. Falls back to the
+    # training row if fuel_prices is somehow empty.
+    current_pump      = _latest_observed_pump(fuel_type) or float(latest["pump"])
     pump_multiplier   = 1.0 + VAT_RATE_IE
     delta_pump        = current_wholesale * predicted_ret * pump_multiplier
     band_half         = current_wholesale * resid_std * BAND_Z_50PCT * pump_multiplier

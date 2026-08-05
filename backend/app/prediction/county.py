@@ -114,28 +114,22 @@ def select_row(rows: Sequence[dict], primary_window: int = PRIMARY_WINDOW_DAYS) 
     return {**widest, "stale": True}
 
 
-def build_county_prediction(national: dict, county_row: dict, national_ref: float,
-                            anchor_pump: float | None = None) -> dict:
+def build_county_prediction(national: dict, county_row: dict, national_ref: float) -> dict:
     """Translate one national fuel prediction into a county-localised one.
 
     `national` is a `/api/prediction` fuel payload; `county_row` is a
     `county_prices` row for the same fuel, already passed through `select_row`.
 
-    The current price reported for the county is a national price plus the
+    The current price reported for the county is the national price plus the
     basis, *not* the raw crowd median. Those are two different measurement
     scales, and the card has to agree with the chart, which is also drawn on
     the national scale. The raw median travels alongside as its own field so
     both numbers stay visible.
 
-    **Anchor.** `national["current_pump_eur_per_l"]` is the last row the model
-    could train on — the latest EU Bulletin week, which lags the freshest
-    observed pump price by up to a week and sits on a different measurement
-    scale. Passing `anchor_pump` (the latest observed national pump price, the
-    same number the national dashboard headlines) pins the county *level* to
-    what the rest of the site shows, while the model's *movement* is carried
-    on top as a delta. Without it a county would render ~10c away from the
-    site's own national headline, which reads as a county effect when it is
-    not one.
+    The national payload is the single source of truth for the price level —
+    `prediction/model._latest_observed_pump` decides which observation that
+    is, and every page on the site inherits it. This module only ever shifts
+    that level sideways.
 
     Trend and weekly return are inherited unchanged: a constant additive
     offset cannot change the sign of a movement, and the UI says so rather
@@ -153,12 +147,8 @@ def build_county_prediction(national: dict, county_row: dict, national_ref: floa
     ) / 2.0
     band_half = widen_band(band_half_national, n)
 
-    model_base = float(national["current_pump_eur_per_l"])
-    base = model_base if anchor_pump is None else float(anchor_pump)
-    current = base + basis
-    delta_next = float(national["predicted_pump_eur_per_l"]) - model_base
-    delta_3w = float(national["predicted_pump_3w_eur_per_l"]) - model_base
-    predicted = current + delta_next
+    current = float(national["current_pump_eur_per_l"]) + basis
+    predicted = float(national["predicted_pump_eur_per_l"]) + basis
 
     return {
         "county": county_row["county"],
@@ -178,5 +168,5 @@ def build_county_prediction(national: dict, county_row: dict, national_ref: floa
         "predicted_pump_eur_per_l": predicted,
         "predicted_pump_low_eur_per_l": predicted - band_half,
         "predicted_pump_high_eur_per_l": predicted + band_half,
-        "predicted_pump_3w_eur_per_l": current + delta_3w,
+        "predicted_pump_3w_eur_per_l": float(national["predicted_pump_3w_eur_per_l"]) + basis,
     }

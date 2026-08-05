@@ -211,6 +211,12 @@ petrolpredictor/
 - **Weekly source wins on overlap.** The FuelWatch fetcher skips dates ≤ the
   latest EU bulletin date, so the authoritative wholesale history the model
   trains on is never overwritten by crowd-sourced retail.
+- **One current price, site-wide.** The model can only train on rows carrying
+  a wholesale price (EU Bulletin weeks), but the freshest row in
+  `fuel_prices` is usually a FuelWatch daily up to a week newer. That
+  observation is the single anchor for every displayed price — national card,
+  national forecast, and every county. Predicted *movement* is unaffected,
+  since each delta is derived from wholesale rather than from the anchor.
 - **Same bundle, two deploys.** The front-end always reads relative
   `data/*.json`. FastAPI's `StaticFiles` serves those files at
   `http://localhost:8000/data/…` locally; GitHub Pages serves them at
@@ -235,14 +241,4 @@ petrolpredictor/
 - [ ] Retire the reconstructed county line once ~8 weeks of real snapshots exist
 - [ ] Per-county model, once there is a county target series to train on (~6 months)
 - [ ] Estimate the shrinkage `K` and `σ_station` from data instead of priors
-- [ ] Reconcile the two national "current price" anchors (see below)
 - [ ] Alerting when the model's confidence drops sharply
-
-### Known inconsistency
-
-The national dashboard headlines the latest **FuelWatch** row while the
-prediction card is anchored to the latest **EU Bulletin** row, which is up to
-a week older and on a different measurement scale. On 2026-08-05 that was
-€1.864 against €1.758 for petrol. The county page sidesteps it by anchoring
-its level to the FuelWatch number and carrying the model's movement as a
-delta, but the underlying disagreement on the national page is unresolved.
