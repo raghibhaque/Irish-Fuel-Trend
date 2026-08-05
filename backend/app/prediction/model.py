@@ -43,8 +43,11 @@ FEATURE_COLS = [
     "brent_eur_ret_6w",
     "product_eur_ret_1w",
     "product_eur_ret_4w",
+    "crack_spread_ret_4w",    # 4-week change in refining margin (RBOB/ULSD − Brent, EUR/bbl)
     "prev_return",
 ]
+
+GAL_PER_BBL = 42.0  # US barrel conversion for aligning refined-product prices with Brent
 
 # fuel -> refined product symbol used as its downstream proxy
 FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
@@ -143,6 +146,8 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
         df["product_eur_lag1"] = np.nan
         df["product_eur_ret_1w"] = np.nan
         df["product_eur_ret_4w"] = np.nan
+        df["crack_spread_eur"] = np.nan
+        df["crack_spread_ret_4w"] = np.nan
     else:
         prod_eur_weekly = prod_eur_daily.reindex(df.index, method="ffill")
         df["product_eur"]        = prod_eur_weekly
@@ -150,8 +155,16 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
         df["product_eur_ret_1w"] = df["product_eur_lag1"] / prod_eur_weekly.shift(2) - 1
         df["product_eur_ret_4w"] = df["product_eur_lag1"] / prod_eur_weekly.shift(5) - 1
 
+        # Crack spread: refined product minus crude on a common bbl basis.
+        # Positive spread = refiners earning margin. Feature uses lagged
+        # values so nothing leaks from the current week's data.
+        product_eur_per_bbl = prod_eur_weekly * GAL_PER_BBL
+        crack_daily = (product_eur_per_bbl - brent_eur_weekly).dropna()
+        df["crack_spread_eur"]      = crack_daily.shift(1)
+        df["crack_spread_ret_4w"]   = crack_daily.shift(1) - crack_daily.shift(5)
+
     keep = ["wholesale", "target_ret", "brent_eur", "brent_eur_lag1",
-            "product_eur", "product_eur_lag1"] + FEATURE_COLS
+            "product_eur", "product_eur_lag1", "crack_spread_eur"] + FEATURE_COLS
     return df[keep].dropna()
 
 
@@ -238,6 +251,8 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         "brent_eur_ret_6w": float(latest["brent_eur_ret_6w"]),
         "product_eur_ret_1w": float(latest["product_eur_ret_1w"]),
         "product_eur_ret_4w": float(latest["product_eur_ret_4w"]),
+        "crack_spread_eur": float(latest["crack_spread_eur"]),
+        "crack_spread_ret_4w": float(latest["crack_spread_ret_4w"]),
         "prev_wholesale_return": float(latest["prev_return"]),
         "brent_eur_per_bbl_current": float(latest["brent_eur"]),
         "brent_eur_per_bbl_lag1": float(latest["brent_eur_lag1"]),

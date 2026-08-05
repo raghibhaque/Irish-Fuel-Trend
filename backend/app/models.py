@@ -30,6 +30,8 @@ class PredictionFeatures(BaseModel):
     brent_eur_ret_6w: float
     product_eur_ret_1w: float
     product_eur_ret_4w: float
+    crack_spread_eur: float          # kept for display only, not a model feature
+    crack_spread_ret_4w: float
     prev_wholesale_return: float
     brent_eur_per_bbl_current: float
     brent_eur_per_bbl_lag1: float

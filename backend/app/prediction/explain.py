@@ -55,6 +55,10 @@ def explain(pred: TrendPrediction, mock_brent: bool = False) -> str:
         f"{_pct(f['product_eur_ret_4w'])} over 4 weeks."
     )
     parts.append(
+        f"Crack spread {pred.product_symbol}−Brent €{f['crack_spread_eur']:+.2f}/bbl "
+        f"({f['crack_spread_ret_4w']:+.2f} vs 4 weeks ago) — refining margin."
+    )
+    parts.append(
         f"Last week's wholesale {pred.fuel_type} return was "
         f"{_pct(f['prev_wholesale_return'])}."
     )
