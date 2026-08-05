@@ -80,6 +80,7 @@ class TrendPrediction:
     predicted_pump_eur_per_l: float
     predicted_pump_low_eur_per_l: float   # 50% interquartile band lower bound
     predicted_pump_high_eur_per_l: float  # 50% interquartile band upper bound
+    predicted_pump_3w_eur_per_l: float    # ~3-week horizon, compounded weekly return
 
 
 def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -271,6 +272,10 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     predicted_pump    = current_pump + delta_pump
     pump_low          = predicted_pump - band_half
     pump_high         = predicted_pump + band_half
+    # 3-week horizon assumes the same weekly return compounds. Rough because
+    # the model isn't retrained forward — this is signposting, not a forecast.
+    delta_pump_3w     = current_wholesale * ((1.0 + predicted_ret) ** 3 - 1.0) * pump_multiplier
+    predicted_pump_3w = current_pump + delta_pump_3w
 
     features = {
         "brent_eur_ret_2w": float(latest["brent_eur_ret_2w"]),
@@ -305,4 +310,5 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         predicted_pump_eur_per_l=predicted_pump,
         predicted_pump_low_eur_per_l=pump_low,
         predicted_pump_high_eur_per_l=pump_high,
+        predicted_pump_3w_eur_per_l=predicted_pump_3w,
     )

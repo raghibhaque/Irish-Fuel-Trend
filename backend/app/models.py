@@ -53,6 +53,7 @@ class Prediction(BaseModel):
     predicted_pump_eur_per_l: float
     predicted_pump_low_eur_per_l: float
     predicted_pump_high_eur_per_l: float
+    predicted_pump_3w_eur_per_l: float
     features: PredictionFeatures
     explanation: str
 

@@ -131,6 +131,8 @@ async function loadPrediction() {
             `€${p.predicted_pump_eur_per_l.toFixed(3)} ${arrow} (from €${p.current_pump_eur_per_l.toFixed(3)})`;
         card.querySelector(".pred-band").textContent =
             `€${p.predicted_pump_low_eur_per_l.toFixed(3)} – €${p.predicted_pump_high_eur_per_l.toFixed(3)}`;
+        card.querySelector(".pred-price-3w").textContent =
+            `€${p.predicted_pump_3w_eur_per_l.toFixed(3)}`;
     });
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
 }

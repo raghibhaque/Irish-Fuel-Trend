@@ -38,6 +38,7 @@ def _predict_for(fuel_type: str, mock_brent: bool) -> Prediction:
         predicted_pump_eur_per_l=pred.predicted_pump_eur_per_l,
         predicted_pump_low_eur_per_l=pred.predicted_pump_low_eur_per_l,
         predicted_pump_high_eur_per_l=pred.predicted_pump_high_eur_per_l,
+        predicted_pump_3w_eur_per_l=pred.predicted_pump_3w_eur_per_l,
         features=PredictionFeatures(**pred.features),
         explanation=explanation,
     )
