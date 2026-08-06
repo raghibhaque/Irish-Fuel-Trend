@@ -101,24 +101,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
     padding: 28px 0 32px;
     background:
         linear-gradient(180deg, #0d0f12 0%, var(--bg) 100%);
-    border-bottom: 1px solid var(--border);
     position: relative;
-}
-
-/* metal edge highlight above the rule */
-.site-header::after {
-    content: "";
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 1px;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        var(--accent-line) 20%,
-        var(--accent-line) 80%,
-        transparent 100%
-    );
-    opacity: 0.55;
 }
 
 .site-header h1 {

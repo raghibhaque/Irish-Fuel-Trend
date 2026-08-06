@@ -12,6 +12,9 @@ env/
 data/*.db
 data/*.db-journal
 
+# Local ingest log
+data/refresh.log
+
 # Downloaded raw source files (regenerable via ingest.py)
 data/raw/
 
