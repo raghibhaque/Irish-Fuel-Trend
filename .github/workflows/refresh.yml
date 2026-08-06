@@ -12,20 +12,15 @@ on:
       - ".github/workflows/refresh.yml"
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: pages-branch-deploy
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -36,29 +31,27 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
+        working-directory: backend
         run: pip install -r requirements.txt
 
       - name: Ingest all sources
+        working-directory: backend
         run: python ingest.py all --force
         env:
           PYTHONUNBUFFERED: "1"
 
       - name: Build static JSON snapshots
+        working-directory: backend
         run: python export_static.py
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: frontend
+      - name: Ensure .nojekyll
+        run: touch frontend/.nojekyll
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          timeout: 1800000
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend
+          publish_branch: gh-pages
+          commit_message: "deploy: refresh data snapshot"
+          force_orphan: true
