@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -82,6 +83,10 @@ def export(out_dir: Path) -> dict:
                 "counties_without_data": [],
                 "notes": ["County data unavailable: HTTP " + str(counties.status_code)],
             })
+
+    _write(out_dir / "manifest.json", {
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    })
 
     return {"out_dir": str(out_dir)}
 

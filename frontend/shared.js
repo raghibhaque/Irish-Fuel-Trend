@@ -17,6 +17,19 @@ const fmtDMY = (iso) => {
     return `${d}/${m}/${y.slice(2)}`;
 };
 
+const fmtDateTime = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleString("en-IE", {
+        year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
+};
+
+async function loadManifest() {
+    try { return await jget("data/manifest.json"); }
+    catch { return null; }
+}
+
 async function jget(path) {
     const r = await fetch(path, { cache: "no-cache" });
     if (!r.ok) throw new Error(`${path} → ${r.status}`);
@@ -91,6 +104,185 @@ function renderSparklineValues(elId, values) {
 
 function renderSparkline(elId, pts) {
     renderSparklineValues(elId, pts.map(p => p.price_eur_per_litre));
+}
+
+// ------------------ drag-to-compare overlay ------------------
+// Chart.js plugin that draws two vertical guide lines + a connecting segment
+// between the anchor point (mousedown) and the current point during a drag.
+// State lives on `chart._dragCompare` so plugin stays stateless per instance.
+const DragComparePlugin = {
+    id: "dragCompare",
+    afterDatasetsDraw(chart) {
+        const dc = chart._dragCompare;
+        if (!dc) return;
+        const meta = chart.getDatasetMeta(dc.datasetIndex);
+        const a = meta.data[dc.anchorIndex];
+        const b = meta.data[dc.currentIndex];
+        if (!a || !b) return;
+        const ds = chart.data.datasets[dc.datasetIndex];
+        const color = ds.borderColor;
+        const { ctx, scales } = chart;
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        for (const p of [a, b]) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, scales.y.top);
+            ctx.lineTo(p.x, scales.y.bottom);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.95;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        for (const p of [a, b]) {
+            ctx.beginPath();
+            ctx.fillStyle = "#0f1419";
+            ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    },
+};
+if (typeof Chart !== "undefined") Chart.register(DragComparePlugin);
+
+function attachDragCompare(canvasId, popupId) {
+    const canvas = document.getElementById(canvasId);
+    const popup  = document.getElementById(popupId);
+    if (!canvas || !popup) return;
+
+    const wrap = canvas.closest(".chart-wrap") || canvas.parentElement;
+    if (getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+
+    let dragging = false;
+    let anchorIndex = null;
+    let datasetIndex = null;
+
+    const chartOf = () => Chart.getChart(canvas);
+
+    function nearestOnMousedown(evt) {
+        const chart = chartOf();
+        if (!chart) return null;
+        const els = chart.getElementsAtEventForMode(
+            evt, "nearest", { intersect: false, axis: "x" }, false,
+        );
+        return els.length ? els[0] : null;
+    }
+
+    // During drag the mouse can leave the canvas; convert clientX to a canvas
+    // pixel manually and scan labels for the closest x-tick so the popup keeps
+    // tracking even when the cursor is over the page background.
+    function nearestByClientX(clientX) {
+        const chart = chartOf();
+        if (!chart || datasetIndex == null) return null;
+        const rect = canvas.getBoundingClientRect();
+        const xScale = chart.scales.x;
+        const px = Math.max(xScale.left, Math.min(xScale.right, clientX - rect.left));
+        const n = chart.data.labels.length;
+        let best = 0, bestD = Infinity;
+        for (let i = 0; i < n; i++) {
+            const d = Math.abs(xScale.getPixelForValue(i) - px);
+            if (d < bestD) { bestD = d; best = i; }
+        }
+        return { index: best, datasetIndex };
+    }
+
+    function place(evt) {
+        const wrapRect = wrap.getBoundingClientRect();
+        // Force layout so offsetWidth/Height reflect the just-rendered content
+        // — reading them after `hidden = false` is not always enough in Chrome
+        // when the innerHTML change happens in the same frame.
+        void popup.offsetHeight;
+        const w = popup.offsetWidth;
+        const h = popup.offsetHeight;
+        const mx = evt.clientX - wrapRect.left;
+        const my = evt.clientY - wrapRect.top;
+        const gap = 14;
+        let x = mx + gap;
+        let y = my + gap;
+        if (x + w + 6 > wrapRect.width)  x = mx - w - gap;
+        if (y + h + 6 > wrapRect.height) y = my - h - gap;
+        // Final hard clamp inside the chart-wrap so the popup can never spill
+        // into the section below the chart.
+        x = Math.max(6, Math.min(x, wrapRect.width  - w - 6));
+        y = Math.max(6, Math.min(y, wrapRect.height - h - 6));
+        popup.style.left = x + "px";
+        popup.style.top  = y + "px";
+    }
+
+    function render(evt, curOverride) {
+        const chart = chartOf();
+        if (!chart || anchorIndex == null) return;
+        const cur = curOverride || nearestByClientX(evt.clientX);
+        if (!cur) return;
+        const ds  = chart.data.datasets[datasetIndex];
+        const a   = ds.data[anchorIndex];
+        const b   = ds.data[cur.index];
+        if (a == null || b == null) return;
+        const aLbl = chart.data.labels[anchorIndex];
+        const bLbl = chart.data.labels[cur.index];
+        const delta = b - a;
+        const pct   = a !== 0 ? (delta / a) * 100 : 0;
+        const sign  = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+        const arrow = sign === "up" ? "▲" : sign === "down" ? "▼" : "→";
+        const pctStr   = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+        const deltaStr = `${delta >= 0 ? "+" : ""}€${delta.toFixed(3)}`;
+        popup.innerHTML = `
+            <div class="dc-header">
+                <span class="dc-dot" style="background:${ds.borderColor}"></span>${escapeHtml(ds.label)}
+            </div>
+            <div class="dc-range">${escapeHtml(aLbl)} → ${escapeHtml(bLbl)}</div>
+            <div class="dc-prices">€${a.toFixed(3)} → €${b.toFixed(3)}</div>
+            <div class="dc-delta" data-sign="${sign}">${arrow} ${pctStr}
+                <span class="dc-abs">${deltaStr}</span>
+            </div>
+        `;
+        popup.hidden = false;
+        place(evt);
+        chart._dragCompare = { datasetIndex, anchorIndex, currentIndex: cur.index };
+        chart.update("none");
+    }
+
+    function clear() {
+        const chart = chartOf();
+        popup.hidden = true;
+        anchorIndex = null;
+        datasetIndex = null;
+        if (chart) {
+            chart._dragCompare = null;
+            chart.update("none");
+        }
+    }
+
+    canvas.addEventListener("mousedown", (e) => {
+        const cur = nearestOnMousedown(e);
+        if (!cur) return;
+        dragging = true;
+        anchorIndex = cur.index;
+        datasetIndex = cur.datasetIndex;
+        e.preventDefault();
+        render(e, cur);
+    });
+    window.addEventListener("mousemove", (e) => {
+        if (!dragging) return;
+        render(e);
+    });
+    window.addEventListener("mouseup", () => { dragging = false; });
+    document.addEventListener("mousedown", (e) => {
+        if (dragging) return;
+        if (popup.hidden) return;
+        if (!canvas.contains(e.target) && !popup.contains(e.target)) clear();
+    });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape") clear(); });
 }
 
 // ------------------ range filtering ------------------

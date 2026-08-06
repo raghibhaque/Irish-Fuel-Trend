@@ -17,8 +17,9 @@ async function loadPrices(weeks = 26) {
 
     document.getElementById("current-petrol").textContent = fmtEur(view.petrol.latest?.price_eur_per_litre);
     document.getElementById("current-diesel").textContent = fmtEur(view.diesel.latest?.price_eur_per_litre);
-    document.getElementById("asof-petrol").textContent = view.petrol.latest ? `as of ${fmtDate(view.petrol.latest.date)}` : "";
-    document.getElementById("asof-diesel").textContent = view.diesel.latest ? `as of ${fmtDate(view.diesel.latest.date)}` : "";
+    const upd = window.__updatedAtLabel || "";
+    document.getElementById("asof-petrol").textContent = view.petrol.latest ? `as of ${fmtDate(view.petrol.latest.date)}${upd}` : "";
+    document.getElementById("asof-diesel").textContent = view.diesel.latest ? `as of ${fmtDate(view.diesel.latest.date)}${upd}` : "";
 
     // Sparklines always use the last 12 weeks from the full series, not the
     // range-filtered view, so they stay stable when the user swaps ranges.
@@ -166,6 +167,10 @@ document.getElementById("chart-range").addEventListener("change", (e) => {
 document.getElementById("calc-litres").addEventListener("input", updateCalculator);
 document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
 
-Promise.all([loadPrices(26), loadPrediction(), loadNews()])
-    .then(() => updateCalculator())
-    .catch(err => console.error("Dashboard load failed:", err));
+loadManifest().then(m => {
+    if (m && m.generated_at) window.__updatedAtLabel = ` (updated at: ${fmtDateTime(m.generated_at)})`;
+    return Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
+}).then(() => {
+    updateCalculator();
+    attachDragCompare("price-chart", "dc-popup");
+}).catch(err => console.error("Dashboard load failed:", err));

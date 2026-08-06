@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Irish Fuel Trend</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -74,7 +74,9 @@
             </div>
             <div class="chart-wrap">
                 <canvas id="price-chart"></canvas>
+                <div class="dc-popup" id="dc-popup" hidden></div>
             </div>
+            <p class="chart-hint">Tip: click and drag between two points to compare.</p>
         </section>
 
         <section class="predictions">
@@ -136,7 +138,7 @@
         </div>
     </footer>
 
-    <script src="shared.js?v=1"></script>
-    <script src="app.js?v=4"></script>
+    <script src="shared.js?v=4"></script>
+    <script src="app.js?v=7"></script>
 </body>
 </html>

@@ -131,8 +131,9 @@ function renderPriceCards(entry) {
         }
         const price = snap.current_pump_eur_per_l ?? snap.crowd_median_eur_per_litre;
         valueEl.textContent = fmtEur(price);
+        const upd = window.__updatedAtLabel || "";
         asofEl.textContent =
-            `${fmtCents(snap.basis_eur_per_litre)} vs national · ${snap.station_count} stations`;
+            `${fmtCents(snap.basis_eur_per_litre)} vs national · ${snap.station_count} stations${upd}`;
 
         // Sparkline uses the full national series so it stays stable across
         // range changes, matching the national dashboard's behaviour.
@@ -319,10 +320,16 @@ document.getElementById("calc-litres").addEventListener("input", updateCalculato
 document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
 
 async function boot() {
-    [nationalPrices, countyData] = await Promise.all([
+    const [prices, counties, manifest] = await Promise.all([
         jget("data/prices.json"),
         jget("data/counties.json"),
+        loadManifest(),
     ]);
+    nationalPrices = prices;
+    countyData = counties;
+    if (manifest && manifest.generated_at) {
+        window.__updatedAtLabel = ` (updated at: ${fmtDateTime(manifest.generated_at)})`;
+    }
 
     if (!(countyData.counties || []).length) {
         document.getElementById("picker-meta").textContent =
@@ -334,6 +341,7 @@ async function boot() {
 
     buildDropdown();
     selectCounty(initialCounty());
+    attachDragCompare("price-chart", "dc-popup");
 }
 
 boot().catch(err => {
