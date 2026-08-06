@@ -329,6 +329,11 @@ async function boot() {
     countyData = counties;
     if (manifest && manifest.generated_at) {
         window.__updatedAtLabel = ` (updated at: ${fmtDateTime(manifest.generated_at)})`;
+        const chip = document.getElementById("hdr-updated");
+        if (chip) chip.textContent = `Updated ${fmtDateTime(manifest.generated_at)}`;
+    } else {
+        const chip = document.getElementById("hdr-updated");
+        if (chip) { chip.textContent = "Awaiting refresh"; chip.dataset.tone = "warn"; }
     }
 
     if (!(countyData.counties || []).length) {

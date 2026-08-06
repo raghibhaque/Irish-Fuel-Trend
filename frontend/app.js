@@ -168,7 +168,14 @@ document.getElementById("calc-litres").addEventListener("input", updateCalculato
 document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
 
 loadManifest().then(m => {
-    if (m && m.generated_at) window.__updatedAtLabel = ` (updated at: ${fmtDateTime(m.generated_at)})`;
+    if (m && m.generated_at) {
+        window.__updatedAtLabel = ` (updated at: ${fmtDateTime(m.generated_at)})`;
+        const chip = document.getElementById("hdr-updated");
+        if (chip) chip.textContent = `Updated ${fmtDateTime(m.generated_at)}`;
+    } else {
+        const chip = document.getElementById("hdr-updated");
+        if (chip) { chip.textContent = "Awaiting refresh"; chip.dataset.tone = "warn"; }
+    }
     return Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
 }).then(() => {
     updateCalculator();

@@ -51,10 +51,18 @@ function stripHtml(s) {
 }
 
 // ------------------ chart theme ------------------
+// Palette mirrors style.css industrial dark: sodium amber (petrol) + instrument
+// teal (diesel) on a petroleum-black backdrop with warm off-white text.
 const FUEL_COLORS = {
-    petrol: { line: "#4ea1ff", fill: "rgba(78, 161, 255, 0.08)" },
-    diesel: { line: "#ffb454", fill: "rgba(255, 180, 84, 0.06)" },
+    petrol: { line: "#ffb648", fill: "rgba(255, 182, 72, 0.10)" },
+    diesel: { line: "#7bd3cf", fill: "rgba(123, 211, 207, 0.09)" },
 };
+
+const CHART_INK  = "#ece7d8";
+const CHART_DIM  = "#7c828c";
+const CHART_GRID = "rgba(236, 231, 216, 0.05)";
+const CHART_MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace";
+const CHART_SANS = "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif";
 
 function baseChartOptions() {
     return {
@@ -62,8 +70,27 @@ function baseChartOptions() {
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-            legend: { labels: { color: "#e6edf3" } },
+            legend: {
+                labels: {
+                    color: CHART_INK,
+                    font: { family: CHART_MONO, size: 11, weight: "500" },
+                    boxWidth: 10,
+                    boxHeight: 10,
+                    padding: 16,
+                },
+            },
             tooltip: {
+                backgroundColor: "rgba(16, 18, 21, 0.94)",
+                borderColor: "rgba(255, 182, 72, 0.35)",
+                borderWidth: 1,
+                titleColor: CHART_INK,
+                titleFont: { family: CHART_MONO, size: 11, weight: "600" },
+                bodyColor: CHART_INK,
+                bodyFont: { family: CHART_MONO, size: 12 },
+                padding: 10,
+                cornerRadius: 4,
+                displayColors: true,
+                boxPadding: 4,
                 callbacks: {
                     label: (c) => c.parsed.y == null
                         ? null
@@ -73,12 +100,23 @@ function baseChartOptions() {
         },
         scales: {
             x: {
-                ticks: { color: "#9aa7b4", maxTicksLimit: 10, autoSkip: true },
-                grid:  { color: "rgba(255,255,255,0.04)" },
+                ticks: {
+                    color: CHART_DIM,
+                    font: { family: CHART_MONO, size: 10 },
+                    maxTicksLimit: 10,
+                    autoSkip: true,
+                },
+                grid:   { color: CHART_GRID, drawTicks: false },
+                border: { color: "rgba(236, 231, 216, 0.10)" },
             },
             y: {
-                ticks: { color: "#9aa7b4", callback: (v) => `€${v.toFixed(2)}` },
-                grid:  { color: "rgba(255,255,255,0.04)" },
+                ticks: {
+                    color: CHART_DIM,
+                    font: { family: CHART_MONO, size: 10 },
+                    callback: (v) => `€${v.toFixed(2)}`,
+                },
+                grid:   { color: CHART_GRID, drawTicks: false },
+                border: { color: "rgba(236, 231, 216, 0.10)" },
             },
         },
     };
@@ -142,7 +180,7 @@ const DragComparePlugin = {
         ctx.stroke();
         for (const p of [a, b]) {
             ctx.beginPath();
-            ctx.fillStyle = "#0f1419";
+            ctx.fillStyle = "#0a0b0d";
             ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
