@@ -63,8 +63,10 @@ FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
 CV_SPLITS = 5
 
 # How many most-recent weeks to backtest with expanding-window one-step-ahead
-# predictions for the UI "recent calls" strip.
-BACKTEST_WEEKS = 8
+# predictions. 52 gives the frontend a full year to compute direction hit-rate
+# over any window (8w / 26w / 52w) client-side; the existing "recent calls"
+# strip still slices the last 8 for its LED grid.
+BACKTEST_WEEKS = 52
 
 
 @dataclass

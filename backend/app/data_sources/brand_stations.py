@@ -11,7 +11,16 @@ Fetches Ireland station lists directly from the operators that publish them:
                   count (~3 in Clare) but authoritative — these are Maxol's own
                   records, not crowd reports.
 
-Neither source publishes *prices*. What we get here is a durable name +
+    Circle K    — Drupal AJAX form at www.circlek.ie/station-search?ajax_form=1.
+                  Requires a session cookie + form_build_id tokens scraped from
+                  the initial page load; response is a Drupal AJAX command
+                  array where the "settings" command carries a station_results
+                  dict keyed by site id. Text-search by county name; the
+                  upstream returns a rich record with lat/lng under
+                  /sites/{siteId}/location. Biggest IE chain — ~10 Clare
+                  stations vs Applegreen's 5 and Maxol's 3.
+
+None of the sources publish *prices*. What we get here is a durable name +
 brand + location catalogue that:
   - widens Clare coverage beyond the ~5-10 stations FuelWatch reports on a
     typical day,
@@ -26,6 +35,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 
 import requests
@@ -154,6 +164,111 @@ def fetch_maxol_county(county: str, timeout: int = 30) -> list[dict]:
     return rows
 
 
+# ---------------------------------------------------------- Circle K (Drupal AJAX)
+
+CIRCLEK_SEARCH_URL = "https://www.circlek.ie/station-search"
+CIRCLEK_AJAX_URL   = "https://www.circlek.ie/station-search?ajax_form=1"
+
+_FORM_BUILD_ID_RE = re.compile(r'name="form_build_id"\s+value="([^"]+)"')
+
+
+class _CirclekSession:
+    """Drupal-form scraper. One session bootstraps a cookie + form_build_id;
+    each POST returns a fresh build_id we roll forward, so a single instance
+    can serve every county without rescraping the landing page."""
+
+    def __init__(self) -> None:
+        self._session = requests.Session()
+        self._session.headers.update(HEADERS)
+        self._build_id: str | None = None
+
+    def _bootstrap(self) -> None:
+        r = self._session.get(CIRCLEK_SEARCH_URL, timeout=30)
+        r.raise_for_status()
+        match = _FORM_BUILD_ID_RE.search(r.text)
+        if not match:
+            raise RuntimeError("Could not extract form_build_id from Circle K station-search page.")
+        self._build_id = match.group(1)
+
+    def search(self, phrase: str, timeout: int = 45) -> dict:
+        if self._build_id is None:
+            self._bootstrap()
+        payload = {
+            "phrase": phrase,
+            "form_build_id": self._build_id,
+            "form_id": "sim_search_form",
+            "op": "Search",
+            "_triggering_element_name": "op",
+            "_triggering_element_value": "Search",
+            "_drupal_ajax": "1",
+        }
+        r = self._session.post(
+            CIRCLEK_AJAX_URL,
+            data=payload,
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        commands = r.json()
+        for cmd in commands:
+            if cmd.get("command") == "update_build_id":
+                self._build_id = cmd.get("new") or self._build_id
+        return commands
+
+
+def _extract_station_results(commands: list[dict]) -> dict:
+    for cmd in commands:
+        if cmd.get("command") == "settings":
+            return cmd.get("settings", {}).get("station_results") or {}
+    return {}
+
+
+def fetch_circlek_county(county: str, session: _CirclekSession | None = None) -> list[dict]:
+    """Return every Circle K station whose address county matches `county`.
+
+    Reuses a passed-in session when the caller is looping counties (avoids
+    re-bootstrapping the Drupal form on every call).
+    """
+    sess = session or _CirclekSession()
+    commands = sess.search(county)
+    results = _extract_station_results(commands)
+    rows: list[dict] = []
+    for sid, station in results.items():
+        info = station.get("/sites/{siteId}", {}) or {}
+        addr = (station.get("/sites/{siteId}/addresses") or {}).get("PHYSICAL", {}) or {}
+        # Cast — upstream returns 'Clare' capitalisation, but stray whitespace
+        # or 'CO. CLARE' variants can slip through. Case-insensitive equality
+        # is the only reliable filter.
+        if (addr.get("county") or "").strip().lower() != county.lower():
+            continue
+        loc = station.get("/sites/{siteId}/location") or {}
+        try:
+            lat = float(loc.get("lat")) if loc.get("lat") is not None else None
+            lon = float(loc.get("lng")) if loc.get("lng") is not None else None
+        except (TypeError, ValueError):
+            lat = lon = None
+        services = station.get("/sites/{siteId}/services") or []
+        fuels    = station.get("/sites/{siteId}/fuels") or []
+        rows.append({
+            "external_id": str(sid),
+            "name": info.get("name") or "Circle K",
+            "county": county,
+            "town": addr.get("city"),
+            "address": addr.get("street"),
+            "latitude": lat,
+            "longitude": lon,
+            "amenities_json": json.dumps({
+                "brand":      info.get("brand"),
+                "category":   info.get("category"),
+                "station_type": info.get("stationType"),
+                "services":   [s.get("name") for s in services if s.get("state") == "ENABLED"],
+                "fuels":      [f.get("name") for f in fuels],
+            }, sort_keys=True),
+            "url": None,
+        })
+    return rows
+
+
 # ---------------------------------------------------------- persist
 
 def upsert_stations(rows: list[dict], source_brand: str, snapshot_date: str) -> int:
@@ -204,10 +319,19 @@ def _today() -> str:
 
 # ---------------------------------------------------------- top-level ingest
 
-_SOURCES = (
-    ("APPLEGREEN", fetch_applegreen_county),
-    ("MAXOL",      fetch_maxol_county),
-)
+def _make_fetcher(brand: str):
+    """Build a per-brand county fetcher, threading a shared Circle K session
+    across a run so we only bootstrap the Drupal form once."""
+    if brand == "APPLEGREEN":
+        return lambda county, _ctx: fetch_applegreen_county(county)
+    if brand == "MAXOL":
+        return lambda county, _ctx: fetch_maxol_county(county)
+    if brand == "CIRCLE_K":
+        return lambda county, ctx: fetch_circlek_county(county, session=ctx["circlek"])
+    raise KeyError(brand)
+
+
+_BRANDS = ("APPLEGREEN", "MAXOL", "CIRCLE_K")
 
 
 def ingest(counties: tuple[str, ...] = IE_COUNTIES) -> dict:
@@ -220,12 +344,14 @@ def ingest(counties: tuple[str, ...] = IE_COUNTIES) -> dict:
     written_by_brand: dict[str, int] = {}
     clare_counts: dict[str, int] = {}
     errors: list[str] = []
+    ctx = {"circlek": _CirclekSession()}
 
-    for brand, fetcher in _SOURCES:
+    for brand in _BRANDS:
+        fetcher = _make_fetcher(brand)
         total = 0
         for county in counties:
             try:
-                rows = fetcher(county)
+                rows = fetcher(county, ctx)
             except Exception as exc:  # requests, JSON, HTTP — never fatal
                 errors.append(f"{brand}/{county}: {exc}")
                 continue

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -43,6 +43,26 @@
                 <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
                 <span class="asof" id="asof-diesel"></span>
             </article>
+        </section>
+
+        <section class="fill-decision">
+            <h2>When to fill up <span class="muted">(3-week outlook · 60 L reference)</span></h2>
+            <div class="decision-grid">
+                <article class="decision-card" data-fuel="petrol" id="decision-petrol">
+                    <span class="decision-fuel">Petrol (95)</span>
+                    <span class="decision-light" data-signal="neutral"></span>
+                    <span class="decision-verdict">—</span>
+                    <span class="decision-detail">Loading…</span>
+                    <span class="decision-conf">confidence <b>—</b></span>
+                </article>
+                <article class="decision-card" data-fuel="diesel" id="decision-diesel">
+                    <span class="decision-fuel">Diesel</span>
+                    <span class="decision-light" data-signal="neutral"></span>
+                    <span class="decision-verdict">—</span>
+                    <span class="decision-detail">Loading…</span>
+                    <span class="decision-conf">confidence <b>—</b></span>
+                </article>
+            </div>
         </section>
 
         <section class="fillup-calc">
@@ -106,6 +126,14 @@
                         <span class="bt-label">Recent calls</span>
                         <ul class="bt-list"></ul>
                     </div>
+                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
+                        <span class="bt-label">Direction hit-rate</span>
+                        <ul class="hr-list">
+                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
+                        </ul>
+                    </div>
                 </article>
                 <article class="pred-card" id="pred-diesel">
                     <header>
@@ -124,6 +152,14 @@
                     <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
                         <span class="bt-label">Recent calls</span>
                         <ul class="bt-list"></ul>
+                    </div>
+                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
+                        <span class="bt-label">Direction hit-rate</span>
+                        <ul class="hr-list">
+                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
+                        </ul>
                     </div>
                 </article>
             </div>
@@ -150,6 +186,6 @@
     </footer>
 
     <script src="shared.js?v=5"></script>
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>
