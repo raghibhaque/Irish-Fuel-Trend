@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -155,6 +155,15 @@
                 </div>
             </div>
         </section>
+
+        <section class="brand-stations">
+            <h2>Known operator forecourts <span class="muted">in <span id="brand-county-name">—</span> · <span id="brand-count">0</span></span></h2>
+            <p class="brand-caveat">
+                Direct from operator sites (Applegreen, Maxol). No prices — a
+                durable name + brand + location catalogue, refreshed daily.
+            </p>
+            <ul class="brand-list" id="brand-list"></ul>
+        </section>
     </main>
 
     <footer class="site-footer">
@@ -169,6 +178,6 @@
     </footer>
 
     <script src="shared.js?v=5"></script>
-    <script src="county.js?v=4"></script>
+    <script src="county.js?v=5"></script>
 </body>
 </html>

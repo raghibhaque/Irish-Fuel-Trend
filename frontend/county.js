@@ -86,8 +86,43 @@ function render() {
     renderPriceCards(entry);
     renderPredictions(entry);
     renderStations(entry);
+    renderBrandStations(entry);
     renderChart(entry, parseInt(document.getElementById("chart-range").value, 10));
     updateCalculator();
+}
+
+// Operator-published forecourt catalogue (Applegreen, Maxol, ...). No prices,
+// just a durable name/brand/location list. Sorted by brand then name so a
+// county always renders in the same order across reloads.
+function renderBrandStations(entry) {
+    const list = document.getElementById("brand-list");
+    const countEl = document.getElementById("brand-count");
+    document.getElementById("brand-county-name").textContent = selectedCounty;
+    const items = entry?.brand_stations || [];
+    countEl.textContent = items.length;
+    if (!items.length) {
+        list.innerHTML = `<li class="empty">No operator-published forecourts recorded for ${escapeHtml(selectedCounty)}.</li>`;
+        return;
+    }
+    const brandLabel = (b) => ({
+        APPLEGREEN: "Applegreen",
+        MAXOL: "Maxol",
+        CIRCLE_K: "Circle K",
+    }[b] || b);
+    list.innerHTML = items.map(s => {
+        const where = [s.town, s.address].filter(Boolean).join(" · ");
+        const mapUrl = (s.latitude != null && s.longitude != null)
+            ? `https://www.google.com/maps?q=${s.latitude},${s.longitude}`
+            : s.url;
+        const name = mapUrl
+            ? `<a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener">${escapeHtml(s.name)}</a>`
+            : escapeHtml(s.name);
+        return `<li>
+            <span class="brand-chip" data-brand="${escapeHtml(s.source_brand)}">${escapeHtml(brandLabel(s.source_brand))}</span>
+            <span class="brand-name">${name}</span>
+            <span class="brand-where">${escapeHtml(where)}</span>
+        </li>`;
+    }).join("");
 }
 
 function renderPickerMeta(entry) {

@@ -970,6 +970,135 @@ h2 .muted {
     text-transform: uppercase;
 }
 
+/* ------------------------------------------------------------- brand forecourts (county) */
+.brand-stations {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 26px;
+    box-shadow: var(--shadow);
+    position: relative;
+}
+.brand-stations::before {
+    content: "";
+    position: absolute;
+    top: 8px; left: 8px;
+    width: 12px; height: 12px;
+    border-top: 1px solid var(--border-strong);
+    border-left: 1px solid var(--border-strong);
+    pointer-events: none;
+}
+.brand-stations::after {
+    content: "";
+    position: absolute;
+    bottom: 8px; right: 8px;
+    width: 12px; height: 12px;
+    border-bottom: 1px solid var(--border-strong);
+    border-right: 1px solid var(--border-strong);
+    pointer-events: none;
+}
+.brand-caveat {
+    margin: -6px 0 14px;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    font-style: italic;
+    max-width: 72ch;
+}
+.brand-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+}
+.brand-list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 2px;
+    padding: 12px 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    transition: border-left-color 0.15s ease, background 0.15s ease;
+}
+.brand-list li:hover {
+    border-left-color: var(--accent);
+    background: rgba(255, 182, 72, 0.03);
+}
+.brand-list li.empty {
+    grid-template-columns: 1fr;
+    color: var(--text-dim);
+    font-style: italic;
+    border-left-color: var(--border-strong);
+    background: transparent;
+}
+.brand-chip {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 78px;
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    border-radius: 2px;
+    white-space: nowrap;
+}
+.brand-chip[data-brand="APPLEGREEN"] {
+    color: #7bd88f;
+    border-color: rgba(123, 216, 143, 0.45);
+    background: rgba(123, 216, 143, 0.08);
+}
+.brand-chip[data-brand="MAXOL"] {
+    color: #ff8a5c;
+    border-color: rgba(255, 138, 92, 0.45);
+    background: rgba(255, 138, 92, 0.08);
+}
+.brand-chip[data-brand="CIRCLE_K"] {
+    color: var(--accent);
+    border-color: var(--accent-line);
+    background: var(--accent-glow);
+}
+.brand-name {
+    grid-column: 2;
+    grid-row: 1;
+    color: var(--text);
+    font-weight: 500;
+    font-size: 0.95rem;
+    letter-spacing: -0.005em;
+}
+.brand-name a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.brand-name a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent-line);
+}
+.brand-where {
+    grid-column: 2;
+    grid-row: 2;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+}
+
 /* ------------------------------------------------------------- footer */
 .site-footer {
     border-top: 1px solid var(--border);

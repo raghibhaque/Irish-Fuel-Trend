@@ -116,10 +116,22 @@ class CountyFuelSnapshot(BaseModel):
     stations: list[CountyStation] = Field(default_factory=list)
 
 
+class BrandStation(BaseModel):
+    """One operator-published forecourt. Has location + amenities but no price."""
+    source_brand: str                      # 'APPLEGREEN' | 'MAXOL' | ...
+    name: str
+    town: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    url: Optional[str] = None
+
+
 class CountyEntry(BaseModel):
     county: str
     petrol: Optional[CountyFuelSnapshot] = None
     diesel: Optional[CountyFuelSnapshot] = None
+    brand_stations: list[BrandStation] = Field(default_factory=list)
 
 
 class NationalReference(BaseModel):

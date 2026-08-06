@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.data_sources.fuelwatch_counties import IE_COUNTIES, PRIMARY_WINDOW_DAYS
 from app.db import connection
 from app.models import (
+    BrandStation,
     CountiesResponse,
     CountyEntry,
     CountyFuelSnapshot,
@@ -86,6 +87,40 @@ def _load_observations(conn, since: str) -> dict[tuple[str, str], list[CountyObs
                 station_count=r["station_count"],
             )
         )
+    return out
+
+
+def _load_brand_stations(conn, snapshot_date: str | None) -> dict[str, list[BrandStation]]:
+    """All operator-published stations for the latest brand snapshot, keyed by county.
+
+    Deduplicates by (source_brand, name) within a county so a chain that appears
+    twice for any reason doesn't render twice. Sort is county-stable by
+    (brand, name) so the frontend gets a deterministic order.
+    """
+    if not snapshot_date:
+        return {}
+    rows = conn.execute(
+        "SELECT source_brand, name, county, town, address, latitude, longitude, url "
+        "FROM brand_stations WHERE snapshot_date = ? AND county IS NOT NULL "
+        "ORDER BY county, source_brand, name",
+        (snapshot_date,),
+    ).fetchall()
+    out: dict[str, list[BrandStation]] = defaultdict(list)
+    seen: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for r in rows:
+        key = (r["source_brand"], r["name"])
+        if key in seen[r["county"]]:
+            continue
+        seen[r["county"]].add(key)
+        out[r["county"]].append(BrandStation(
+            source_brand=r["source_brand"],
+            name=r["name"],
+            town=r["town"],
+            address=r["address"],
+            latitude=r["latitude"],
+            longitude=r["longitude"],
+            url=r["url"],
+        ))
     return out
 
 
@@ -178,6 +213,9 @@ def get_counties(
         since = (_as_date(snapshot_date) - timedelta(days=OBSERVED_DAYS)).isoformat()
         observations = _load_observations(conn, since)
         stations = _load_stations(conn, _latest_snapshot_date(conn, "county_stations"))
+        brand_stations = _load_brand_stations(
+            conn, _latest_snapshot_date(conn, "brand_stations")
+        )
 
     national, notes = _national_predictions()
     refs = _national_references(rows)
@@ -199,6 +237,7 @@ def get_counties(
     entries = [
         CountyEntry(
             county=name,
+            brand_stations=brand_stations.get(name, []),
             **{
                 fuel: _build_snapshot(fuel, by_county[name].get(fuel, []), refs,
                                       national, observations, stations)
