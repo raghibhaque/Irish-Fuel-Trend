@@ -54,4 +54,9 @@ jobs:
           publish_dir: ./frontend
           publish_branch: gh-pages
           commit_message: "deploy: refresh data snapshot"
-          force_orphan: true
+          # force_orphan wipes gh-pages history on every push, which the
+          # Pages branch-source builder appears to choke on for this repo
+          # (deploys hang in `deployment_in_progress`). Regular commits on
+          # top of the existing history keep Pages happy and the branch
+          # still stays small — nothing here is heavy.
+          keep_files: false
