@@ -88,6 +88,29 @@ CREATE TABLE IF NOT EXISTS county_stations (
 CREATE INDEX IF NOT EXISTS ix_county_stations_county
     ON county_stations(county, fuel_type, snapshot_date);
 
+-- Brand-published station catalogues (Applegreen, Maxol, etc). These sources
+-- give us name/address/lat-long/amenities but *no prices*. Used to cross-
+-- reference the FuelWatch crowd feed and to widen coverage for small
+-- counties (Clare especially) where FuelWatch alone reports only a handful
+-- of stations. snapshot_date lets us track brand-list churn over time.
+CREATE TABLE IF NOT EXISTS brand_stations (
+    snapshot_date DATE    NOT NULL,
+    source_brand  TEXT    NOT NULL,       -- 'APPLEGREEN' | 'MAXOL' | 'CIRCLE_K' ...
+    external_id   TEXT    NOT NULL,       -- brand's own station id
+    name          TEXT    NOT NULL,
+    county        TEXT,
+    town          TEXT,
+    address       TEXT,
+    latitude      REAL,
+    longitude     REAL,
+    amenities     TEXT,                   -- JSON blob, brand-specific
+    url           TEXT,
+    inserted_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (snapshot_date, source_brand, external_id)
+);
+CREATE INDEX IF NOT EXISTS ix_brand_stations_county
+    ON brand_stations(county, source_brand, snapshot_date);
+
 CREATE TABLE IF NOT EXISTS news_events (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     published_at TIMESTAMP NOT NULL,

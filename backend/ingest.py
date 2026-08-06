@@ -13,6 +13,7 @@ import sys
 
 from app.db import init_db
 from app.data_sources import (
+    brand_stations,
     brent_crude,
     eu_oil_bulletin,
     fuelwatch_counties,
@@ -29,7 +30,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", nargs="?", default="all",
                         choices=["all", "bulletin", "fx", "brent", "news", "fuelwatch",
-                                 "counties", "refined"])
+                                 "counties", "refined", "brands"])
     parser.add_argument("--force", action="store_true",
                         help="force re-download of cached raw files")
     args = parser.parse_args()
@@ -64,6 +65,10 @@ def main() -> int:
     if args.source in ("all", "refined"):
         summary = refined_products.ingest(force_download=args.force)
         print("Refined products (RBOB/ULSD):", summary)
+
+    if args.source in ("all", "brands"):
+        summary = brand_stations.ingest()
+        print("Brand station catalogues (Applegreen, Maxol):", summary)
 
     return 0
 

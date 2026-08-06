@@ -39,9 +39,12 @@ PRIMARY_WINDOW_DAYS = 30
 WIDE_WINDOW_DAYS = 180
 WINDOWS = (PRIMARY_WINDOW_DAYS, WIDE_WINDOW_DAYS)
 
-# per_fuel caps rows *per fuel*, not per county, so it has to be large enough
-# to reach down into the smaller counties. 200 yields ~400 rows / 23 counties.
-STATIONS_PER_FUEL = 200
+# per_fuel caps rows *per fuel*, not per county. 200 yielded ~400 rows across
+# 23 counties — enough for a national view, but only a handful of Clare rows.
+# 1000 exhausts every reported station in the 30-day window (upstream tops
+# out well below this) and lets small counties like Clare build a real
+# per-station history from a single daily pull.
+STATIONS_PER_FUEL = 1000
 STATIONS_WINDOW_DAYS = 30
 
 # Canonical list, used to report which counties the crowd-sourced feed never
