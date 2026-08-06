@@ -335,3 +335,44 @@ function sliceByWeeks(series, weeks) {
     const points = series.points.filter(p => p.date >= iso);
     return { ...series, points, latest: points.length ? points[points.length - 1] : null };
 }
+
+// ------------------ dev ingest button ------------------
+// Only rendered when served from a loopback host — matches the API guard in
+// backend/app/routes/dev.py. Static Pages users never see it.
+function isLocalhost() {
+    const h = location.hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "::1" || h === "";
+}
+
+function mountDevIngestButton({ onDone } = {}) {
+    if (!isLocalhost()) return;
+    const strip = document.querySelector(".status-strip");
+    if (!strip || strip.querySelector(".dev-ingest")) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "dev-ingest";
+    btn.textContent = "⟳ Ingest";
+    btn.title = "Dev: refresh news + Brent (loopback only)";
+
+    btn.addEventListener("click", async () => {
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Ingesting…";
+        try {
+            const r = await fetch("/api/ingest", { method: "POST" });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const body = await r.json();
+            const failed = Object.entries(body.results || {}).filter(([, v]) => !v.ok);
+            btn.textContent = failed.length ? `✗ ${failed.map(([k]) => k).join(", ")}` : "✓ done";
+            if (typeof onDone === "function") await onDone();
+        } catch (err) {
+            btn.textContent = `✗ ${err.message}`;
+            console.error("ingest failed", err);
+        } finally {
+            setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2500);
+        }
+    });
+
+    strip.appendChild(btn);
+}

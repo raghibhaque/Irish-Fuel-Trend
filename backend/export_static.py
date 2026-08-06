@@ -37,15 +37,31 @@ PRICES_WEEKS = 1200
 NEWS_LIMIT = 50
 
 
+class _NoLifespanClient:
+    """TestClient wrapper that skips app lifespan startup/shutdown."""
+    def __init__(self, app_):
+        self._client = TestClient(app_)
+    def __enter__(self):
+        return self._client
+    def __exit__(self, *exc):
+        self._client.close()
+        return False
+
+
 def _write(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     logger.info("wrote %s (%d bytes)", path, path.stat().st_size)
 
 
-def export(out_dir: Path) -> dict:
+def export(out_dir: Path, use_lifespan: bool = True) -> dict:
+    # `use_lifespan=False` is used when export runs from inside an already-live
+    # FastAPI process (see routes/dev.py). The app lifespan starts and stops
+    # the APScheduler singleton — re-entering it would shut the parent app's
+    # scheduler down when this context exits.
     init_db()
-    with TestClient(app) as client:
+    client_ctx = TestClient(app) if use_lifespan else _NoLifespanClient(app)
+    with client_ctx as client:
         prices = client.get(f"/api/prices?weeks={PRICES_WEEKS}")
         prices.raise_for_status()
         _write(out_dir / "prices.json", prices.json())

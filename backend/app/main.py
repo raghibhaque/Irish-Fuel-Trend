@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.db import init_db
-from app.routes import counties, news, prediction, prices
+from app.routes import counties, dev, news, prediction, prices
 from app import scheduler as bg_scheduler
 
 
@@ -45,6 +45,7 @@ app.include_router(prices.router)
 app.include_router(prediction.router)
 app.include_router(news.router)
 app.include_router(counties.router)
+app.include_router(dev.router)
 
 
 # Serve the plain HTML/CSS/JS dashboard at "/".

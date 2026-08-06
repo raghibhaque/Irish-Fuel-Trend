@@ -1,0 +1,58 @@
+name: Hourly light refresh
+
+# Only touches sources that actually change intra-day: news (RSS) and Brent
+# (market ticks during trading hours). Skips FuelWatch, ECB and the EU
+# Bulletin — those publish once a day or less, so hourly polling would just
+# burn API calls.
+
+on:
+  schedule:
+    - cron: "5 * * * *"   # every hour at :05
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-branch-deploy
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Ingest fast-moving sources
+        working-directory: backend
+        run: |
+          python ingest.py news
+          python ingest.py brent
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Build static JSON snapshots
+        working-directory: backend
+        run: python export_static.py
+
+      - name: Ensure .nojekyll
+        run: touch frontend/.nojekyll
+
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend
+          publish_branch: gh-pages
+          commit_message: "deploy: hourly refresh"
+          keep_files: false

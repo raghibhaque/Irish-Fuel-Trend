@@ -239,4 +239,12 @@ loadManifest().then(m => {
 }).then(() => {
     updateCalculator();
     attachDragCompare("price-chart", "dc-popup");
+    mountDevIngestButton({
+        onDone: async () => {
+            priceData = null;
+            predictionData = null;
+            await Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
+            updateCalculator();
+        },
+    });
 }).catch(err => console.error("Dashboard load failed:", err));
