@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>County Fuel Predictor — Irish Fuel Trend</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+    <link rel="stylesheet" href="style.css?v=5">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap">
+            <nav class="site-nav">
+                <a href="index.html">Ireland</a>
+                <a href="county.html" class="active" aria-current="page">County</a>
+            </nav>
+            <h1 data-eyebrow="IE · County Signal · v1">County Fuel Predictor</h1>
+            <p class="tagline">
+                Petrol &amp; diesel localised to your county — crowd-sourced county medians
+                offset against the national forecast.
+            </p>
+            <div class="status-strip">
+                <span class="status-chip" id="hdr-updated">Live · fetching</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <section class="county-picker">
+            <label>County
+                <select id="county-select"></select>
+            </label>
+            <p class="picker-meta" id="picker-meta"></p>
+        </section>
+
+        <p class="sample-warn" id="sample-warn" hidden></p>
+
+        <section class="current-prices" id="current-prices">
+            <article class="price-card" data-fuel="petrol">
+                <span class="label">Petrol (95)</span>
+                <span class="value" id="current-petrol">—</span>
+                <span class="unit">EUR / L</span>
+                <svg class="sparkline" id="spark-petrol" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+                <span class="asof" id="asof-petrol"></span>
+            </article>
+            <article class="price-card" data-fuel="diesel">
+                <span class="label">Diesel</span>
+                <span class="value" id="current-diesel">—</span>
+                <span class="unit">EUR / L</span>
+                <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+                <span class="asof" id="asof-diesel"></span>
+            </article>
+        </section>
+
+        <section class="fillup-calc">
+            <h2>Fill-up impact <span class="muted">(vs 3-week outlook, county prices)</span></h2>
+            <div class="calc-row">
+                <label>Tank litres
+                    <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
+                </label>
+                <label>Fuel
+                    <select id="calc-fuel">
+                        <option value="petrol" selected>Petrol</option>
+                        <option value="diesel">Diesel</option>
+                    </select>
+                </label>
+                <div class="calc-output">
+                    <span class="calc-line" id="calc-now">Today: —</span>
+                    <span class="calc-line" id="calc-then">In ~3 weeks: —</span>
+                    <span class="calc-line strong" id="calc-diff">Difference: —</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="chart-section">
+            <h2>Historical trend <span class="muted" id="chart-subtitle">(reconstructed)</span></h2>
+            <p class="chart-caveat">
+                No county price history exists upstream — the feed publishes only a current
+                trailing median. The lines below are the national series shifted by this
+                county's measured offset. Dots are real county snapshots, recorded daily
+                from the day this page shipped.
+            </p>
+            <div class="chart-controls">
+                <label>Show
+                    <select id="chart-range">
+                        <option value="26" selected>6 months</option>
+                        <option value="52">1 year</option>
+                        <option value="156">3 years</option>
+                        <option value="520">10 years</option>
+                        <option value="1200">All</option>
+                    </select>
+                </label>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="price-chart"></canvas>
+                <div class="dc-popup" id="dc-popup" hidden></div>
+            </div>
+            <p class="chart-hint">Tip: click and drag between two points to compare.</p>
+        </section>
+
+        <section class="predictions">
+            <h2>Next 1–3 weeks <span class="muted">in <span id="pred-county-name">—</span></span></h2>
+            <div class="pred-grid">
+                <article class="pred-card" id="pred-petrol">
+                    <header>
+                        <h3>Petrol</h3>
+                        <span class="trend-pill" data-trend="flat">…</span>
+                    </header>
+                    <p class="pred-explain">Loading…</p>
+                    <dl class="pred-meta">
+                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
+                        <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>County offset</dt><dd class="pred-basis">—</dd></div>
+                        <div><dt>Crowd median</dt><dd class="pred-median">—</dd></div>
+                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
+                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                    </dl>
+                </article>
+                <article class="pred-card" id="pred-diesel">
+                    <header>
+                        <h3>Diesel</h3>
+                        <span class="trend-pill" data-trend="flat">…</span>
+                    </header>
+                    <p class="pred-explain">Loading…</p>
+                    <dl class="pred-meta">
+                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
+                        <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>County offset</dt><dd class="pred-basis">—</dd></div>
+                        <div><dt>Crowd median</dt><dd class="pred-median">—</dd></div>
+                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
+                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                    </dl>
+                </article>
+            </div>
+            <p class="notes" id="prediction-notes"></p>
+        </section>
+
+        <section class="stations">
+            <h2>Cheapest reported stations <span class="muted">in <span id="stations-county-name">—</span></span></h2>
+            <div class="station-grid">
+                <div class="station-col">
+                    <h3>Petrol</h3>
+                    <ul class="station-list" id="stations-petrol"></ul>
+                </div>
+                <div class="station-col">
+                    <h3>Diesel</h3>
+                    <ul class="station-list" id="stations-diesel"></ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="brand-stations">
+            <h2>Known operator forecourts <span class="muted">in <span id="brand-county-name">—</span> · <span id="brand-count">0</span></span></h2>
+            <p class="brand-caveat">
+                Direct from operator sites (Applegreen, Maxol). No prices — a
+                durable name + brand + location catalogue, refreshed daily.
+            </p>
+            <ul class="brand-list" id="brand-list"></ul>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <div class="sources">
+                <span>FuelWatch.ie · Crowd</span>
+                <span>EU Oil Bulletin</span>
+                <span>30d Trailing</span>
+            </div>
+            <div class="colophon">© Raghib Haque</div>
+        </div>
+    </footer>
+
+    <script src="shared.js?v=5"></script>
+    <script src="county.js?v=5"></script>
+</body>
+</html>

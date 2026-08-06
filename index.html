@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irish Fuel Trend</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+    <link rel="stylesheet" href="style.css?v=5">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap">
+            <nav class="site-nav">
+                <a href="index.html" class="active" aria-current="page">Ireland</a>
+                <a href="county.html">County</a>
+            </nav>
+            <h1 data-eyebrow="IE · Weekly Fuel Signal · v1">Irish Fuel Trend</h1>
+            <p class="tagline">
+                Weekly petrol &amp; diesel price direction for Ireland — from EU Oil Bulletin, ECB &amp; Brent crude.
+            </p>
+            <div class="status-strip">
+                <span class="status-chip" id="hdr-updated">Live · fetching</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <section class="current-prices" id="current-prices">
+            <article class="price-card" data-fuel="petrol">
+                <span class="label">Petrol (95)</span>
+                <span class="value" id="current-petrol">—</span>
+                <span class="unit">EUR / L</span>
+                <svg class="sparkline" id="spark-petrol" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+                <span class="asof" id="asof-petrol"></span>
+            </article>
+            <article class="price-card" data-fuel="diesel">
+                <span class="label">Diesel</span>
+                <span class="value" id="current-diesel">—</span>
+                <span class="unit">EUR / L</span>
+                <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+                <span class="asof" id="asof-diesel"></span>
+            </article>
+        </section>
+
+        <section class="fill-decision">
+            <h2>When to fill up <span class="muted">(3-week outlook · 60 L reference)</span></h2>
+            <div class="decision-grid">
+                <article class="decision-card" data-fuel="petrol" id="decision-petrol">
+                    <span class="decision-fuel">Petrol (95)</span>
+                    <span class="decision-light" data-signal="neutral"></span>
+                    <span class="decision-verdict">—</span>
+                    <span class="decision-detail">Loading…</span>
+                    <span class="decision-conf">confidence <b>—</b></span>
+                </article>
+                <article class="decision-card" data-fuel="diesel" id="decision-diesel">
+                    <span class="decision-fuel">Diesel</span>
+                    <span class="decision-light" data-signal="neutral"></span>
+                    <span class="decision-verdict">—</span>
+                    <span class="decision-detail">Loading…</span>
+                    <span class="decision-conf">confidence <b>—</b></span>
+                </article>
+            </div>
+        </section>
+
+        <section class="fillup-calc">
+            <h2>Fill-up impact <span class="muted">(vs 3-week outlook)</span></h2>
+            <div class="calc-row">
+                <label>Tank litres
+                    <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
+                </label>
+                <label>Fuel
+                    <select id="calc-fuel">
+                        <option value="petrol" selected>Petrol</option>
+                        <option value="diesel">Diesel</option>
+                    </select>
+                </label>
+                <div class="calc-output">
+                    <span class="calc-line" id="calc-now">Today: —</span>
+                    <span class="calc-line" id="calc-then">In ~3 weeks: —</span>
+                    <span class="calc-line strong" id="calc-diff">Difference: —</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="chart-section">
+            <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
+            <div class="chart-controls">
+                <label>Show
+                    <select id="chart-range">
+                        <option value="26" selected>6 months</option>
+                        <option value="52">1 year</option>
+                        <option value="156">3 years</option>
+                        <option value="520">10 years</option>
+                        <option value="1200">All</option>
+                    </select>
+                </label>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="price-chart"></canvas>
+                <div class="dc-popup" id="dc-popup" hidden></div>
+            </div>
+            <p class="chart-hint">Tip: click and drag between two points to compare.</p>
+        </section>
+
+        <section class="predictions">
+            <h2>Next 1–3 weeks</h2>
+            <div class="pred-grid">
+                <article class="pred-card" id="pred-petrol">
+                    <header>
+                        <h3>Petrol</h3>
+                        <span class="trend-pill" data-trend="flat">…</span>
+                    </header>
+                    <p class="pred-explain">Loading…</p>
+                    <dl class="pred-meta">
+                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
+                        <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
+                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                    </dl>
+                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
+                        <span class="bt-label">Recent calls</span>
+                        <ul class="bt-list"></ul>
+                    </div>
+                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
+                        <span class="bt-label">Direction hit-rate</span>
+                        <ul class="hr-list">
+                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
+                        </ul>
+                    </div>
+                </article>
+                <article class="pred-card" id="pred-diesel">
+                    <header>
+                        <h3>Diesel</h3>
+                        <span class="trend-pill" data-trend="flat">…</span>
+                    </header>
+                    <p class="pred-explain">Loading…</p>
+                    <dl class="pred-meta">
+                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
+                        <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
+                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                    </dl>
+                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
+                        <span class="bt-label">Recent calls</span>
+                        <ul class="bt-list"></ul>
+                    </div>
+                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
+                        <span class="bt-label">Direction hit-rate</span>
+                        <ul class="hr-list">
+                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
+                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
+                        </ul>
+                    </div>
+                </article>
+            </div>
+            <p class="notes" id="prediction-notes"></p>
+        </section>
+
+        <section class="news">
+            <h2>Recent oil-relevant news</h2>
+            <ul id="news-list" class="news-list">
+                <li class="empty">No news items yet — RSS monitor not wired up (step 8).</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <div class="sources">
+                <span>EU Oil Bulletin</span>
+                <span>ECB</span>
+                <span>Brent · MOCK</span>
+            </div>
+            <div class="colophon">© Raghib Haque</div>
+        </div>
+    </footer>
+
+    <script src="shared.js?v=5"></script>
+    <script src="app.js?v=8"></script>
+</body>
+</html>
