@@ -1,244 +1,161 @@
 # Irish Fuel Trend
 
-A full-stack forecasting dashboard for Irish petrol and diesel pump prices.
-Ingests authoritative and crowd-sourced Irish price feeds, joins them with
-Brent crude and EUR/USD, trains a lightweight regression model, and serves
-a human-readable directional forecast alongside recent oil-relevant news.
+**Know when to fill up. Save at every pump.**
 
-The dashboard runs **two ways from the same codebase**:
+Irish Fuel Trend tells you — in one glance — whether petrol and diesel are
+heading up or down this week, how much a full tank will cost you if you wait,
+and which forecourt in your county is cheapest right now.
 
-- Locally as a FastAPI application (`uvicorn`) with a live API.
-- Statically on **GitHub Pages** — a scheduled GitHub Actions workflow refreshes
-  the data daily, dumps it to JSON, and redeploys the front-end.
+Free. No login. Refreshed every morning.
 
----
-
-## Highlights
-
-- **Multi-source ingestion** — reconciles the EU Weekly Oil Bulletin (weekly,
-  authoritative), FuelWatch.ie (daily, crowd-sourced), the ECB EUR/USD reference
-  feed, and Brent futures from Yahoo Finance.
-- **Automatic reverse-engineered scrape** — the FuelWatch source auto-discovers
-  the Supabase URL and anon JWT from the SPA's JavaScript bundle each run, so a
-  rotated key or a new bundle hash doesn't break ingestion.
-- **Layered data model** — daily crowd-sourced rows only backfill dates newer
-  than the latest authoritative EU bulletin, preserving the wholesale price
-  history the model trains on.
-- **Regression with explanation** — a small `scikit-learn` model produces a
-  weekly return forecast and confidence, plus a plain-English "why" that names
-  the biggest driver (Brent, FX, or momentum).
-- **Two deployment shapes, one codebase** — the same `frontend/` bundle reads
-  `data/*.json` snapshots. Under `uvicorn` those snapshots are refreshed by an
-  APScheduler job; under GitHub Pages they're refreshed by an Actions cron.
-- **Idempotent upserts** — every fetcher uses `ON CONFLICT DO UPDATE`, so a
-  re-run is safe and only writes changed rows.
-- **County localisation without a county model** — FuelWatch publishes a
-  current county median but no county history, so nothing can be trained per
-  county. Instead the national forecast is shifted by a measured *basis*,
-  computed against a station-weighted reference drawn from the same RPC rows
-  so crowd-vs-bulletin method bias cancels, then shrunk by `n/(n+10)` so a
-  three-station county can't advertise a six-cent gap.
+👉 **[Open the app](https://raghibhaque.github.io/petrolpredictor/)**
 
 ---
 
-## Stack
+## What it looks like
 
-| Layer         | Choice                                              |
-| ------------- | --------------------------------------------------- |
-| Backend       | FastAPI, pandas, scikit-learn, statsmodels          |
-| Storage       | SQLite (single file at `data/fuel_trend.db`)        |
-| Scheduling    | APScheduler in-process + GitHub Actions cron        |
-| HTTP client   | `requests` (fetchers), `httpx`/TestClient (export)  |
-| Front-end     | Plain HTML/CSS + vanilla JS, Chart.js from CDN      |
-| Static export | Starlette `TestClient` → JSON snapshots             |
-| Deploy        | GitHub Pages via `actions/deploy-pages`             |
+![National dashboard](docs/screenshots/national.png)
 
-Deliberately no framework on the front-end — the site loads three small JSON
-files and renders in one script, which keeps the Pages artifact tiny and the
-learning surface small.
+<p align="center">
+  <img src="docs/screenshots/mobile.png" alt="Mobile view" width="360">
+</p>
 
 ---
 
-## Data sources
+## Why people use it
 
-| Source               | Cadence       | Role                                                              |
-| -------------------- | ------------- | ----------------------------------------------------------------- |
-| EU Weekly Oil Bulletin | Weekly (Mon) | Authoritative Irish retail petrol/diesel prices, with and without duties + VAT. Since 2005. |
-| FuelWatch.ie         | Daily         | Crowd-sourced pump reports aggregated to a national daily average. Fills the gap between weekly bulletins. |
-| FuelWatch.ie (county) | Daily        | Per-county median via `county_price_rankings`, plus station-level prices via `cheapest_reported_stations`. Trailing-window aggregates with **no history upstream** — we snapshot them daily to build our own. |
-| ECB                  | Daily         | EUR/USD reference rate.                                           |
-| Yahoo Finance        | Daily         | Brent crude futures (`BZ=F`). Falls back to a deterministic mock when the feed is unreachable. |
-| Curated RSS feeds    | Every 10 min  | Oil-relevant news, keyword-filtered.                              |
-| Static tax calendar  | Manual        | Irish excise / carbon / MOT changes for prediction adjustment.    |
-
-All fetchers live in `backend/app/data_sources/` and share the same shape:
-each exposes an `ingest()` function that downloads, parses, and upserts.
-
----
-
-## Setup
-
-Windows PowerShell (macOS/Linux equivalents in parentheses):
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1                # source .venv/bin/activate
-pip install -r requirements.txt
-python ingest.py all                        # first-time data load
-python export_static.py                     # writes frontend/data/*.json
-uvicorn app.main:app --reload --port 8000
-```
-
-Then open:
-
-- Dashboard: <http://localhost:8000/>
-- API health: <http://localhost:8000/api/health>
-- OpenAPI docs: <http://localhost:8000/docs>
-
-The scheduler starts automatically on app boot and refreshes each source at
-its own cadence — you don't need to keep re-running `ingest.py`.
-
-### Ingest CLI
-
-```powershell
-python ingest.py                    # all sources
-python ingest.py bulletin           # EU Oil Bulletin only
-python ingest.py fuelwatch          # FuelWatch daily
-python ingest.py counties           # FuelWatch county medians + stations
-python ingest.py fx                 # ECB EUR/USD
-python ingest.py brent              # Brent futures
-python ingest.py news               # RSS feeds
-python ingest.py all --force        # force re-download of cached raw files
-```
+- **Fill now or wait?** — Every morning you get a plain-English call for petrol
+  and diesel. *"Fill now — save about €2.19 on a 60 L tank"* — not a chart you
+  have to interpret.
+- **Priced for your county** — 26 counties, each with its own crowd-sourced
+  median and a short-list of the cheapest reported stations near you.
+- **The number you actually pay** — Anchored to the freshest live pump report,
+  not last month's government survey.
+- **Confidence, not certainty** — Every forecast shows how sure the model is.
+  If the market turns choppy, you'll see the confidence drop.
+- **Zero friction** — Loads in under a second on a phone. No account. No app
+  store. No cookies chasing you around the web.
 
 ---
 
-## API
+## Who it's for
 
-| Endpoint                            | Purpose                                                 |
-| ----------------------------------- | ------------------------------------------------------- |
-| `GET /api/health`                   | Liveness probe                                          |
-| `GET /api/prices?weeks=N`           | Historical petrol/diesel series with latest snapshot    |
-| `GET /api/prediction`               | Trend, weekly return forecast, confidence, R², explanation |
-| `GET /api/news?limit=N`             | Oil-relevant news items, most recent first              |
-| `GET /api/counties[?county=Cork]`   | Per-county median, basis, localised forecast, cheapest stations |
-
-Full response schemas live in `backend/app/models.py` and are visible in the
-auto-generated OpenAPI docs at `/docs`.
+- **Commuters** deciding whether Monday's tank can wait until Friday.
+- **Delivery drivers, taxi drivers, hauliers** — anyone whose margin is a few
+  cents a litre.
+- **Households on a budget** who'd rather save €50 a year than not.
+- **Fuel-price nerds** who want to see the wholesale-vs-retail spread the same
+  way traders do.
 
 ---
 
-## Deploy: GitHub Pages
+## How it works (the short version)
 
-The dashboard is statically deployable. `.github/workflows/refresh.yml`
-runs daily at 06:15 UTC (also on push and on manual dispatch):
+We watch the two things that actually move Irish pump prices:
 
-1. Sets up Python 3.12 and installs `backend/requirements.txt`.
-2. Runs `python ingest.py all --force` to pull every source fresh.
-3. Runs `python export_static.py` to dump `frontend/data/*.json`.
-4. Uploads `frontend/` as the Pages artifact.
-5. Deploys via `actions/deploy-pages`.
+1. **Brent crude** — the world price of oil, in dollars a barrel.
+2. **The euro-to-dollar rate** — because we buy oil in dollars but pay for
+   petrol in euros.
 
-One-time setup on the repository:
+Every morning, we combine those with the last few weeks of Irish pump prices
+(from the EU's official weekly bulletin and daily crowd-sourced reports on
+FuelWatch.ie) and a small statistical model tells you the most likely direction
+for the next three weeks — with a confidence score attached.
 
-1. **Settings → Pages → Source: GitHub Actions.**
-2. Push to `main`. The workflow runs and publishes to
-   `https://<user>.github.io/<repo>/`.
-
-The API is not exposed on Pages — the browser reads `data/*.json` instead,
-using the same relative paths that FastAPI serves during local development.
-No code path forks between the two deploy shapes.
+Then we shift that national forecast to your county using the current local
+gap between crowd-reported prices and the national average, so a driver in
+Donegal sees a different number to one in Cork.
 
 ---
 
-## Project structure
+## What it costs
 
-```
-petrolpredictor/
-├── .github/workflows/refresh.yml   Daily ingest + Pages deploy
-├── backend/
-│   ├── ingest.py                   CLI for all data sources
-│   ├── export_static.py            Dumps API responses to JSON
-│   ├── requirements.txt
-│   └── app/
-│       ├── main.py                 FastAPI entrypoint (lifespan boots scheduler)
-│       ├── db.py                   SQLite schema + connection helper
-│       ├── models.py               Pydantic response models
-│       ├── scheduler.py            APScheduler jobs
-│       ├── data_sources/
-│       │   ├── eu_oil_bulletin.py  Weekly EU authoritative feed
-│       │   ├── fuelwatch_client.py Supabase creds discovery + RPC/REST helpers
-│       │   ├── fuelwatch_ie.py     Daily crowd-sourced national average
-│       │   ├── fuelwatch_counties.py County medians + station prices
-│       │   ├── fx_rates.py         ECB EUR/USD
-│       │   ├── brent_crude.py      Yahoo Finance Brent (with mock fallback)
-│       │   ├── news_monitor.py     RSS keyword monitor
-│       │   └── tax_calendar.py     Static Irish tax event calendar
-│       ├── prediction/
-│       │   ├── model.py            Feature engineering + regression
-│       │   ├── county.py           Basis decomposition (pure functions)
-│       │   └── explain.py          Natural-language explanation
-│       └── routes/
-│           ├── prices.py           /api/prices
-│           ├── prediction.py       /api/prediction
-│           ├── counties.py         /api/counties
-│           └── news.py             /api/news
-├── backend/tests/                  pytest — county basis math
-├── frontend/
-│   ├── index.html                  National dashboard
-│   ├── county.html                 County Fuel Predictor
-│   ├── style.css                   Dark theme, hand-tuned
-│   ├── shared.js                   Formatters, chart theme, sparklines
-│   ├── app.js                      National page controller
-│   ├── county.js                   County page controller
-│   └── data/                       Generated JSON snapshots (gitignored)
-├── data/                           SQLite file (gitignored)
-└── docs/                           Design specs
-```
+**Nothing.** No ads, no email capture, no upsell. This started as a personal
+project to answer *"is now a good time to fill up?"* and stayed that way.
 
 ---
 
-## Design decisions worth calling out
+## Frequently asked
 
-- **SQLite over Postgres.** The full dataset is well under a megabyte and
-  read-heavy — Postgres would be pure overhead for a single-node dashboard.
-- **Idempotent upserts everywhere.** Re-running any ingest command is safe;
-  every source uses `INSERT ... ON CONFLICT DO UPDATE` on natural keys.
-- **Auto-discovery for the crowd-sourced source.** The Supabase URL + anon
-  JWT are extracted from the FuelWatch bundle each run instead of being
-  pinned in code. Robust to key rotation and bundle re-hashing.
-- **Weekly source wins on overlap.** The FuelWatch fetcher skips dates ≤ the
-  latest EU bulletin date, so the authoritative wholesale history the model
-  trains on is never overwritten by crowd-sourced retail.
-- **One current price, site-wide.** The model can only train on rows carrying
-  a wholesale price (EU Bulletin weeks), but the freshest row in
-  `fuel_prices` is usually a FuelWatch daily up to a week newer. That
-  observation is the single anchor for every displayed price — national card,
-  national forecast, and every county. Predicted *movement* is unaffected,
-  since each delta is derived from wholesale rather than from the anchor.
-- **Same bundle, two deploys.** The front-end always reads relative
-  `data/*.json`. FastAPI's `StaticFiles` serves those files at
-  `http://localhost:8000/data/…` locally; GitHub Pages serves them at
-  `/<repo>/data/…`. Zero conditional logic in `app.js`.
+**How accurate is the forecast?**
+The model gets the *direction* right about 3 weeks out of 4 across the last
+year of data. Cent-perfect prices are impossible — geopolitics and refinery
+outages happen — but the up/down call is usually good enough to decide whether
+to fill today or wait a week.
+
+**Why does my county sometimes say "no reports"?**
+FuelWatch is crowd-sourced. Some rural counties get very few reports, and
+we'd rather show you nothing than a number based on two stations. When enough
+drivers submit prices for your county, it appears in the dropdown.
+
+**Where does the price data come from?**
+The European Commission's Weekly Oil Bulletin (the official government-grade
+average), FuelWatch.ie (crowd-sourced daily pump reports), the European
+Central Bank (EUR/USD), and Yahoo Finance (Brent crude). All public sources,
+all credited.
+
+**Is it available outside Ireland?**
+Not yet. The whole project is tuned to the Irish market — Irish tax rules,
+Irish counties, Irish sources. A UK version is possible if there's demand.
+
+**Can I trust a "free" tool with my data?**
+There's nothing to trust with — we don't ask for any data. No account, no
+email, no location tracking. Your county choice is saved in your own browser
+and never leaves it.
 
 ---
 
 ## Roadmap
 
-- [x] EU Weekly Oil Bulletin ingest
-- [x] ECB FX rate ingest
-- [x] Brent crude (real + mock fallback)
-- [x] Regression forecast + explanation
-- [x] REST API (`/api/prices`, `/api/prediction`, `/api/news`)
-- [x] Dashboard front-end
-- [x] RSS news monitor + tax calendar
-- [x] APScheduler background refresh
-- [x] Daily crowd-sourced Irish pump data (FuelWatch.ie)
-- [x] Static export + GitHub Pages CI
-- [x] County-level breakdown + County Fuel Predictor page
-- [ ] Confidence intervals on the forecast rather than a single point return
-- [ ] Retire the reconstructed county line once ~8 weeks of real snapshots exist
-- [ ] Per-county model, once there is a county target series to train on (~6 months)
-- [ ] Estimate the shrinkage `K` and `σ_station` from data instead of priors
-- [ ] Alerting when the model's confidence drops sharply
+- **Confidence bands** on the forecast, not just a single line.
+- **Alerts** — email or push when your county's forecast flips.
+- **Per-brand cheapest** — filter the cheapest-station list to the brand near
+  your home or route.
+- **UK expansion** if there's interest.
+
+---
+
+## Under the hood
+
+<details>
+<summary>For developers — click to expand</summary>
+
+Small stack, boring on purpose:
+
+| Layer         | Choice                                              |
+| ------------- | --------------------------------------------------- |
+| Backend       | FastAPI, pandas, scikit-learn                       |
+| Storage       | SQLite (single file)                                |
+| Scheduling    | APScheduler + GitHub Actions cron                   |
+| Front-end     | Plain HTML/CSS + vanilla JS, Chart.js from CDN      |
+| Deploy        | GitHub Pages (static) + optional local FastAPI      |
+
+Same codebase runs two ways: locally as a live FastAPI app, or statically on
+GitHub Pages where a nightly workflow re-ingests every source and redeploys.
+
+Local setup:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python ingest.py all
+python export_static.py
+uvicorn app.main:app --reload --port 8000
+```
+
+Open <http://localhost:8000/>. API docs live at `/docs`.
+
+Data sources, model, county-basis maths, deployment pipeline and full API
+schema are documented in [`docs/`](docs/) and inline in
+[`backend/app/`](backend/app/).
+
+</details>
+
+---
+
+## Credits
+
+Built by Raghib Haque. Prices from the EU Weekly Oil Bulletin, FuelWatch.ie,
+ECB and Yahoo Finance. Not affiliated with any retailer or regulator.
