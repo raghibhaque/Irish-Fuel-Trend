@@ -209,21 +209,20 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     return df[keep].dropna()
 
 
-def _walk_forward_stats(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> tuple[float, float]:
-    """Mean out-of-sample R² and pooled residual std across TimeSeriesSplit folds.
+def _walk_forward_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
+    """Mean out-of-sample R² across TimeSeriesSplit folds.
 
-    Residual std is the standard deviation of (y_test - y_pred) pooled across
-    every OOS fold — the honest one-step-ahead forecast error the model
-    actually makes on unseen weeks. Used to build a calibrated probability
-    that the sign of the next return matches the model's prediction.
+    Residual std is *not* returned here — it is derived downstream from the
+    52-week expanding-window backtest instead, which reflects recent forecast
+    error rather than pooling all-time (calm periods deflate σ; crisis periods
+    inflate it, and neither is representative of today).
     """
     n = len(y)
     n_splits = min(CV_SPLITS, max(2, n // 20))
     if n_splits < 2 or n < 20:
-        return 0.0, float(np.std(y)) or 1e-6
+        return 0.0
     tscv = TimeSeriesSplit(n_splits=n_splits)
     scores: list[float] = []
-    residuals: list[np.ndarray] = []
     for train_idx, test_idx in tscv.split(X):
         if len(train_idx) < 10 or len(test_idx) < 2:
             continue
@@ -232,27 +231,66 @@ def _walk_forward_stats(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> tup
         # sklearn returns R² which can go negative for poor fits — that IS the
         # honest signal; do not clip.
         scores.append(float(m.score(X[test_idx], y[test_idx])))
-        residuals.append(y[test_idx] - m.predict(X[test_idx]))
-    r2 = float(np.mean(scores)) if scores else 0.0
-    resid_std = float(np.std(np.concatenate(residuals))) if residuals else float(np.std(y))
-    return r2, max(resid_std, 1e-6)
+    return float(np.mean(scores)) if scores else 0.0
 
 
 def _direction_probability(predicted_ret: float, resid_std: float, r2_cv: float) -> float:
     """P(actual return has same sign as prediction) under a Normal residual model.
 
-    Formula: Φ(|ŷ| / σ) where σ is the OOS residual std. If the model has
-    demonstrated no OOS skill (r2_cv <= 0) it is not trustworthy regardless
-    of |ŷ|, so we shrink toward 0.5 (a coin flip) proportional to r2 shortfall.
-    Never below 0.5 (below-50% means predicting the wrong direction — we would
-    flip the trend label instead).
+    Formula: Φ(|ŷ| / σ) where σ is the recent-backtest residual std. If the
+    model has zero OOS skill (r2_cv ≤ 0) the |ŷ| signal is untrustworthy, so
+    we shrink toward 0.5. For positive r2 we ramp toward full strength
+    exponentially — a model with r2_cv=0.2 has demonstrable directional edge
+    and the old linear ramp (0.5 + 0.5·r2) was throwing away real skill.
+    Empirical calibration in the caller can further correct any residual bias.
     """
     z = abs(predicted_ret) / resid_std
     p_raw = 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))  # Φ(z)
-    skill = max(0.0, min(1.0, r2_cv))
-    # Shrink toward coin flip when skill is weak, but never below 0.5.
-    p = 0.5 + (p_raw - 0.5) * (0.5 + 0.5 * skill)
+    skill = max(0.0, r2_cv)
+    # Exponential ramp: skill=0 → 0 multiplier, skill=0.2 → 0.865, skill=0.5 → 0.993.
+    skill_weight = 1.0 - math.exp(-10.0 * skill)
+    p = 0.5 + (p_raw - 0.5) * skill_weight
     return max(0.5, min(0.999, p))
+
+
+def _empirical_calibration(
+    backtest: list[dict],
+    resid_std: float,
+    r2_cv: float,
+) -> float:
+    """Ratio to multiply (confidence − 0.5) by, based on the 52-week backtest.
+
+    We compute the formula's implied confidence for every backtest week and
+    compare the average to the observed direction hit rate. If the model was
+    62% correct but the formula only claimed 55%, we scale the distance from
+    coin-flip by 12/5 = 2.4× so today's confidence reflects the model's
+    demonstrated calibration. Bidirectional (also shrinks over-confidence).
+    Shrunk toward 1.0 (no adjustment) by evidence weight sqrt(n)/(sqrt(n)+sqrt(20))
+    to guard against the 52 samples being unrepresentative.
+    """
+    if not backtest:
+        return 1.0
+    formula_confs: list[float] = []
+    hits = 0
+    for b in backtest:
+        pred = float(b.get("predicted_return", 0.0))
+        actual = float(b.get("actual_return", 0.0))
+        formula_confs.append(_direction_probability(pred, resid_std, r2_cv))
+        if (pred >= 0) == (actual >= 0):
+            hits += 1
+    n = len(backtest)
+    empirical = hits / n
+    formula_avg = sum(formula_confs) / n
+    formula_delta = max(formula_avg - 0.5, 1e-4)
+    empirical_delta = max(empirical - 0.5, 0.0)
+    raw_ratio = empirical_delta / formula_delta
+    # Cap the ratio at 2.0: a single week where |ŷ| is unusually large plus
+    # a favourable backtest can otherwise combine to produce implausible
+    # >95% confidence for a weekly retail-fuel forecast.
+    raw_ratio = min(raw_ratio, 2.0)
+    # Weight by evidence: 52 backtest weeks gives w ≈ 0.62 toward empirical.
+    w = math.sqrt(n) / (math.sqrt(n) + math.sqrt(20))
+    return 1.0 + (raw_ratio - 1.0) * w
 
 
 def _expanding_backtest(df: pd.DataFrame, weeks: int, alpha: float = 1.0) -> list[dict]:
@@ -306,7 +344,20 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     backtest = _expanding_backtest(df, BACKTEST_WEEKS)
 
     # Honest accuracy first — walk-forward CV on the same feature matrix.
-    r2_cv, resid_std = _walk_forward_stats(X, y)
+    r2_cv = _walk_forward_r2(X, y)
+
+    # Residual std sourced from the 52-week expanding-window backtest rather
+    # than pooled TimeSeriesSplit residuals. This reflects the model's RECENT
+    # forecast error — the number that matters for tomorrow's confidence —
+    # instead of a mean smeared across every historical regime.
+    if backtest:
+        bt_resids = np.array(
+            [b["actual_return"] - b["predicted_return"] for b in backtest]
+        )
+        resid_std = float(np.std(bt_resids)) or float(np.std(y)) or 1e-6
+    else:
+        resid_std = float(np.std(y)) or 1e-6
+    resid_std = max(resid_std, 1e-6)
 
     # Fit final model on all data for the forward prediction.
     model = Ridge(alpha=1.0)
@@ -327,7 +378,16 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     # Calibrated probability that the actual return has the same sign as the
     # prediction, given the OOS residual std and demonstrated OOS skill.
     # Naturally high when |prediction| is large vs typical error, low when not.
-    confidence = _direction_probability(predicted_ret, resid_std, r2_cv)
+    raw_conf = _direction_probability(predicted_ret, resid_std, r2_cv)
+    # Empirical recalibration against the 52w backtest: if the formula was
+    # systematically under- or over-confident against actual hit rate, scale
+    # the distance from coin-flip so today's number matches demonstrated skill.
+    cal_ratio = _empirical_calibration(backtest, resid_std, r2_cv)
+    # 0.9 is the honest ceiling — even a well-calibrated weekly retail-fuel
+    # forecast should not claim near-certainty; unmodelled shocks (Middle East
+    # flare-ups, refinery outages, budget-night duty changes) put a hard cap
+    # on how confident any purely macro model can be.
+    confidence = max(0.5, min(0.9, 0.5 + (raw_conf - 0.5) * cal_ratio))
 
     # Price prediction: pump Δ = wholesale × Δreturn × (1 + VAT), since Irish
     # duties + carbon + NORA levy are fixed per litre and VAT applies to the
