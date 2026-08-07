@@ -168,6 +168,22 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .status-chip[data-tone="warn"]::before { background: var(--flat); box-shadow: 0 0 8px rgba(214, 180, 90, 0.55); }
 .status-chip[data-tone="mute"]::before { background: var(--text-faint); box-shadow: none; }
 
+.dev-ingest {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border: 1px dashed var(--flat);
+    background: transparent;
+    color: var(--flat);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.dev-ingest:hover { background: rgba(214, 180, 90, 0.12); }
+.dev-ingest:disabled { opacity: 0.6; cursor: wait; }
+
 /* ------------------------------------------------------------- main grid */
 main {
     padding: 40px 32px 72px;

@@ -382,6 +382,17 @@ async function boot() {
     buildDropdown();
     selectCounty(initialCounty());
     attachDragCompare("price-chart", "dc-popup");
+    mountDevIngestButton({
+        onDone: async () => {
+            const [prices, counties] = await Promise.all([
+                jget("data/prices.json"),
+                jget("data/counties.json"),
+            ]);
+            nationalPrices = prices;
+            countyData = counties;
+            render();
+        },
+    });
 }
 
 boot().catch(err => {
