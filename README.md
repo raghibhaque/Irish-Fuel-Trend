@@ -16,10 +16,6 @@ Free. No login. Refreshed every morning.
 
 ![National dashboard](docs/screenshots/national.png)
 
-<p align="center">
-  <img src="docs/screenshots/mobile.png" alt="Mobile view" width="360">
-</p>
-
 ---
 
 ## Why people use it
