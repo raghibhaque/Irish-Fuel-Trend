@@ -111,46 +111,6 @@ and never leaves it.
 
 ---
 
-## Under the hood
-
-<details>
-<summary>For developers — click to expand</summary>
-
-Small stack, boring on purpose:
-
-| Layer         | Choice                                              |
-| ------------- | --------------------------------------------------- |
-| Backend       | FastAPI, pandas, scikit-learn                       |
-| Storage       | SQLite (single file)                                |
-| Scheduling    | APScheduler + GitHub Actions cron                   |
-| Front-end     | Plain HTML/CSS + vanilla JS, Chart.js from CDN      |
-| Deploy        | GitHub Pages (static) + optional local FastAPI      |
-
-Same codebase runs two ways: locally as a live FastAPI app, or statically on
-GitHub Pages where a nightly workflow re-ingests every source and redeploys.
-
-Local setup:
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python ingest.py all
-python export_static.py
-uvicorn app.main:app --reload --port 8000
-```
-
-Open <http://localhost:8000/>. API docs live at `/docs`.
-
-Data sources, model, county-basis maths, deployment pipeline and full API
-schema are documented in [`docs/`](docs/) and inline in
-[`backend/app/`](backend/app/).
-
-</details>
-
----
-
 ## Credits
 
 Built by Raghib Haque. Prices from the EU Weekly Oil Bulletin, FuelWatch.ie,
