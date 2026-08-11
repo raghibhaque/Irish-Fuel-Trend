@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -66,7 +66,7 @@
         </section>
 
         <section class="fillup-calc">
-            <h2>Fill-up impact <span class="muted">(vs 3-week outlook)</span></h2>
+            <h2>Fill-up impact <span class="muted">(vs chosen outlook)</span></h2>
             <div class="calc-row">
                 <label>Tank litres
                     <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
@@ -77,12 +77,21 @@
                         <option value="diesel">Diesel</option>
                     </select>
                 </label>
+                <label>Horizon
+                    <div class="horizon-chips" id="calc-horizon" role="tablist" aria-label="Forecast horizon">
+                        <button type="button" class="horizon-chip" data-weeks="1" role="tab">1w</button>
+                        <button type="button" class="horizon-chip" data-weeks="2" role="tab">2w</button>
+                        <button type="button" class="horizon-chip is-active" data-weeks="3" role="tab" aria-selected="true">3w</button>
+                        <button type="button" class="horizon-chip" data-weeks="6" role="tab">6w</button>
+                    </div>
+                </label>
                 <div class="calc-output">
                     <span class="calc-line" id="calc-now">Today: —</span>
                     <span class="calc-line" id="calc-then">In ~3 weeks: —</span>
                     <span class="calc-line strong" id="calc-diff">Difference: —</span>
                 </div>
             </div>
+            <p class="calc-hint muted">Weekly model — signal fades past ~4 weeks.</p>
         </section>
 
         <section class="chart-section">
@@ -186,6 +195,6 @@
     </footer>
 
     <script src="shared.js?v=7"></script>
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=11"></script>
 </body>
 </html>

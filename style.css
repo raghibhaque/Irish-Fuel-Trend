@@ -436,6 +436,44 @@ h2 .muted {
 }
 .calc-row input { width: 108px; }
 
+.horizon-chips {
+    display: inline-flex;
+    gap: 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+}
+.horizon-chip {
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    padding: 6px 12px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    border-radius: calc(var(--radius-sm) - 3px);
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.horizon-chip:hover { color: var(--text); }
+.horizon-chip.is-active {
+    background: var(--accent);
+    color: var(--bg-0);
+    font-weight: 600;
+}
+.horizon-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.calc-hint {
+    margin: 14px 0 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+}
+
 .calc-output {
     display: grid;
     gap: 4px;
