@@ -117,6 +117,38 @@ def test_direction_probability_stays_within_bounded_range():
             assert 0.5 <= p <= 0.999
 
 
+# ------------------------- spike guard -----------------------------
+
+def test_spike_guard_returns_latest_when_within_threshold():
+    trailing = [1.80, 1.81, 1.80, 1.79, 1.80, 1.81, 1.80]
+    assert m._spike_guarded_price(1.82, trailing) == 1.82  # +1.1%, within 5%
+
+
+def test_spike_guard_falls_back_to_median_when_latest_is_outlier():
+    trailing = [1.80, 1.81, 1.80, 1.79, 1.80, 1.81, 1.80]
+    # 1.99 is ~10.5% above median 1.80 — a crowd-report glitch shape.
+    assert m._spike_guarded_price(1.99, trailing) == pytest.approx(1.80)
+
+
+def test_spike_guard_accepts_latest_when_history_is_thin():
+    """Without at least 4 prior points, we cannot defensibly declare a spike."""
+    assert m._spike_guarded_price(1.99, [1.80, 1.80]) == 1.99
+
+
+def test_spike_guard_symmetric_for_downward_spikes():
+    trailing = [1.80, 1.81, 1.80, 1.79, 1.80, 1.81, 1.80]
+    assert m._spike_guarded_price(1.60, trailing) == pytest.approx(1.80)
+
+
+# --------------------------- CV embargo ---------------------------
+
+def test_walk_forward_uses_a_positive_gap_between_train_and_test():
+    """The longest raw window inside the feature stack (6-week Brent return)
+    must not be shared between the newest training row and the first test
+    target — a positive `gap` in TimeSeriesSplit enforces the embargo."""
+    assert m.CV_GAP >= 6
+
+
 # ----------------------- empirical calibration --------------------
 
 def test_empirical_calibration_is_neutral_with_no_backtest_rows():
@@ -166,3 +198,27 @@ def test_train_and_predict_smoke_produces_sane_diesel_output():
     assert p.product_symbol == "ULSD"
     assert p.predicted_pump_3w_eur_per_l > 0
     assert set(p.coefficients.keys()) >= set(m.FEATURE_COLS) | {"_intercept"}
+
+
+# The README pitches the model on its directional accuracy, so a silent
+# regression below coin-flip is exactly the failure mode a test should catch.
+# The floor is set deliberately below observed hit-rate (petrol ~73%, diesel
+# ~71%) so ordinary re-fitting noise doesn't trip it, but any structural
+# breakage (feature bug, calibration inversion, retrained on shuffled data)
+# would.
+HIT_RATE_FLOOR = 0.55
+
+
+@pytest.mark.skipif(not DB_PATH.exists(), reason="fuel_trend.db not present")
+@pytest.mark.parametrize("fuel", ["petrol", "diesel"])
+def test_backtest_hit_rate_clears_the_documented_floor(fuel):
+    p = m.train_and_predict(fuel)
+    bt = p.backtest
+    assert len(bt) >= 26, "backtest window too short to assert a hit-rate floor"
+    hits = sum(1 for row in bt if row["direction_correct"])
+    rate = hits / len(bt)
+    assert rate >= HIT_RATE_FLOOR, (
+        f"{fuel} 52w hit-rate {rate:.2%} is below the {HIT_RATE_FLOOR:.0%} floor "
+        f"the README promises. Investigate a feature or calibration regression "
+        f"before shipping."
+    )

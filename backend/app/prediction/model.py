@@ -68,6 +68,21 @@ FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
 
 CV_SPLITS = 5
 
+# Embargo between train and test folds in walk-forward CV. The longest raw
+# window inside the feature stack is the 6-week Brent return (built from
+# `brent[t-1]` and `brent[t-7]`), so successive train/test rows share
+# overlapping underlying data. `gap=6` shifts each test fold six weeks
+# beyond the last training row, guaranteeing no shared source data between
+# the newest training feature window and the first test target.
+CV_GAP = 6
+
+# Backtest split. The 52-week expanding-window backtest is used for both the
+# residual std (widens/narrows the price band) and the empirical calibration
+# ratio (scales confidence to match observed hit-rate). Feeding the same rows
+# into both couples the two knobs; splitting the backtest in half decouples
+# them — earlier weeks size the band, later weeks calibrate confidence.
+CALIBRATION_SPLIT = 26
+
 # Random seed for the tree ensemble components — fixed so training is
 # deterministic across the daily refresh (a shifting forecast for the same
 # input would be indistinguishable from real signal by the user).
@@ -143,6 +158,35 @@ class TrendPrediction:
     backtest: list                        # list[dict] of recent one-step-ahead calls vs actual
 
 
+# Reject the freshest daily row when it deviates from the trailing week's
+# median by more than this. Real Irish pump moves rarely exceed ~2%/week —
+# 5% is well outside plausible signal and characteristic of a bad crowd
+# report or a source glitch anchoring the whole site's headline price.
+PUMP_SPIKE_THRESHOLD = 0.05
+
+
+def _spike_guarded_price(
+    latest: float,
+    trailing: list[float],
+    threshold: float = PUMP_SPIKE_THRESHOLD,
+) -> float:
+    """Return `latest` unless it deviates from the trailing median by more than
+    `threshold`, in which case return the trailing median.
+
+    Split out so it can be tested without touching the database.
+    """
+    # Fewer than 4 prior points is not enough context to call the latest an
+    # outlier — accept it and move on rather than pretending certainty.
+    if len(trailing) < 4:
+        return latest
+    prior_median = float(np.median(trailing))
+    if prior_median <= 0:
+        return latest
+    if abs(latest - prior_median) / prior_median > threshold:
+        return prior_median
+    return latest
+
+
 def _latest_observed_pump(fuel_type: str) -> float | None:
     """Freshest observed pump price, whatever source produced it.
 
@@ -152,14 +196,22 @@ def _latest_observed_pump(fuel_type: str) -> float | None:
     headlines. Anchoring the forecast here keeps a single current price across
     the whole site; the predicted movement is unaffected because every delta
     below is derived from wholesale, not from the anchor.
+
+    Spike guard: the freshest row is discarded in favour of the trailing
+    median when it deviates by more than PUMP_SPIKE_THRESHOLD. A single
+    outlier crowd report otherwise anchors every card and county for a day.
     """
     with connection() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             "SELECT price_eur_per_litre FROM fuel_prices "
-            "WHERE country='IE' AND fuel_type=? ORDER BY date DESC LIMIT 1",
+            "WHERE country='IE' AND fuel_type=? ORDER BY date DESC LIMIT 8",
             (fuel_type,),
-        ).fetchone()
-    return float(row["price_eur_per_litre"]) if row else None
+        ).fetchall()
+    if not rows:
+        return None
+    latest = float(rows[0]["price_eur_per_litre"])
+    trailing = [float(r["price_eur_per_litre"]) for r in rows[1:]]
+    return _spike_guarded_price(latest, trailing)
 
 
 def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -283,7 +335,7 @@ def _walk_forward_r2(X: np.ndarray, y: np.ndarray) -> float:
     n_splits = min(CV_SPLITS, max(2, n // 20))
     if n_splits < 2 or n < 20:
         return 0.0
-    tscv = TimeSeriesSplit(n_splits=n_splits)
+    tscv = TimeSeriesSplit(n_splits=n_splits, gap=CV_GAP)
     scores: list[float] = []
     for train_idx, test_idx in tscv.split(X):
         if len(train_idx) < 10 or len(test_idx) < 2:
@@ -405,13 +457,24 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     # Honest accuracy first — walk-forward CV on the same feature matrix.
     r2_cv = _walk_forward_r2(X, y)
 
-    # Residual std sourced from the 52-week expanding-window backtest rather
-    # than pooled TimeSeriesSplit residuals. This reflects the model's RECENT
-    # forecast error — the number that matters for tomorrow's confidence —
-    # instead of a mean smeared across every historical regime.
-    if backtest:
+    # Residual std and empirical calibration must come from *disjoint* slices
+    # of the backtest — using the same rows for both couples the band width
+    # and confidence-scaling knobs and lets one lucky window inflate both.
+    # Split at `CALIBRATION_SPLIT`: earlier weeks size the residual std,
+    # later weeks feed the empirical calibration below. Both slices still
+    # reflect recent (last-year) behaviour, not pooled all-history.
+    if backtest and len(backtest) > CALIBRATION_SPLIT:
+        std_slice = backtest[:-CALIBRATION_SPLIT]
+        calib_slice = backtest[-CALIBRATION_SPLIT:]
+    else:
+        # Not enough backtest to split — fall back to using the whole window
+        # for the std and skipping empirical calibration downstream.
+        std_slice = backtest
+        calib_slice = []
+
+    if std_slice:
         bt_resids = np.array(
-            [b["actual_return"] - b["predicted_return"] for b in backtest]
+            [b["actual_return"] - b["predicted_return"] for b in std_slice]
         )
         resid_std = float(np.std(bt_resids)) or float(np.std(y)) or 1e-6
     else:
@@ -443,10 +506,11 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     # prediction, given the OOS residual std and demonstrated OOS skill.
     # Naturally high when |prediction| is large vs typical error, low when not.
     raw_conf = _direction_probability(predicted_ret, resid_std, r2_cv)
-    # Empirical recalibration against the 52w backtest: if the formula was
-    # systematically under- or over-confident against actual hit rate, scale
-    # the distance from coin-flip so today's number matches demonstrated skill.
-    cal_ratio = _empirical_calibration(backtest, resid_std, r2_cv)
+    # Empirical recalibration against the held-out calibration slice (the
+    # more recent half of the backtest): if the formula was systematically
+    # under- or over-confident against actual hit rate, scale the distance
+    # from coin-flip so today's number matches demonstrated skill.
+    cal_ratio = _empirical_calibration(calib_slice, resid_std, r2_cv)
     # 0.9 is the honest ceiling — even a well-calibrated weekly retail-fuel
     # forecast should not claim near-certainty; unmodelled shocks (Middle East
     # flare-ups, refinery outages, budget-night duty changes) put a hard cap
