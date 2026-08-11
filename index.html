@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=9">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -108,10 +108,12 @@
                 </label>
             </div>
             <div class="chart-wrap">
-                <canvas id="price-chart"></canvas>
+                <canvas id="price-chart" role="img"
+                        aria-label="Historical petrol and diesel pump prices for Ireland"></canvas>
                 <div class="dc-popup" id="dc-popup" hidden></div>
             </div>
             <p class="chart-hint">Tip: click and drag between two points to compare.</p>
+            <p id="chart-a11y-summary" class="sr-only" aria-live="polite"></p>
         </section>
 
         <section class="predictions">
@@ -194,7 +196,7 @@
         </div>
     </footer>
 
-    <script src="shared.js?v=7"></script>
-    <script src="app.js?v=11"></script>
+    <script src="shared.js?v=9"></script>
+    <script src="app.js?v=14"></script>
 </body>
 </html>

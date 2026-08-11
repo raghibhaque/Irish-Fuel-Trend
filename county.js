@@ -111,9 +111,13 @@ function renderBrandStations(entry) {
     }[b] || b);
     list.innerHTML = items.map(s => {
         const where = [s.town, s.address].filter(Boolean).join(" · ");
+        // Prefer the derived Google Maps URL — it's built from numeric lat/lon,
+        // so cannot carry an attacker-controlled scheme. Only fall through to
+        // the brand-published `s.url` when coordinates are missing, and even
+        // then validate the scheme through safeUrl.
         const mapUrl = (s.latitude != null && s.longitude != null)
-            ? `https://www.google.com/maps?q=${s.latitude},${s.longitude}`
-            : s.url;
+            ? `https://www.google.com/maps?q=${Number(s.latitude)},${Number(s.longitude)}`
+            : safeUrl(s.url);
         const name = mapUrl
             ? `<a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener">${escapeHtml(s.name)}</a>`
             : escapeHtml(s.name);

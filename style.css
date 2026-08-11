@@ -5,6 +5,20 @@
           mono numerics, thin gridlines, LED status chips.
    ===================================================================== */
 
+/* Screen-reader-only text — visually hidden but announced by assistive tech.
+   Standard WAI recipe: clip to a 1×1 rect so it never affects layout. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 :root {
     /* ---- petroleum palette ---- */
     --bg:            #0a0b0d;
@@ -728,6 +742,16 @@ h2 .muted {
     border-color: rgba(214, 180, 90, 0.4);
 }
 .trend-pill[data-trend="flat"]::before { content: "→"; font-size: 0.85em; }
+/* Emitted when the Brent feed fell back to the synthetic generator: the
+ * pipeline still runs so the layout doesn't collapse, but nothing on the
+ * card is a real forecast. Loud, muted colour so the user sees it before
+ * the number. */
+.trend-pill[data-trend="unknown"] {
+    background: rgba(180, 140, 220, 0.14);
+    color: #b48cdc;
+    border-color: rgba(180, 140, 220, 0.45);
+}
+.trend-pill[data-trend="unknown"]::before { content: "?"; font-size: 0.85em; }
 
 .pred-explain {
     margin: 0 0 20px;

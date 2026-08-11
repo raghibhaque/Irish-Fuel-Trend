@@ -37,9 +37,23 @@ async function jget(path) {
 }
 
 function escapeHtml(s) {
+    // null/undefined would otherwise stringify to the literal "null"/"undefined"
+    // and render in tooltips + labels. Empty string is the safe default.
+    if (s == null) return "";
     return String(s).replace(/[&<>"']/g, c => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
+}
+
+// Attribute-safe URL for href. Rejects anything that isn't a plain http(s) URL
+// — javascript:, data:, vbscript: and file: all become empty string, so the
+// caller can drop the link entirely rather than shipping a live vector. RSS
+// enclosures and brand-catalogue URLs are the untrusted paths this guards.
+function safeUrl(u) {
+    if (u == null) return "";
+    const s = String(u).trim();
+    if (!/^https?:\/\//i.test(s)) return "";
+    return escapeHtml(s);
 }
 
 // RSS summaries arrive as HTML fragments (<p>, <a>, <ul>, entities). Strip
@@ -325,8 +339,12 @@ function attachDragCompare(canvasId, popupId) {
 
 // ------------------ range filtering ------------------
 function cutoffIso(weeks) {
+    // Series dates are UTC-anchored (ingest snapshots and EU Bulletin weeks are
+    // stored as UTC calendar dates). Using local-time setDate here can shift
+    // the cutoff by a day around midnight for European users and drop the
+    // freshest row from a range — subtract in UTC to keep it aligned.
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - weeks * 7);
+    cutoff.setUTCDate(cutoff.getUTCDate() - weeks * 7);
     return cutoff.toISOString().slice(0, 10);
 }
 
@@ -354,6 +372,10 @@ function mountDevIngestButton({ onDone } = {}) {
     btn.className = "dev-ingest";
     btn.textContent = "⟳ Ingest";
     btn.title = "Dev: refresh news + Brent (loopback only)";
+    // Screen readers otherwise miss the status swap on click ("Ingesting…"
+    // → "✓ done"). Polite so it does not interrupt in-flight speech.
+    btn.setAttribute("aria-live", "polite");
+    btn.setAttribute("aria-atomic", "true");
 
     btn.addEventListener("click", async () => {
         const original = btn.textContent;
