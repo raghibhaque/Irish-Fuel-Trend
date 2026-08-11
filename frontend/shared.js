@@ -372,6 +372,10 @@ function mountDevIngestButton({ onDone } = {}) {
     btn.className = "dev-ingest";
     btn.textContent = "⟳ Ingest";
     btn.title = "Dev: refresh news + Brent (loopback only)";
+    // Screen readers otherwise miss the status swap on click ("Ingesting…"
+    // → "✓ done"). Polite so it does not interrupt in-flight speech.
+    btn.setAttribute("aria-live", "polite");
+    btn.setAttribute("aria-atomic", "true");
 
     btn.addEventListener("click", async () => {
         const original = btn.textContent;

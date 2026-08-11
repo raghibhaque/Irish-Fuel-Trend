@@ -206,6 +206,24 @@ function renderChart(data) {
         data: { labels, datasets },
         options: opts,
     });
+
+    // Screen-reader summary — the canvas itself is opaque to assistive tech.
+    // This is not a full data table (that would be a much larger change), but
+    // it covers the two headline questions a sighted user gets at a glance:
+    // latest values and the range over the selected window.
+    const summary = document.getElementById("chart-a11y-summary");
+    if (summary) {
+        const pRange = petrolHist.length ? [Math.min(...petrolHist), Math.max(...petrolHist)] : null;
+        const dRange = dieselHist.length ? [Math.min(...dieselHist), Math.max(...dieselHist)] : null;
+        const lastP = petrolHist[petrolHist.length - 1];
+        const lastD = dieselHist[dieselHist.length - 1];
+        const parts = [];
+        if (lastP != null) parts.push(`Petrol latest €${lastP.toFixed(3)} per litre` +
+            (pRange ? `, range €${pRange[0].toFixed(3)}–€${pRange[1].toFixed(3)}` : ""));
+        if (lastD != null) parts.push(`Diesel latest €${lastD.toFixed(3)} per litre` +
+            (dRange ? `, range €${dRange[0].toFixed(3)}–€${dRange[1].toFixed(3)}` : ""));
+        summary.textContent = parts.join(". ") + (parts.length ? "." : "");
+    }
 }
 
 // ------------------ prediction ------------------
@@ -315,13 +333,20 @@ function renderDecision(data) {
 
 function renderBacktest(list, points) {
     if (!list) return;
+    // `list` is a <ul> containing zero-width LEDs — the state was previously
+    // conveyed only by CSS colour keyed off data-hit. Add an aria-label per
+    // item so screen readers get the same information, and a role on the
+    // list itself so it announces as a list of results rather than markup.
+    list.setAttribute("role", "list");
+    list.setAttribute("aria-label", "Recent one-week direction calls, oldest to newest");
     list.innerHTML = points.map(pt => {
         const dir  = pt.predicted_return >= 0 ? "up" : "down";
         const act  = pt.actual_return >= 0 ? "up" : "down";
         const err  = (pt.actual_pump_eur_per_l - pt.predicted_pump_eur_per_l);
         const errS = `${err >= 0 ? "+" : ""}${err.toFixed(3)}`;
         const tip  = `${fmtDMY(pt.date)}\nPredicted ${dir} (${fmtPct(pt.predicted_return)}) → €${pt.predicted_pump_eur_per_l.toFixed(3)}\nActual ${act} (${fmtPct(pt.actual_return)}) → €${pt.actual_pump_eur_per_l.toFixed(3)}\nError €${errS}`;
-        return `<li data-hit="${pt.direction_correct}" title="${escapeHtml(tip)}"></li>`;
+        const label = `${fmtDMY(pt.date)}: predicted ${dir}, actually ${act} — ${pt.direction_correct ? "hit" : "miss"}`;
+        return `<li data-hit="${pt.direction_correct}" role="listitem" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}"></li>`;
     }).join("");
 }
 
