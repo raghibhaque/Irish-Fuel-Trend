@@ -16,7 +16,12 @@ Features (per fuel):
 Product = RBOB for petrol, ULSD (NY heating oil) for diesel. Refined-product
 futures move with refining margins that pure crude misses.
 
-Regressor: Ridge (alpha=1.0). Regularises correlated multi-lag features.
+Regressor: equal-weight ensemble of Ridge (alpha=1.0) + shallow RandomForest
++ shallow GradientBoosting. Ridge captures the linear pass-through from
+crude/product returns; the two tree learners pick up small non-linear
+interactions (e.g. large-Brent-move weeks) that Ridge cannot represent. The
+three are averaged rather than stacked to keep the blend robust on the ~500
+weekly rows available — a stacker would overfit.
 
 Accuracy reporting: walk-forward CV via `TimeSeriesSplit` (5 folds) produces
 `r2_cv` — the honest out-of-sample number. In-sample `r2_in_sample` is kept
@@ -31,6 +36,7 @@ import math
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import TimeSeriesSplit
 
@@ -61,6 +67,53 @@ BAND_Z_50PCT = 0.6745
 FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
 
 CV_SPLITS = 5
+
+# Random seed for the tree ensemble components — fixed so training is
+# deterministic across the daily refresh (a shifting forecast for the same
+# input would be indistinguishable from real signal by the user).
+ENSEMBLE_SEED = 0
+
+
+def _new_ensemble(alpha: float = 1.0) -> list:
+    """Factory for the three-model ensemble used everywhere in this module.
+
+    Ridge:   linear baseline; regularises the correlated multi-lag features.
+    RForest: shallow trees; picks up threshold effects (e.g. crack-spread
+             flips) that a linear model cannot see. Depth capped to prevent
+             the ~500-row training set from being memorised.
+    GBoost:  additive, similarly shallow. Slower to overfit than a single
+             deep tree; complements RForest by learning residuals.
+    """
+    return [
+        Ridge(alpha=alpha),
+        RandomForestRegressor(
+            n_estimators=150,
+            max_depth=4,
+            min_samples_leaf=3,
+            random_state=ENSEMBLE_SEED,
+            n_jobs=1,
+        ),
+        GradientBoostingRegressor(
+            n_estimators=120,
+            max_depth=3,
+            learning_rate=0.05,
+            random_state=ENSEMBLE_SEED,
+        ),
+    ]
+
+
+def _ensemble_fit_predict(X_tr: np.ndarray, y_tr: np.ndarray, X_te: np.ndarray) -> np.ndarray:
+    """Fit each ensemble member on `(X_tr, y_tr)` and return the mean prediction on `X_te`.
+
+    Equal weighting keeps the blend robust when one component's fold R² is
+    unlucky — inverse-error weighting was tried and was worse in walk-forward
+    testing because the per-fold error is itself high-variance on this dataset.
+    """
+    preds = np.zeros(len(X_te))
+    for m in _new_ensemble():
+        m.fit(X_tr, y_tr)
+        preds = preds + m.predict(X_te)
+    return preds / 3.0
 
 # How many most-recent weeks to backtest with expanding-window one-step-ahead
 # predictions. 52 gives the frontend a full year to compute direction hit-rate
@@ -209,8 +262,17 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     return df[keep].dropna()
 
 
-def _walk_forward_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
-    """Mean out-of-sample R² across TimeSeriesSplit folds.
+def _r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """R² with the sklearn convention (can go negative for poor fits)."""
+    ss_res = float(np.sum((y_true - y_pred) ** 2))
+    ss_tot = float(np.sum((y_true - float(np.mean(y_true))) ** 2))
+    if ss_tot <= 0:
+        return 0.0
+    return 1.0 - ss_res / ss_tot
+
+
+def _walk_forward_r2(X: np.ndarray, y: np.ndarray) -> float:
+    """Mean out-of-sample R² of the ensemble across TimeSeriesSplit folds.
 
     Residual std is *not* returned here — it is derived downstream from the
     52-week expanding-window backtest instead, which reflects recent forecast
@@ -226,11 +288,9 @@ def _walk_forward_r2(X: np.ndarray, y: np.ndarray, alpha: float = 1.0) -> float:
     for train_idx, test_idx in tscv.split(X):
         if len(train_idx) < 10 or len(test_idx) < 2:
             continue
-        m = Ridge(alpha=alpha)
-        m.fit(X[train_idx], y[train_idx])
-        # sklearn returns R² which can go negative for poor fits — that IS the
-        # honest signal; do not clip.
-        scores.append(float(m.score(X[test_idx], y[test_idx])))
+        preds = _ensemble_fit_predict(X[train_idx], y[train_idx], X[test_idx])
+        # Do not clip a negative score — that IS the honest signal.
+        scores.append(_r2(y[test_idx], preds))
     return float(np.mean(scores)) if scores else 0.0
 
 
@@ -293,13 +353,14 @@ def _empirical_calibration(
     return 1.0 + (raw_ratio - 1.0) * w
 
 
-def _expanding_backtest(df: pd.DataFrame, weeks: int, alpha: float = 1.0) -> list[dict]:
-    """One-step-ahead expanding-window predictions for the last `weeks` rows.
+def _expanding_backtest(df: pd.DataFrame, weeks: int) -> list[dict]:
+    """One-step-ahead expanding-window ensemble predictions for the last `weeks` rows.
 
-    For each of the last `weeks` weeks, train Ridge on all data up to (but
-    excluding) that week, predict, and record predicted vs actual return + the
-    implied pump price shift. Gives an honest "here's what the model would have
-    said in real time" strip for the UI.
+    For each of the last `weeks` weeks, fit the ensemble on all data up to
+    (but excluding) that week, predict, and record predicted vs actual return
+    plus the implied pump price shift. Gives an honest "here's what the model
+    would have said in real time" strip for the UI, and its residuals feed
+    both `resid_std` and the empirical confidence calibration downstream.
     """
     X_all = df[FEATURE_COLS].values
     y_all = df["target_ret"].values
@@ -310,9 +371,7 @@ def _expanding_backtest(df: pd.DataFrame, weeks: int, alpha: float = 1.0) -> lis
     start = max(30, n - weeks)  # ensure at least 30 training rows for the first call
     out: list[dict] = []
     for i in range(start, n):
-        m = Ridge(alpha=alpha)
-        m.fit(X_all[:i], y_all[:i])
-        pred = float(m.predict(X_all[i:i+1])[0])
+        pred = float(_ensemble_fit_predict(X_all[:i], y_all[:i], X_all[i:i+1])[0])
         actual = float(y_all[i])
         # Pump-price movement implied by the prediction for week i, using the
         # wholesale price at week i-1 (the info the model would have had).
@@ -359,14 +418,19 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         resid_std = float(np.std(y)) or 1e-6
     resid_std = max(resid_std, 1e-6)
 
-    # Fit final model on all data for the forward prediction.
-    model = Ridge(alpha=1.0)
-    model.fit(X, y)
-    r2_in_sample = float(model.score(X, y))
+    # Fit final ensemble on all data for the forward prediction. Ridge is kept
+    # as a named member so its coefficients (interpretable, unlike RF/GB) can
+    # still be surfaced downstream for the explanation string.
+    members = _new_ensemble()
+    for m in members:
+        m.fit(X, y)
+    ridge_model = next(m for m in members if isinstance(m, Ridge))
+    in_sample_preds = np.mean(np.stack([m.predict(X) for m in members]), axis=0)
+    r2_in_sample = _r2(y, in_sample_preds)
 
     latest = df.iloc[-1]
     x_next = latest[FEATURE_COLS].values.reshape(1, -1)
-    predicted_ret = float(model.predict(x_next)[0])
+    predicted_ret = float(np.mean([m.predict(x_next)[0] for m in members]))
 
     if predicted_ret > FLAT_BAND:
         trend = "up"
@@ -422,8 +486,12 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         "latest_wholesale_eur_per_l": float(latest["wholesale"]),
     }
 
-    coefficients = {name: float(coef) for name, coef in zip(FEATURE_COLS, model.coef_)}
-    coefficients["_intercept"] = float(model.intercept_)
+    # Coefficients reflect the Ridge member only — surfaced for the
+    # explanation string, which reads feature signs to describe direction.
+    # RF/GB contribute to the numeric prediction but do not expose signed
+    # linear weights, so they are intentionally omitted here.
+    coefficients = {name: float(coef) for name, coef in zip(FEATURE_COLS, ridge_model.coef_)}
+    coefficients["_intercept"] = float(ridge_model.intercept_)
 
     return TrendPrediction(
         fuel_type=fuel_type,
