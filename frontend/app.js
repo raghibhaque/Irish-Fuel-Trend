@@ -8,7 +8,10 @@ let priceData = null;   // full history, cached in memory; range selector filter
 let predictionData = null;  // cached so calculator can react to input changes without refetch
 
 // ------------------ prices + chart ------------------
+let currentRangeWeeks = 26;
+
 async function loadPrices(weeks = 26) {
+    currentRangeWeeks = weeks;
     if (!priceData) priceData = await jget("data/prices.json");
     const view = {
         petrol: sliceByWeeks(priceData.petrol, weeks),
@@ -29,42 +32,179 @@ async function loadPrices(weeks = 26) {
     renderChart(view);
 }
 
+// Push `days` calendar days onto an ISO yyyy-mm-dd date.
+function shiftIso(iso, days) {
+    const d = new Date(iso);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
+// Build forecast tail datasets (line + band) per fuel. Returns null when
+// prediction data isn't loaded yet — chart still renders history-only.
+function forecastDatasetsFor(fuel, histPointsLen, lastIso, lastPrice) {
+    if (!predictionData || !lastIso || lastPrice == null) return null;
+    const p = predictionData[fuel];
+    if (!p) return null;
+    // The forecast segment anchors on the last historical point so the line
+    // visually continues from history into projection without a gap.
+    const nulls = Array(histPointsLen - 1).fill(null);
+    const line = [...nulls, lastPrice, p.predicted_pump_eur_per_l, p.predicted_pump_3w_eur_per_l];
+    // 50% band widths: model ships symmetric high/low for 1w. For 3w we don't
+    // ship a native band, so we scale the 1w half-width by sqrt(3) (random-walk
+    // approximation on weekly returns) — signposts uncertainty widens.
+    const half1w = (p.predicted_pump_high_eur_per_l - p.predicted_pump_low_eur_per_l) / 2;
+    const half3w = half1w * Math.sqrt(3);
+    const low  = [...nulls, lastPrice, p.predicted_pump_low_eur_per_l,  p.predicted_pump_3w_eur_per_l - half3w];
+    const high = [...nulls, lastPrice, p.predicted_pump_high_eur_per_l, p.predicted_pump_3w_eur_per_l + half3w];
+    return { line, low, high };
+}
+
 function renderChart(data) {
-    const labels = data.petrol.points.map(p => fmtDMY(p.date));
-    const petrol = data.petrol.points.map(p => p.price_eur_per_litre);
-    const diesel = data.diesel.points.map(p => p.price_eur_per_litre);
+    const histLabels = data.petrol.points.map(p => fmtDMY(p.date));
+    const petrolHist = data.petrol.points.map(p => p.price_eur_per_litre);
+    const dieselHist = data.diesel.points.map(p => p.price_eur_per_litre);
+
+    const lastIso = data.petrol.latest?.date || data.diesel.latest?.date;
+    const wantForecast = !!(predictionData && lastIso);
+    const forecastLabels = wantForecast
+        ? [fmtDMY(shiftIso(lastIso, 7)), fmtDMY(shiftIso(lastIso, 21))]
+        : [];
+    const labels = [...histLabels, ...forecastLabels];
+
+    const histLen = histLabels.length;
+    const tail = (arr) => wantForecast ? [...arr, null, null] : arr;
+
+    const datasets = [
+        {
+            label: "Petrol (95)",
+            data: tail(petrolHist),
+            borderColor: FUEL_COLORS.petrol.line,
+            backgroundColor: FUEL_COLORS.petrol.fill,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2,
+            fill: true,
+        },
+        {
+            label: "Diesel",
+            data: tail(dieselHist),
+            borderColor: FUEL_COLORS.diesel.line,
+            backgroundColor: FUEL_COLORS.diesel.fill,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2,
+            fill: true,
+        },
+    ];
+
+    if (wantForecast) {
+        const lastPetrol = data.petrol.latest?.price_eur_per_litre;
+        const lastDiesel = data.diesel.latest?.price_eur_per_litre;
+        const pFcast = forecastDatasetsFor("petrol", histLen, lastIso, lastPetrol);
+        const dFcast = forecastDatasetsFor("diesel", histLen, lastIso, lastDiesel);
+
+        // Band is a pair of hidden line datasets — the upper fills down to the
+        // lower via `fill: '-1'`. Order matters: low BEFORE high in the array.
+        if (pFcast) {
+            datasets.push(
+                {
+                    label: "Petrol 50% band low",
+                    data: pFcast.low,
+                    borderColor: "rgba(0,0,0,0)",
+                    backgroundColor: "rgba(0,0,0,0)",
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.25,
+                    spanGaps: false,
+                    // Hidden from legend + tooltip — it exists purely as the
+                    // fill anchor for the "band high" dataset.
+                    __hideLegend: true,
+                    __hideTooltip: true,
+                },
+                {
+                    label: "Petrol 50% band",
+                    data: pFcast.high,
+                    borderColor: "rgba(0,0,0,0)",
+                    backgroundColor: "rgba(255, 182, 72, 0.18)",
+                    pointRadius: 0,
+                    fill: "-1",
+                    tension: 0.25,
+                    spanGaps: false,
+                    __hideTooltip: true,
+                },
+                {
+                    label: "Petrol forecast",
+                    data: pFcast.line,
+                    borderColor: FUEL_COLORS.petrol.line,
+                    backgroundColor: "rgba(0,0,0,0)",
+                    borderDash: [4, 4],
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointBackgroundColor: FUEL_COLORS.petrol.line,
+                    fill: false,
+                    tension: 0.25,
+                    spanGaps: false,
+                },
+            );
+        }
+        if (dFcast) {
+            datasets.push(
+                {
+                    label: "Diesel 50% band low",
+                    data: dFcast.low,
+                    borderColor: "rgba(0,0,0,0)",
+                    backgroundColor: "rgba(0,0,0,0)",
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.25,
+                    spanGaps: false,
+                    __hideLegend: true,
+                    __hideTooltip: true,
+                },
+                {
+                    label: "Diesel 50% band",
+                    data: dFcast.high,
+                    borderColor: "rgba(0,0,0,0)",
+                    backgroundColor: "rgba(123, 211, 207, 0.18)",
+                    pointRadius: 0,
+                    fill: "-1",
+                    tension: 0.25,
+                    spanGaps: false,
+                    __hideTooltip: true,
+                },
+                {
+                    label: "Diesel forecast",
+                    data: dFcast.line,
+                    borderColor: FUEL_COLORS.diesel.line,
+                    backgroundColor: "rgba(0,0,0,0)",
+                    borderDash: [4, 4],
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointBackgroundColor: FUEL_COLORS.diesel.line,
+                    fill: false,
+                    tension: 0.25,
+                    spanGaps: false,
+                },
+            );
+        }
+    }
 
     const ctx = document.getElementById("price-chart").getContext("2d");
     if (chart) chart.destroy();
 
+    const opts = baseChartOptions();
+    // Hide legend entries flagged with __hideLegend, and suppress tooltip lines
+    // for datasets flagged with __hideTooltip (band anchors + fill layers).
+    opts.plugins.legend.labels.filter = (item, data) =>
+        !data.datasets[item.datasetIndex].__hideLegend;
+    const origLabel = opts.plugins.tooltip.callbacks.label;
+    opts.plugins.tooltip.callbacks.label = (c) =>
+        c.dataset.__hideTooltip ? null : origLabel(c);
+
     chart = new Chart(ctx, {
         type: "line",
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: "Petrol (95)",
-                    data: petrol,
-                    borderColor: FUEL_COLORS.petrol.line,
-                    backgroundColor: FUEL_COLORS.petrol.fill,
-                    tension: 0.25,
-                    pointRadius: 0,
-                    borderWidth: 2,
-                    fill: true,
-                },
-                {
-                    label: "Diesel",
-                    data: diesel,
-                    borderColor: FUEL_COLORS.diesel.line,
-                    backgroundColor: FUEL_COLORS.diesel.fill,
-                    tension: 0.25,
-                    pointRadius: 0,
-                    borderWidth: 2,
-                    fill: true,
-                },
-            ],
-        },
-        options: baseChartOptions(),
+        data: { labels, datasets },
+        options: opts,
     });
 }
 
@@ -97,6 +237,14 @@ async function loadPrediction() {
     renderDecision(data);
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
     updateCalculator();
+    // If the historical chart already rendered before predictionData arrived,
+    // redraw it so the forecast tail + confidence band appear.
+    if (priceData) {
+        renderChart({
+            petrol: sliceByWeeks(priceData.petrol, currentRangeWeeks),
+            diesel: sliceByWeeks(priceData.diesel, currentRangeWeeks),
+        });
+    }
 }
 
 // Hit-rate = fraction of last-N one-step-ahead calls whose direction matched.
