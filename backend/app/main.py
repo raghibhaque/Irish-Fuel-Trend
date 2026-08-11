@@ -29,8 +29,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+    # `*` origin paired with credentials is refused by every browser, and
+    # holding the credentials flag on regardless makes the misconfiguration
+    # look intentional. The API ships no cookies or auth tokens; leaving
+    # credentials off is the honest configuration.
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

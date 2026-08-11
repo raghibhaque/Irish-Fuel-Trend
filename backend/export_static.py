@@ -54,11 +54,13 @@ def _write(path: Path, payload: dict) -> None:
     logger.info("wrote %s (%d bytes)", path, path.stat().st_size)
 
 
-def export(out_dir: Path, use_lifespan: bool = True) -> dict:
-    # `use_lifespan=False` is used when export runs from inside an already-live
-    # FastAPI process (see routes/dev.py). The app lifespan starts and stops
-    # the APScheduler singleton — re-entering it would shut the parent app's
-    # scheduler down when this context exits.
+def export(out_dir: Path, use_lifespan: bool = False) -> dict:
+    # Default is lifespan-off: the exporter is short-lived and only needs the
+    # request stack, not the background APScheduler that lifespan boots. A
+    # slow CI runner previously risked firing a scheduled job mid-export and
+    # racing against the DB writes the exporter itself makes. The dev route
+    # already passed False explicitly; flipping the default makes both call
+    # sites safe without touching them.
     init_db()
     client_ctx = TestClient(app) if use_lifespan else _NoLifespanClient(app)
     with client_ctx as client:

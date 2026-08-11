@@ -33,6 +33,18 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
+      # Restore the DB the daily workflow built. Without this the hourly job
+      # starts from an empty DB, has no bulletin/counties/fuelwatch rows for
+      # export_static to run the model against, and republishes a degraded
+      # prediction.json with `trend=unknown` for both fuels.
+      - name: Restore fuel_trend.db cache
+        uses: actions/cache@v4
+        with:
+          path: data/fuel_trend.db
+          key: fuel-trend-db-${{ github.run_id }}
+          restore-keys: |
+            fuel-trend-db-
+
       - name: Ingest fast-moving sources
         working-directory: backend
         run: |

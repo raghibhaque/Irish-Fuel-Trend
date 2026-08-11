@@ -34,6 +34,18 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
+      # Persist fuel_trend.db across runs so a full ingest picks up where the
+      # last one left off (EU Bulletin history back to 2005 costs a full HTTP
+      # scrape otherwise) and so the hourly workflow can restore this build's
+      # DB for its lighter refresh instead of starting empty.
+      - name: Restore fuel_trend.db cache
+        uses: actions/cache@v4
+        with:
+          path: data/fuel_trend.db
+          key: fuel-trend-db-${{ github.run_id }}
+          restore-keys: |
+            fuel-trend-db-
+
       - name: Ingest all sources
         working-directory: backend
         run: python ingest.py all --force
