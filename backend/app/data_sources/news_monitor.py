@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from time import mktime
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import feedparser
 
@@ -22,6 +23,43 @@ from app.db import connection
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path(__file__).parent / "news_keywords.json"
+
+
+# Tracking query parameters publishers rotate on the same article. The DB
+# `UNIQUE(url)` constraint dedupes on the exact URL, so an article syndicated
+# with `?utm_source=twitter` and `?utm_source=email` would otherwise be
+# stored twice. Strip these so the constraint actually catches the dupe.
+_TRACKING_PARAMS = frozenset({
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "utm_id", "utm_name", "utm_reader",
+    "fbclid", "gclid", "gclsrc", "dclid", "yclid", "msclkid",
+    "mc_cid", "mc_eid",
+    "_hsenc", "_hsmi", "hsCtaTracking",
+    "ref", "ref_src", "ref_url",
+    "spm", "share",
+})
+
+
+def _normalise_url(url: str) -> str:
+    """Return a canonical form of `url` for dedup.
+
+    Strips known tracking query params (`utm_*`, `fbclid`, `gclid`, …),
+    lowercases scheme + host, and removes a trailing slash from non-empty
+    paths. Fragment is dropped — same article regardless of `#anchor`.
+    """
+    if not url:
+        return url
+    parts = urlsplit(url.strip())
+    scheme = parts.scheme.lower() or "http"
+    netloc = parts.netloc.lower()
+    # Preserve param order so single-valued sites remain deterministic.
+    kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
+            if k.lower() not in _TRACKING_PARAMS]
+    query = urlencode(kept, doseq=True)
+    path = parts.path
+    if len(path) > 1 and path.endswith("/"):
+        path = path.rstrip("/")
+    return urlunsplit((scheme, netloc, path, query, ""))
 
 
 def _load_config() -> tuple[list[str], list[dict[str, str]]]:
@@ -96,7 +134,7 @@ def poll_once() -> dict:
             if not hits:
                 continue
             pub = _entry_published(entry)
-            rows.append((pub, name, title, link, summary[:800], ", ".join(hits)))
+            rows.append((pub, name, title, _normalise_url(link), summary[:800], ", ".join(hits)))
 
     written = _upsert(rows) if rows else 0
     return {

@@ -51,7 +51,10 @@ class PredictionFeatures(BaseModel):
 class Prediction(BaseModel):
     fuel_type: Literal["petrol", "diesel"]
     as_of: date
-    trend: Literal["up", "down", "flat"]
+    # "unknown" is used when a required upstream (e.g. Brent) is running on
+    # the synthetic fallback generator — the numeric fields still populate
+    # so layouts don't collapse, but no directional call is being made.
+    trend: Literal["up", "down", "flat", "unknown"]
     predicted_weekly_return: float
     confidence: float = Field(ge=0.0, le=1.0)
     r2: float                    # walk-forward out-of-sample R² (can be negative)
@@ -102,7 +105,7 @@ class CountyFuelSnapshot(BaseModel):
 
     # Prediction fields are absent when the national model can't run — the page
     # still renders prices and history in that case.
-    trend: Optional[Literal["up", "down", "flat"]] = None
+    trend: Optional[Literal["up", "down", "flat", "unknown"]] = None
     predicted_weekly_return: Optional[float] = None
     confidence: Optional[float] = None
     r2: Optional[float] = None

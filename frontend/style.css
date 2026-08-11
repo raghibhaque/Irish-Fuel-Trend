@@ -728,6 +728,16 @@ h2 .muted {
     border-color: rgba(214, 180, 90, 0.4);
 }
 .trend-pill[data-trend="flat"]::before { content: "→"; font-size: 0.85em; }
+/* Emitted when the Brent feed fell back to the synthetic generator: the
+ * pipeline still runs so the layout doesn't collapse, but nothing on the
+ * card is a real forecast. Loud, muted colour so the user sees it before
+ * the number. */
+.trend-pill[data-trend="unknown"] {
+    background: rgba(180, 140, 220, 0.14);
+    color: #b48cdc;
+    border-color: rgba(180, 140, 220, 0.45);
+}
+.trend-pill[data-trend="unknown"]::before { content: "?"; font-size: 0.85em; }
 
 .pred-explain {
     margin: 0 0 20px;

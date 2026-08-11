@@ -280,6 +280,18 @@ function renderDecision(data) {
         const p = data[fuel];
         const card = document.getElementById(`decision-${fuel}`);
         if (!card || !p) return;
+        // Trend=unknown means an upstream is running on synthetic fallback
+        // data (see backend). Suppress the verdict rather than render a
+        // green "Fill now" against a sine-wave forecast.
+        if (p.trend === "unknown") {
+            card.querySelector(".decision-light").dataset.signal = "neutral";
+            card.querySelector(".decision-verdict").textContent = "—";
+            card.querySelector(".decision-detail").textContent =
+                "Awaiting real market data. Recommendation suppressed while an upstream feed is running on the synthetic fallback generator.";
+            card.querySelector(".decision-conf b").textContent = "—";
+            card.dataset.signal = "neutral";
+            return;
+        }
         const now  = p.current_pump_eur_per_l;
         const then = p.predicted_pump_3w_eur_per_l;
         const perL = then - now;
@@ -340,6 +352,17 @@ function updateCalculator() {
     const litres = parseFloat(document.getElementById("calc-litres").value) || 0;
     const p = predictionData[fuel];
     if (!p) return;
+    // Same reasoning as renderDecision: forecast on synthetic data is not a
+    // forecast. Zero out the difference line instead of extrapolating.
+    if (p.trend === "unknown") {
+        const nowCost = litres * (p.current_pump_eur_per_l || 0);
+        document.getElementById("calc-now").textContent  = `Today: €${nowCost.toFixed(2)}`;
+        document.getElementById("calc-then").textContent = `In ~${calcHorizonWeeks} weeks: —`;
+        const diffEl = document.getElementById("calc-diff");
+        diffEl.textContent = "Difference: — (feed on synthetic fallback)";
+        diffEl.setAttribute("data-sign", "flat");
+        return;
+    }
     const weeks     = calcHorizonWeeks;
     const thenPrice = predictedPumpAtWeeks(p, weeks);
     const nowCost   = litres * p.current_pump_eur_per_l;
