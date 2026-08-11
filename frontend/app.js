@@ -314,19 +314,41 @@ function renderBacktest(list, points) {
 }
 
 // ------------------ fill-up calculator ------------------
+let calcHorizonWeeks = 3;
+
+// Extrapolate the pump-price forecast to an arbitrary horizon by compounding
+// the model's shipped weekly return. Reproduces the backend's two shipped
+// points exactly at N=1 and N=3, and matches the same formula the backend
+// uses for the 3-week point (pump = current + wholesale·((1+ret)^N − 1)·(1+VAT))
+// without needing to ship the wholesale anchor to the client.
+function predictedPumpAtWeeks(p, weeks) {
+    if (weeks === 1) return p.predicted_pump_eur_per_l;
+    if (weeks === 3) return p.predicted_pump_3w_eur_per_l;
+    const ret = p.predicted_weekly_return;
+    const now = p.current_pump_eur_per_l;
+    // Near-zero weekly return means the model sees no signal — hold flat
+    // instead of dividing by a value indistinguishable from noise.
+    if (Math.abs(ret) < 1e-6) return now;
+    const oneWeekDelta = p.predicted_pump_eur_per_l - now;
+    const factor = oneWeekDelta / ret;
+    return now + factor * (Math.pow(1 + ret, weeks) - 1);
+}
+
 function updateCalculator() {
     if (!predictionData) return;
     const fuel   = document.getElementById("calc-fuel").value;
     const litres = parseFloat(document.getElementById("calc-litres").value) || 0;
     const p = predictionData[fuel];
     if (!p) return;
+    const weeks     = calcHorizonWeeks;
+    const thenPrice = predictedPumpAtWeeks(p, weeks);
     const nowCost   = litres * p.current_pump_eur_per_l;
-    const thenCost  = litres * p.predicted_pump_3w_eur_per_l;
+    const thenCost  = litres * thenPrice;
     const diff      = thenCost - nowCost;
     const sign      = diff > 0.005 ? "up" : diff < -0.005 ? "down" : "flat";
     const verb      = diff > 0 ? "more" : diff < 0 ? "less" : "same";
     document.getElementById("calc-now").textContent  = `Today: €${nowCost.toFixed(2)}`;
-    document.getElementById("calc-then").textContent = `In ~3 weeks: €${thenCost.toFixed(2)}`;
+    document.getElementById("calc-then").textContent = `In ~${weeks} week${weeks === 1 ? "" : "s"}: €${thenCost.toFixed(2)}`;
     const diffEl = document.getElementById("calc-diff");
     diffEl.textContent = diff === 0
         ? "Difference: €0.00"
@@ -373,6 +395,19 @@ document.getElementById("chart-range").addEventListener("change", (e) => {
 });
 document.getElementById("calc-litres").addEventListener("input", updateCalculator);
 document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
+document.getElementById("calc-horizon").addEventListener("click", (e) => {
+    const btn = e.target.closest(".horizon-chip");
+    if (!btn) return;
+    const weeks = parseInt(btn.dataset.weeks, 10);
+    if (!weeks || weeks === calcHorizonWeeks) return;
+    calcHorizonWeeks = weeks;
+    document.querySelectorAll("#calc-horizon .horizon-chip").forEach(el => {
+        const active = parseInt(el.dataset.weeks, 10) === weeks;
+        el.classList.toggle("is-active", active);
+        el.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    updateCalculator();
+});
 
 loadManifest().then(m => {
     if (m && m.generated_at) {
