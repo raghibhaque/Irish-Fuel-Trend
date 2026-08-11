@@ -141,6 +141,51 @@ def test_select_row_raises_for_a_county_with_no_median_anywhere():
         county.select_row([])
 
 
+def test_thin_primary_window_upgrades_to_wider_window_with_more_stations():
+    """Real Clare shape on 2026-08-11: 4 stations on 30d, 8 on 180d.
+
+    A primary median built on 4 stations is thin enough to defensibly upgrade
+    to a wider window that carries more of them, at the cost of freshness."""
+    rows = [
+        {"county": "Clare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.839, "station_count": 4, "window_days": 30},
+        {"county": "Clare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.814, "station_count": 8, "window_days": 180},
+    ]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 180
+    assert chosen["station_count"] == 8
+    assert chosen["stale"] is True
+
+
+def test_thin_primary_stays_when_wider_window_has_no_extra_stations():
+    """No upgrade unless the wider window is strictly denser — otherwise we
+    would just be trading freshness for nothing."""
+    rows = [
+        {"county": "Nowhere", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.80, "station_count": 4, "window_days": 30},
+        {"county": "Nowhere", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.80, "station_count": 4, "window_days": 180},
+    ]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 30
+    assert chosen["stale"] is False
+
+
+def test_well_sampled_primary_is_not_upgraded_even_when_wider_is_denser():
+    """A 30d median over 20 stations is already trustworthy; the 180d bloat
+    from turnover would drag the price toward a stale level for no benefit."""
+    rows = [
+        {"county": "Cork", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.81, "station_count": 20, "window_days": 30},
+        {"county": "Cork", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.83, "station_count": 60, "window_days": 180},
+    ]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 30
+    assert chosen["stale"] is False
+
+
 def test_primary_window_default_matches_what_the_ingest_actually_writes():
     """These live in two modules; a silent divergence would break the fallback."""
     from app.data_sources import fuelwatch_counties

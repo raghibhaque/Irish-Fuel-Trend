@@ -99,19 +99,44 @@ def widen_band(band_half_national: float, station_count: int,
     return math.sqrt(float(band_half_national) ** 2 + sampling ** 2)
 
 
-def select_row(rows: Sequence[dict], primary_window: int = PRIMARY_WINDOW_DAYS) -> dict:
-    """Pick the freshest available row for one county/fuel, preferring `primary_window`.
+def select_row(rows: Sequence[dict], primary_window: int = PRIMARY_WINDOW_DAYS,
+               min_stations_for_primary: int = LOW_SAMPLE_THRESHOLD) -> dict:
+    """Pick the best available row for one county/fuel.
 
-    Rows are the same county+fuel at different windows. Falling back to a wider
-    window buys coverage at the cost of freshness, so the result is flagged.
+    Order of preference:
+      1. The `primary_window` row (30 days by default) — freshest.
+      2. If that row is missing OR its station_count is below
+         `min_stations_for_primary`, upgrade to the widest window that has
+         strictly more stations. Flagged `stale=True` because a wider window
+         trades freshness for coverage.
+      3. Otherwise keep the primary, even if thin (nothing wider offers a
+         denser sample — flagging it stale would just mean "look elsewhere"
+         when there is nowhere else to look).
+
+    Rows are the same county+fuel at different windows.
     """
     if not rows:
         raise UnknownCountyError("No county median at any window.")
-    for r in rows:
-        if int(r["window_days"]) == primary_window:
-            return {**r, "stale": False}
-    widest = min(rows, key=lambda r: int(r["window_days"]))
-    return {**widest, "stale": True}
+
+    primary = next((r for r in rows if int(r["window_days"]) == primary_window), None)
+    primary_n = int((primary or {}).get("station_count") or 0)
+
+    if primary and primary_n >= min_stations_for_primary:
+        return {**primary, "stale": False}
+
+    # Primary is missing or thin. Look for a wider row with more stations.
+    others = [r for r in rows if int(r["window_days"]) != primary_window]
+    if others:
+        best_wide = max(others, key=lambda r: int(r.get("station_count") or 0))
+        if int(best_wide.get("station_count") or 0) > primary_n:
+            return {**best_wide, "stale": True}
+
+    if primary:
+        return {**primary, "stale": False}
+
+    # No primary at all and nothing wider promoted itself — take whatever we
+    # have (guaranteed non-empty by the early return above).
+    return {**rows[0], "stale": True}
 
 
 def build_county_prediction(national: dict, county_row: dict, national_ref: float) -> dict:
