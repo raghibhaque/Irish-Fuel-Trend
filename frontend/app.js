@@ -370,6 +370,13 @@ async function loadNews() {
         const summary = sumTxt ? `<p class="news-summary">${escapeHtml(sumTxt)}</p>` : "";
         const matched = item.matched_keywords
             ? `<p class="news-matched">Matched: ${escapeHtml(item.matched_keywords)}</p>` : "";
+        // RSS URLs come from untrusted third-party feeds — validate scheme
+        // AND attribute-escape. Drop the link entirely if the URL is not a
+        // plain http(s) URL so a hijacked feed cannot ship a javascript: click.
+        const safeHref = safeUrl(item.url);
+        const readLink = safeHref
+            ? `<p><a href="${safeHref}" target="_blank" rel="noopener">Read on ${escapeHtml(item.source)} ↗</a></p>`
+            : "";
         return `
         <li>
             <details>
@@ -382,7 +389,7 @@ async function loadNews() {
                 <div class="news-body">
                     ${summary}
                     ${matched}
-                    <p><a href="${item.url}" target="_blank" rel="noopener">Read on ${escapeHtml(item.source)} ↗</a></p>
+                    ${readLink}
                 </div>
             </details>
         </li>`;
