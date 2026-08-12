@@ -9,11 +9,11 @@
     "r2_in_sample": 0.40729950404660475,
     "n_train": 945,
     "product_symbol": "RBOB",
-    "current_pump_eur_per_l": 1.849,
-    "predicted_pump_eur_per_l": 1.8614689066768444,
-    "predicted_pump_low_eur_per_l": 1.8575333695074467,
-    "predicted_pump_high_eur_per_l": 1.865404443846242,
-    "predicted_pump_3w_eur_per_l": 1.88684261995234,
+    "current_pump_eur_per_l": 1.829,
+    "predicted_pump_eur_per_l": 1.8414689066768444,
+    "predicted_pump_low_eur_per_l": 1.8375333695074467,
+    "predicted_pump_high_eur_per_l": 1.845404443846242,
+    "predicted_pump_3w_eur_per_l": 1.86684261995234,
     "backtest": [
       {
         "date": "2025-08-11",
@@ -445,7 +445,7 @@
       "product_eur_per_gal_current": 2.5719115734720415,
       "latest_wholesale_eur_per_l": 0.873299674796748
     },
-    "explanation": "Prices likely to rise over the next 1\u20133 weeks. Brent-in-EUR +6.4% over the prior 2 weeks and +8.3% over the prior 6 weeks (currently \u20ac72.62/bbl). RBOB refined-product proxy (\u20ac2.57/gal) -1.5% last week, +8.8% over 4 weeks. Crack spread RBOB\u2212Brent \u20ac+45.12/bbl (-3.48 vs 4 weeks ago) \u2014 refining margin. Last week's wholesale petrol return was +3.8%. No Irish excise/carbon-tax changes flagged in the \u00b13-week window. Model estimate: +1.2% weekly change in wholesale petrol. Pump \u20ac1.849 projected to \u20ac1.861 next week (50% band \u20ac1.858\u2013\u20ac1.865). Confidence 85%, walk-forward R\u00b2 0.14 (in-sample 0.41), trained on 945 weeks."
+    "explanation": "Prices likely to rise over the next 1\u20133 weeks. Brent-in-EUR +6.4% over the prior 2 weeks and +8.3% over the prior 6 weeks (currently \u20ac72.62/bbl). RBOB refined-product proxy (\u20ac2.57/gal) -1.5% last week, +8.8% over 4 weeks. Crack spread RBOB\u2212Brent \u20ac+45.12/bbl (-3.48 vs 4 weeks ago) \u2014 refining margin. Last week's wholesale petrol return was +3.8%. No Irish excise/carbon-tax changes flagged in the \u00b13-week window. Model estimate: +1.2% weekly change in wholesale petrol. Pump \u20ac1.829 projected to \u20ac1.841 next week (50% band \u20ac1.838\u2013\u20ac1.845). Confidence 85%, walk-forward R\u00b2 0.14 (in-sample 0.41), trained on 945 weeks."
   },
   "diesel": {
     "fuel_type": "diesel",
@@ -457,11 +457,11 @@
     "r2_in_sample": 0.4349020107611773,
     "n_train": 945,
     "product_symbol": "ULSD",
-    "current_pump_eur_per_l": 1.899,
-    "predicted_pump_eur_per_l": 1.9373078601942166,
-    "predicted_pump_low_eur_per_l": 1.9258936799798354,
-    "predicted_pump_high_eur_per_l": 1.9487220404085979,
-    "predicted_pump_3w_eur_per_l": 2.0174427915400575,
+    "current_pump_eur_per_l": 1.889,
+    "predicted_pump_eur_per_l": 1.9273078601942166,
+    "predicted_pump_low_eur_per_l": 1.9158936799798354,
+    "predicted_pump_high_eur_per_l": 1.9387220404085979,
+    "predicted_pump_3w_eur_per_l": 2.0074427915400577,
     "backtest": [
       {
         "date": "2025-08-11",
@@ -893,9 +893,9 @@
       "product_eur_per_gal_current": 3.361248374512354,
       "latest_wholesale_eur_per_l": 1.0273378048780486
     },
-    "explanation": "Prices likely to rise over the next 1\u20133 weeks. Brent-in-EUR +6.4% over the prior 2 weeks and +8.3% over the prior 6 weeks (currently \u20ac72.62/bbl). ULSD refined-product proxy (\u20ac3.36/gal) +0.1% last week, +23.6% over 4 weeks. Crack spread ULSD\u2212Brent \u20ac+74.04/bbl (+15.49 vs 4 weeks ago) \u2014 refining margin. Last week's wholesale diesel return was +5.1%. No Irish excise/carbon-tax changes flagged in the \u00b13-week window. Model estimate: +3.0% weekly change in wholesale diesel. Pump \u20ac1.899 projected to \u20ac1.937 next week (50% band \u20ac1.926\u2013\u20ac1.949). Confidence 89%, walk-forward R\u00b2 0.17 (in-sample 0.43), trained on 945 weeks."
+    "explanation": "Prices likely to rise over the next 1\u20133 weeks. Brent-in-EUR +6.4% over the prior 2 weeks and +8.3% over the prior 6 weeks (currently \u20ac72.62/bbl). ULSD refined-product proxy (\u20ac3.36/gal) +0.1% last week, +23.6% over 4 weeks. Crack spread ULSD\u2212Brent \u20ac+74.04/bbl (+15.49 vs 4 weeks ago) \u2014 refining margin. Last week's wholesale diesel return was +5.1%. No Irish excise/carbon-tax changes flagged in the \u00b13-week window. Model estimate: +3.0% weekly change in wholesale diesel. Pump \u20ac1.889 projected to \u20ac1.927 next week (50% band \u20ac1.916\u2013\u20ac1.939). Confidence 89%, walk-forward R\u00b2 0.17 (in-sample 0.43), trained on 945 weeks."
   },
-  "generated_at": "2026-08-12T06:19:07.839312Z",
+  "generated_at": "2026-08-12T07:50:07.625117Z",
   "brent_source": "YFINANCE_BZF",
   "notes": []
 }
