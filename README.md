@@ -8,7 +8,7 @@ and which forecourt in your county is cheapest right now.
 
 Free. No login. Refreshed every morning.
 
-👉 **[Open the app](https://raghibhaque.github.io/petrolpredictor/)**
+👉 **[Open the app](https://raghibhaque.github.io/Irish-Fuel-Trend/)**
 
 ---
 
