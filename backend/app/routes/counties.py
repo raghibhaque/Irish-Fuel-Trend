@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Query
 
 from app.data_sources.fuelwatch_counties import IE_COUNTIES, PRIMARY_WINDOW_DAYS
+from app.prediction.county import WINDOW_PREFERENCE
 from app.db import connection
 from app.models import (
     BrandStation,
@@ -165,7 +166,7 @@ def _national_references(rows: list[dict]) -> dict[tuple[str, int], float]:
 def _build_snapshot(fuel: str, rows: list[dict], refs, national: dict,
                     observations, stations) -> CountyFuelSnapshot | None:
     try:
-        chosen = county_mod.select_row(rows, primary_window=PRIMARY_WINDOW_DAYS)
+        chosen = county_mod.select_row(rows, window_preference=WINDOW_PREFERENCE)
     except county_mod.UnknownCountyError:
         return None
 

@@ -41,9 +41,16 @@ SIGMA_STATION_EUR = 0.045
 # Below this many stations the median is too thin to present without a caveat.
 LOW_SAMPLE_THRESHOLD = 8
 
-# Window preference: freshest first. A row from any later window is flagged
-# stale so the UI can say so.
+# Standard window — anything at or below is presented as non-stale. 30d is the
+# level users grew up on and roughly matches upstream FuelWatch's default
+# aggregate; falling back to 180d earns the "stale" flag.
 PRIMARY_WINDOW_DAYS = 30
+
+# Windows tried in order, freshest first. 14d is preferred wherever it clears
+# the sample threshold — densely-reported counties (Dublin, Cork, Galway) get a
+# median that tracks pump moves twice as fast. Sparser counties silently step
+# down to 30d, then 180d, without the user having to choose.
+WINDOW_PREFERENCE: tuple[int, ...] = (14, 30, 180)
 
 
 class UnknownCountyError(ValueError):
@@ -99,44 +106,39 @@ def widen_band(band_half_national: float, station_count: int,
     return math.sqrt(float(band_half_national) ** 2 + sampling ** 2)
 
 
-def select_row(rows: Sequence[dict], primary_window: int = PRIMARY_WINDOW_DAYS,
-               min_stations_for_primary: int = LOW_SAMPLE_THRESHOLD) -> dict:
+def select_row(rows: Sequence[dict],
+               window_preference: Sequence[int] = WINDOW_PREFERENCE,
+               min_stations: int = LOW_SAMPLE_THRESHOLD,
+               standard_window: int = PRIMARY_WINDOW_DAYS) -> dict:
     """Pick the best available row for one county/fuel.
 
-    Order of preference:
-      1. The `primary_window` row (30 days by default) — freshest.
-      2. If that row is missing OR its station_count is below
-         `min_stations_for_primary`, upgrade to the widest window that has
-         strictly more stations. Flagged `stale=True` because a wider window
-         trades freshness for coverage.
-      3. Otherwise keep the primary, even if thin (nothing wider offers a
-         denser sample — flagging it stale would just mean "look elsewhere"
-         when there is nowhere else to look).
+    Iterates `window_preference` in freshness order (default 14 → 30 → 180)
+    and returns the first row whose sample size clears `min_stations`. If
+    none of the preferred windows qualify, falls back to the densest row
+    available so the county still renders a number.
+
+    `stale` is True iff the chosen window is wider than `standard_window`
+    (30d). That preserves the pre-14d meaning of stale — "trading freshness
+    for coverage beyond the historical default" — so upgrading to 14d does
+    not itself flag the number as stale; it's a strict bonus when it exists.
 
     Rows are the same county+fuel at different windows.
     """
     if not rows:
         raise UnknownCountyError("No county median at any window.")
 
-    primary = next((r for r in rows if int(r["window_days"]) == primary_window), None)
-    primary_n = int((primary or {}).get("station_count") or 0)
+    by_window = {int(r["window_days"]): r for r in rows}
+    for w in window_preference:
+        r = by_window.get(w)
+        if r and int(r.get("station_count") or 0) >= min_stations:
+            return {**r, "stale": w > standard_window}
 
-    if primary and primary_n >= min_stations_for_primary:
-        return {**primary, "stale": False}
-
-    # Primary is missing or thin. Look for a wider row with more stations.
-    others = [r for r in rows if int(r["window_days"]) != primary_window]
-    if others:
-        best_wide = max(others, key=lambda r: int(r.get("station_count") or 0))
-        if int(best_wide.get("station_count") or 0) > primary_n:
-            return {**best_wide, "stale": True}
-
-    if primary:
-        return {**primary, "stale": False}
-
-    # No primary at all and nothing wider promoted itself — take whatever we
-    # have (guaranteed non-empty by the early return above).
-    return {**rows[0], "stale": True}
+    # Nothing met the threshold — take the densest row available, and flag
+    # stale by the same rule (wider than standard = stale). Ties break to the
+    # first row of that station count, which is insertion order — the
+    # caller's row order determines the tiebreak.
+    densest = max(rows, key=lambda r: int(r.get("station_count") or 0))
+    return {**densest, "stale": int(densest["window_days"]) > standard_window}
 
 
 def build_county_prediction(national: dict, county_row: dict, national_ref: float) -> dict:

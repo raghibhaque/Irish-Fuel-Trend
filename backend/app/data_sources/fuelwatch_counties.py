@@ -35,9 +35,14 @@ SOURCE_NAME = "FUELWATCH_IE_COUNTY"
 # Upstream integer prices are tenths of a cent.
 PRICE_SCALE = 1000.0
 
+# 14 gives the freshest usable median where the crowd feed is dense enough
+# (Dublin, Cork, Galway...). Falls back to 30 for smaller counties and 180 for
+# the sparsest. The read path picks the freshest window meeting the sample
+# threshold — see `prediction/county.select_row`.
+SHORT_WINDOW_DAYS = 14
 PRIMARY_WINDOW_DAYS = 30
 WIDE_WINDOW_DAYS = 180
-WINDOWS = (PRIMARY_WINDOW_DAYS, WIDE_WINDOW_DAYS)
+WINDOWS = (SHORT_WINDOW_DAYS, PRIMARY_WINDOW_DAYS, WIDE_WINDOW_DAYS)
 
 # per_fuel caps rows *per fuel*, not per county. 200 yielded ~400 rows across
 # 23 counties — enough for a national view, but only a handful of Clare rows.

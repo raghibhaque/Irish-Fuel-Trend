@@ -193,6 +193,51 @@ def test_primary_window_default_matches_what_the_ingest_actually_writes():
     assert county.PRIMARY_WINDOW_DAYS == fuelwatch_counties.PRIMARY_WINDOW_DAYS
 
 
+def test_window_preference_prefers_freshest_qualifying_window():
+    """14d beats 30d when it clears the sample threshold — that's the whole
+    point of adding a shorter window. And it's non-stale because 14d is a
+    strict freshness bonus over the historical default."""
+    rows = [
+        {"county": "Dublin", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.815, "station_count": 40, "window_days": 14},
+        {"county": "Dublin", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.820, "station_count": 60, "window_days": 30},
+        {"county": "Dublin", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.828, "station_count": 90, "window_days": 180},
+    ]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 14
+    assert chosen["stale"] is False
+
+
+def test_thin_14d_falls_back_to_30d_without_flagging_stale():
+    """14d too thin for populous counties still gets the 30d default, and 30d
+    is by definition not stale (the pre-14d standard)."""
+    rows = [
+        {"county": "Kildare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.815, "station_count": 5, "window_days": 14},
+        {"county": "Kildare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.820, "station_count": 21, "window_days": 30},
+    ]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 30
+    assert chosen["stale"] is False
+
+
+def test_thin_14d_and_thin_30d_step_all_the_way_to_180d():
+    rows = [
+        {"county": "Clare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.815, "station_count": 2, "window_days": 14},
+        {"county": "Clare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.820, "station_count": 4, "window_days": 30},
+        {"county": "Clare", "fuel_type": "petrol",
+         "median_eur_per_litre": 1.830, "station_count": 12, "window_days": 180},
+    ]
+    chosen = county.select_row(rows)
+    assert chosen["window_days"] == 180
+    assert chosen["stale"] is True
+
+
 # --------------------------- build_county_prediction --------------------------
 
 def test_prediction_inherits_national_direction_unchanged():
