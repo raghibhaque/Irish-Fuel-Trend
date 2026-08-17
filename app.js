@@ -344,9 +344,19 @@ function renderBacktest(list, points) {
         const act  = pt.actual_return >= 0 ? "up" : "down";
         const err  = (pt.actual_pump_eur_per_l - pt.predicted_pump_eur_per_l);
         const errS = `${err >= 0 ? "+" : ""}${err.toFixed(3)}`;
-        const tip  = `${fmtDMY(pt.date)}\nPredicted ${dir} (${fmtPct(pt.predicted_return)}) → €${pt.predicted_pump_eur_per_l.toFixed(3)}\nActual ${act} (${fmtPct(pt.actual_return)}) → €${pt.actual_pump_eur_per_l.toFixed(3)}\nError €${errS}`;
+        const hitTag = pt.direction_correct ? "HIT" : "MISS";
+        // Rich per-square popup — surfaces the numbers behind the colour so a
+        // reader can judge how big the miss was, not just whether it happened.
+        const tip = [
+            `${fmtDMY(pt.date)}  ·  ${hitTag}`,
+            `Predicted ${dir} (${fmtPct(pt.predicted_return)}) → €${pt.predicted_pump_eur_per_l.toFixed(3)}`,
+            `Actual    ${act} (${fmtPct(pt.actual_return)}) → €${pt.actual_pump_eur_per_l.toFixed(3)}`,
+            `Error €${errS}`,
+        ].join("\n");
         const label = `${fmtDMY(pt.date)}: predicted ${dir}, actually ${act} — ${pt.direction_correct ? "hit" : "miss"}`;
-        return `<li data-hit="${pt.direction_correct}" role="listitem" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}"></li>`;
+        // tabindex=0 so the same popup opens on keyboard focus; aria-label is
+        // the screen-reader equivalent of the visual tooltip.
+        return `<li data-hit="${pt.direction_correct}" role="listitem" tabindex="0" aria-label="${escapeHtml(label)}" data-tip="${escapeHtml(tip)}"></li>`;
     }).join("");
 }
 

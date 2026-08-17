@@ -523,12 +523,51 @@ h2 .muted {
     display: grid;
     gap: 10px;
 }
+.bt-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
 .bt-label {
     font-family: var(--font-mono);
     color: var(--text-dim);
     font-size: 0.66rem;
     text-transform: uppercase;
     letter-spacing: 0.22em;
+}
+.bt-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+.bt-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-right: 4px;
+    border: 1px solid var(--border);
+}
+.bt-swatch[data-hit="true"] {
+    background: rgba(123, 216, 143, 0.55);
+    border-color: rgba(123, 216, 143, 0.8);
+}
+.bt-swatch[data-hit="false"] {
+    background: rgba(255, 92, 74, 0.45);
+    border-color: rgba(255, 92, 74, 0.75);
+}
+.bt-hint {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    line-height: 1.4;
 }
 .bt-list {
     list-style: none;
@@ -537,6 +576,9 @@ h2 .muted {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     gap: 5px;
+    /* Row of squares gets its own layer so the hover popup can escape the
+       card's overflow-clip and float above neighbouring elements. */
+    position: relative;
 }
 .bt-list li {
     aspect-ratio: 1 / 1;
@@ -545,9 +587,16 @@ h2 .muted {
     border: 1px solid var(--border);
     position: relative;
     cursor: help;
-    transition: transform 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.bt-list li:hover { transform: scale(1.15); }
+.bt-list li:hover,
+.bt-list li:focus-visible {
+    transform: scale(1.2);
+    outline: none;
+}
+.bt-list li:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent, #7bd28f);
+}
 .bt-list li[data-hit="true"] {
     background: rgba(123, 216, 143, 0.38);
     border-color: rgba(123, 216, 143, 0.7);
@@ -557,6 +606,54 @@ h2 .muted {
     background: rgba(255, 92, 74, 0.32);
     border-color: rgba(255, 92, 74, 0.6);
     box-shadow: 0 0 6px rgba(255, 92, 74, 0.30);
+}
+/* Rich hover panel — driven by data-tip. Multi-line kept intact via
+   white-space: pre-line. Positioned above the LED and horizontally clamped
+   so it never overflows the card even at the strip's rightmost square. */
+.bt-list li[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    min-width: 200px;
+    max-width: 260px;
+    padding: 10px 12px;
+    background: var(--bg-1, #0b0f14);
+    color: var(--text, #e4e8ee);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm, 6px);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.45;
+    white-space: pre-line;
+    text-align: left;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 20;
+}
+.bt-list li[data-tip]:hover::after,
+.bt-list li[data-tip]:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+/* Right-edge squares would overflow the card if left-anchored at 50%.
+   Nudge the last two per row so their popup shifts leftward. */
+.bt-list li:nth-child(8n)[data-tip]::after,
+.bt-list li:nth-child(8n - 1)[data-tip]::after {
+    left: auto;
+    right: 0;
+    transform: translateX(0) translateY(4px);
+}
+.bt-list li:nth-child(8n)[data-tip]:hover::after,
+.bt-list li:nth-child(8n - 1)[data-tip]:hover::after,
+.bt-list li:nth-child(8n)[data-tip]:focus-visible::after,
+.bt-list li:nth-child(8n - 1)[data-tip]:focus-visible::after {
+    transform: translateX(0) translateY(0);
 }
 
 /* ------------------------------------------------------------- chart */
