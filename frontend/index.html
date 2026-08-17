@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -133,9 +133,16 @@
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
                         <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
                     </dl>
-                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
-                        <span class="bt-label">Recent calls</span>
+                    <div class="backtest-strip">
+                        <div class="bt-header">
+                            <span class="bt-label">Recent calls</span>
+                            <span class="bt-legend" aria-hidden="true">
+                                <span class="bt-swatch" data-hit="true"></span>hit
+                                <span class="bt-swatch" data-hit="false"></span>miss
+                            </span>
+                        </div>
                         <ul class="bt-list"></ul>
+                        <p class="bt-hint">Each square is one past week — green if the model called the direction (up/down) correctly, red if not. Hover any square for the actual vs. predicted move.</p>
                     </div>
                     <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
                         <span class="bt-label">Direction hit-rate</span>
@@ -160,9 +167,16 @@
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
                         <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
                     </dl>
-                    <div class="backtest-strip" title="Model call vs actual over the last 8 weeks">
-                        <span class="bt-label">Recent calls</span>
+                    <div class="backtest-strip">
+                        <div class="bt-header">
+                            <span class="bt-label">Recent calls</span>
+                            <span class="bt-legend" aria-hidden="true">
+                                <span class="bt-swatch" data-hit="true"></span>hit
+                                <span class="bt-swatch" data-hit="false"></span>miss
+                            </span>
+                        </div>
                         <ul class="bt-list"></ul>
+                        <p class="bt-hint">Each square is one past week — green if the model called the direction (up/down) correctly, red if not. Hover any square for the actual vs. predicted move.</p>
                     </div>
                     <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
                         <span class="bt-label">Direction hit-rate</span>
@@ -197,6 +211,6 @@
     </footer>
 
     <script src="shared.js?v=9"></script>
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=15"></script>
 </body>
 </html>
