@@ -3,8 +3,8 @@
     "fuel_type": "petrol",
     "as_of": "2026-08-10",
     "trend": "flat",
-    "predicted_weekly_return": 0.0033390153401285177,
-    "confidence": 0.6537525867154216,
+    "predicted_weekly_return": 0.0033390153401285116,
+    "confidence": 0.6537525867154215,
     "r2": 0.1322422870191634,
     "r2_in_sample": 0.4046164466197961,
     "n_train": 946,
@@ -18,7 +18,7 @@
       {
         "date": "2025-08-18",
         "actual_return": -0.0053237912375631025,
-        "predicted_return": -0.0016165407460733544,
+        "predicted_return": -0.0016165407460733538,
         "actual_pump_eur_per_l": 1.7129,
         "predicted_pump_eur_per_l": 1.7160330524985041,
         "direction_correct": true
@@ -26,7 +26,7 @@
       {
         "date": "2025-08-25",
         "actual_return": -0.002968617472434376,
-        "predicted_return": -0.0023192271350440945,
+        "predicted_return": -0.002319227135044095,
         "actual_pump_eur_per_l": 1.7104000000000001,
         "predicted_pump_eur_per_l": 1.7109493013036325,
         "direction_correct": true
@@ -34,7 +34,7 @@
       {
         "date": "2025-09-01",
         "actual_return": -0.005720236436439374,
-        "predicted_return": 0.0013455030736551892,
+        "predicted_return": 0.0013455030736551907,
         "actual_pump_eur_per_l": 1.7056,
         "predicted_pump_eur_per_l": 1.7115283411649227,
         "direction_correct": false
@@ -42,7 +42,7 @@
       {
         "date": "2025-09-08",
         "actual_return": -0.004204221923911011,
-        "predicted_return": 0.0009256979238920149,
+        "predicted_return": 0.0009256979238920155,
         "actual_pump_eur_per_l": 1.7021,
         "predicted_pump_eur_per_l": 1.7063718512797215,
         "direction_correct": false
@@ -58,7 +58,7 @@
       {
         "date": "2025-09-22",
         "actual_return": 0.002403101918058592,
-        "predicted_return": -0.00252102148828076,
+        "predicted_return": -0.0025210214882807596,
         "actual_pump_eur_per_l": 1.7081,
         "predicted_pump_eur_per_l": 1.7039967200916981,
         "direction_correct": false
@@ -66,7 +66,7 @@
       {
         "date": "2025-09-29",
         "actual_return": 0.005971290740087065,
-        "predicted_return": -0.0004973987242999596,
+        "predicted_return": -0.0004973987242999602,
         "actual_pump_eur_per_l": 1.7130999999999998,
         "predicted_pump_eur_per_l": 1.7076840246510299,
         "direction_correct": false
@@ -74,7 +74,7 @@
       {
         "date": "2025-10-06",
         "actual_return": 0.004641889162831703,
-        "predicted_return": -0.0011160418481994381,
+        "predicted_return": -0.0011160418481994355,
         "actual_pump_eur_per_l": 1.717,
         "predicted_pump_eur_per_l": 1.7121610791269022,
         "direction_correct": false
@@ -82,7 +82,7 @@
       {
         "date": "2025-10-13",
         "actual_return": 0.002247987045915334,
-        "predicted_return": -0.0010294693279980385,
+        "predicted_return": -0.00102946932799804,
         "actual_pump_eur_per_l": 1.7189,
         "predicted_pump_eur_per_l": 1.7161298919062946,
         "direction_correct": false
@@ -98,7 +98,7 @@
       {
         "date": "2025-10-27",
         "actual_return": 0.00199016483950043,
-        "predicted_return": -0.005446590971004071,
+        "predicted_return": -0.005446590971004073,
         "actual_pump_eur_per_l": 1.7277,
         "predicted_pump_eur_per_l": 1.7213475187246137,
         "direction_correct": false
@@ -106,7 +106,7 @@
       {
         "date": "2025-11-03",
         "actual_return": 0.010164731745718525,
-        "predicted_return": 0.000139849950557082,
+        "predicted_return": 0.000139849950557081,
         "actual_pump_eur_per_l": 1.7364,
         "predicted_pump_eur_per_l": 1.7278196976565918,
         "direction_correct": true
@@ -122,7 +122,7 @@
       {
         "date": "2025-11-17",
         "actual_return": 0.00356239699214167,
-        "predicted_return": 0.00018434734421026396,
+        "predicted_return": 0.0001843473442102633,
         "actual_pump_eur_per_l": 1.7450999999999999,
         "predicted_pump_eur_per_l": 1.7421604191695401,
         "direction_correct": true
@@ -130,7 +130,7 @@
       {
         "date": "2025-11-24",
         "actual_return": 0.0034352432598812044,
-        "predicted_return": 0.0043564485447994475,
+        "predicted_return": 0.004356448544799447,
         "actual_pump_eur_per_l": 1.7481,
         "predicted_pump_eur_per_l": 1.7489044891280423,
         "direction_correct": true
@@ -138,7 +138,7 @@
       {
         "date": "2025-12-01",
         "actual_return": 0.0070751977118352904,
-        "predicted_return": 0.0013546337731079482,
+        "predicted_return": 0.0013546337731079484,
         "actual_pump_eur_per_l": 1.7543,
         "predicted_pump_eur_per_l": 1.7492870663881548,
         "direction_correct": true
@@ -146,7 +146,7 @@
       {
         "date": "2025-12-08",
         "actual_return": 0.0007932005938577902,
-        "predicted_return": 7.943920327125205e-05,
+        "predicted_return": 7.943920327125495e-05,
         "actual_pump_eur_per_l": 1.755,
         "predicted_pump_eur_per_l": 1.7543701051445504,
         "direction_correct": true
@@ -154,7 +154,7 @@
       {
         "date": "2025-12-15",
         "actual_return": -0.002830614019057598,
-        "predicted_return": -0.0025120351477599437,
+        "predicted_return": -0.002512035147759943,
         "actual_pump_eur_per_l": 1.7525,
         "predicted_pump_eur_per_l": 1.7527813690502771,
         "direction_correct": true
@@ -162,7 +162,7 @@
       {
         "date": "2025-12-22",
         "actual_return": -0.010446228831909488,
-        "predicted_return": -0.006779306761235826,
+        "predicted_return": -0.0067793067612358275,
         "actual_pump_eur_per_l": 1.7432999999999998,
         "predicted_pump_eur_per_l": 1.7465294604677954,
         "direction_correct": true
@@ -178,7 +178,7 @@
       {
         "date": "2026-01-05",
         "actual_return": -0.013900140924262061,
-        "predicted_return": -0.0032356219582937305,
+        "predicted_return": -0.0032356219582937297,
         "actual_pump_eur_per_l": 1.7230999999999999,
         "predicted_pump_eur_per_l": 1.7323066856220317,
         "direction_correct": true
@@ -202,7 +202,7 @@
       {
         "date": "2026-01-26",
         "actual_return": 0.0076425578065435484,
-        "predicted_return": 0.0026753907714113585,
+        "predicted_return": 0.002675390771411358,
         "actual_pump_eur_per_l": 1.7288,
         "predicted_pump_eur_per_l": 1.7245754214563198,
         "direction_correct": true
@@ -210,7 +210,7 @@
       {
         "date": "2026-02-02",
         "actual_return": 0.008051336253440455,
-        "predicted_return": 0.004969658236346421,
+        "predicted_return": 0.004969658236346419,
         "actual_pump_eur_per_l": 1.7357,
         "predicted_pump_eur_per_l": 1.7330590000903436,
         "direction_correct": true
@@ -218,7 +218,7 @@
       {
         "date": "2026-02-09",
         "actual_return": 0.0025465892719600536,
-        "predicted_return": 0.00431629666193266,
+        "predicted_return": 0.004316296661932659,
         "actual_pump_eur_per_l": 1.7379,
         "predicted_pump_eur_per_l": 1.7394288512760216,
         "direction_correct": true
@@ -226,7 +226,7 @@
       {
         "date": "2026-02-16",
         "actual_return": -0.00023092005709279828,
-        "predicted_return": 0.014719404213613292,
+        "predicted_return": 0.014719404213613294,
         "actual_pump_eur_per_l": 1.7377,
         "predicted_pump_eur_per_l": 1.750648484821053,
         "direction_correct": false
@@ -282,7 +282,7 @@
       {
         "date": "2026-04-06",
         "actual_return": -0.06387048908497794,
-        "predicted_return": 0.06527868749798788,
+        "predicted_return": 0.06527868749798786,
         "actual_pump_eur_per_l": 1.8805,
         "predicted_pump_eur_per_l": 2.037410902772393,
         "direction_correct": false
@@ -290,15 +290,15 @@
       {
         "date": "2026-04-13",
         "actual_return": 0.03200397834069224,
-        "predicted_return": 0.045861503974445265,
+        "predicted_return": 0.04586150397444525,
         "actual_pump_eur_per_l": 1.9169,
-        "predicted_pump_eur_per_l": 1.9326609759542697,
+        "predicted_pump_eur_per_l": 1.9326609759542694,
         "direction_correct": true
       },
       {
         "date": "2026-04-20",
         "actual_return": -0.008434442993644375,
-        "predicted_return": 0.019193343618142455,
+        "predicted_return": 0.019193343618142466,
         "actual_pump_eur_per_l": 1.907,
         "predicted_pump_eur_per_l": 1.93942835213455,
         "direction_correct": false
@@ -306,15 +306,15 @@
       {
         "date": "2026-04-27",
         "actual_return": -0.07535279629329561,
-        "predicted_return": -0.0041768863068459795,
+        "predicted_return": -0.004176886306845977,
         "actual_pump_eur_per_l": 1.8193,
-        "predicted_pump_eur_per_l": 1.902138694950555,
+        "predicted_pump_eur_per_l": 1.9021386949505552,
         "direction_correct": true
       },
       {
         "date": "2026-05-04",
         "actual_return": -0.013473850415728572,
-        "predicted_return": 0.016104917763597116,
+        "predicted_return": 0.016104917763597123,
         "actual_pump_eur_per_l": 1.8048,
         "predicted_pump_eur_per_l": 1.8366314457535877,
         "direction_correct": false
@@ -322,15 +322,15 @@
       {
         "date": "2026-05-11",
         "actual_return": 0.011114684136689368,
-        "predicted_return": 0.017814418307359216,
+        "predicted_return": 0.01781441830735922,
         "actual_pump_eur_per_l": 1.8166,
-        "predicted_pump_eur_per_l": 1.8237128304000052,
+        "predicted_pump_eur_per_l": 1.8237128304000054,
         "direction_correct": true
       },
       {
         "date": "2026-05-18",
         "actual_return": 0.008477271503530837,
-        "predicted_return": -0.0014260534192309748,
+        "predicted_return": -0.0014260534192309774,
         "actual_pump_eur_per_l": 1.8257,
         "predicted_pump_eur_per_l": 1.8150691906930672,
         "direction_correct": false
@@ -338,7 +338,7 @@
       {
         "date": "2026-05-25",
         "actual_return": 0.001293232532631361,
-        "predicted_return": 0.006568407957074853,
+        "predicted_return": 0.006568407957074858,
         "actual_pump_eur_per_l": 1.8271,
         "predicted_pump_eur_per_l": 1.83281068652224,
         "direction_correct": true
@@ -346,7 +346,7 @@
       {
         "date": "2026-06-01",
         "actual_return": 0.010793770167975225,
-        "predicted_return": 0.0040665286939494845,
+        "predicted_return": 0.004066528693949485,
         "actual_pump_eur_per_l": 1.8388,
         "predicted_pump_eur_per_l": 1.8315079487499533,
         "direction_correct": true
@@ -362,7 +362,7 @@
       {
         "date": "2026-06-15",
         "actual_return": -0.02219059327053363,
-        "predicted_return": -0.0219941910039517,
+        "predicted_return": -0.021994191003951696,
         "actual_pump_eur_per_l": 1.8139,
         "predicted_pump_eur_per_l": 1.8141150719910801,
         "direction_correct": true
@@ -386,7 +386,7 @@
       {
         "date": "2026-07-06",
         "actual_return": -0.03179404992019119,
-        "predicted_return": -0.030550128547477573,
+        "predicted_return": -0.030550128547477583,
         "actual_pump_eur_per_l": 1.7298,
         "predicted_pump_eur_per_l": 1.7310676287725875,
         "direction_correct": true
@@ -394,7 +394,7 @@
       {
         "date": "2026-07-13",
         "actual_return": -0.017533927135485294,
-        "predicted_return": -0.023170855694626222,
+        "predicted_return": -0.023170855694626225,
         "actual_pump_eur_per_l": 1.7125,
         "predicted_pump_eur_per_l": 1.7069382759595382,
         "direction_correct": true
@@ -402,7 +402,7 @@
       {
         "date": "2026-07-20",
         "actual_return": 0.007943396798666624,
-        "predicted_return": 0.009814034508848005,
+        "predicted_return": 0.009814034508848003,
         "actual_pump_eur_per_l": 1.7202,
         "predicted_pump_eur_per_l": 1.7220133187518485,
         "direction_correct": true
@@ -410,7 +410,7 @@
       {
         "date": "2026-07-27",
         "actual_return": 0.038380502459115506,
-        "predicted_return": 0.012790431039011486,
+        "predicted_return": 0.012790431039011481,
         "actual_pump_eur_per_l": 1.7577,
         "predicted_pump_eur_per_l": 1.7326970006443732,
         "direction_correct": true
@@ -426,7 +426,7 @@
       {
         "date": "2026-08-10",
         "actual_return": 0.018433032142553207,
-        "predicted_return": -0.0025118759348358483,
+        "predicted_return": -0.00251187593483585,
         "actual_pump_eur_per_l": 1.8371,
         "predicted_pump_eur_per_l": 1.814601846862463,
         "direction_correct": false
@@ -453,7 +453,7 @@
     "trend": "up",
     "predicted_weekly_return": 0.014143781767758023,
     "confidence": 0.7795980117748502,
-    "r2": 0.16314438363326153,
+    "r2": 0.16314438363326156,
     "r2_in_sample": 0.43230949123714346,
     "n_train": 946,
     "product_symbol": "ULSD",
@@ -466,7 +466,7 @@
       {
         "date": "2025-08-18",
         "actual_return": -0.004318226026064909,
-        "predicted_return": -0.002165674106761271,
+        "predicted_return": -0.0021656741067612706,
         "actual_pump_eur_per_l": 1.7017,
         "predicted_pump_eur_per_l": 1.7037458267074623,
         "direction_correct": true
@@ -482,7 +482,7 @@
       {
         "date": "2025-09-01",
         "actual_return": -0.03802141496419886,
-        "predicted_return": -0.0016524457842527652,
+        "predicted_return": -0.0016524457842527647,
         "actual_pump_eur_per_l": 1.6579000000000002,
         "predicted_pump_eur_per_l": 1.6919529562963187,
         "direction_correct": true
@@ -498,7 +498,7 @@
       {
         "date": "2025-09-15",
         "actual_return": 0.005138068415991182,
-        "predicted_return": -0.004401018651044797,
+        "predicted_return": -0.004401018651044795,
         "actual_pump_eur_per_l": 1.6572,
         "predicted_pump_eur_per_l": 1.6486596931844024,
         "direction_correct": false
@@ -506,7 +506,7 @@
       {
         "date": "2025-09-22",
         "actual_return": 0.0008884150675196878,
-        "predicted_return": -0.0007675736767668679,
+        "predicted_return": -0.0007675736767668671,
         "actual_pump_eur_per_l": 1.658,
         "predicted_pump_eur_per_l": 1.6565092472460103,
         "direction_correct": false
@@ -514,7 +514,7 @@
       {
         "date": "2025-09-29",
         "actual_return": 0.003768998620764963,
-        "predicted_return": -0.0010796343099494694,
+        "predicted_return": -0.00107963430994947,
         "actual_pump_eur_per_l": 1.6614,
         "predicted_pump_eur_per_l": 1.6570275553471354,
         "direction_correct": false
@@ -522,7 +522,7 @@
       {
         "date": "2025-10-06",
         "actual_return": 0.003099285873479074,
-        "predicted_return": 0.002135893852086626,
+        "predicted_return": 0.0021358938520866263,
         "actual_pump_eur_per_l": 1.6642000000000001,
         "predicted_pump_eur_per_l": 1.6633310861944508,
         "direction_correct": true
@@ -530,7 +530,7 @@
       {
         "date": "2025-10-13",
         "actual_return": 0.001984753564176378,
-        "predicted_return": -0.0020522027615586273,
+        "predicted_return": -0.0020522027615586286,
         "actual_pump_eur_per_l": 1.666,
         "predicted_pump_eur_per_l": 1.662338829405585,
         "direction_correct": false
@@ -538,7 +538,7 @@
       {
         "date": "2025-10-20",
         "actual_return": 0.004952055301032043,
-        "predicted_return": -0.005841306407990202,
+        "predicted_return": -0.0058413064079902025,
         "actual_pump_eur_per_l": 1.6705,
         "predicted_pump_eur_per_l": 1.660691925425292,
         "direction_correct": false
@@ -554,7 +554,7 @@
       {
         "date": "2025-11-03",
         "actual_return": 0.008432685703071208,
-        "predicted_return": 0.0027828207951791383,
+        "predicted_return": 0.002782820795179138,
         "actual_pump_eur_per_l": 1.6781,
         "predicted_pump_eur_per_l": 1.672941031514441,
         "direction_correct": true
@@ -562,7 +562,7 @@
       {
         "date": "2025-11-10",
         "actual_return": 0.005755779454169829,
-        "predicted_return": 0.0073750333218383255,
+        "predicted_return": 0.007375033321838327,
         "actual_pump_eur_per_l": 1.6834,
         "predicted_pump_eur_per_l": 1.684891030983202,
         "direction_correct": true
@@ -578,7 +578,7 @@
       {
         "date": "2025-11-24",
         "actual_return": 0.009492183133862131,
-        "predicted_return": 0.008321676748473499,
+        "predicted_return": 0.008321676748473497,
         "actual_pump_eur_per_l": 1.7038,
         "predicted_pump_eur_per_l": 1.7027025172941725,
         "direction_correct": true
@@ -586,7 +586,7 @@
       {
         "date": "2025-12-01",
         "actual_return": 0.04986721796707427,
-        "predicted_return": 0.00036515539839285157,
+        "predicted_return": 0.00036515539839285016,
         "actual_pump_eur_per_l": 1.751,
         "predicted_pump_eur_per_l": 1.7041456245506923,
         "direction_correct": true
@@ -610,7 +610,7 @@
       {
         "date": "2025-12-22",
         "actual_return": -0.010043048523189602,
-        "predicted_return": -0.01488527233535786,
+        "predicted_return": -0.014885272335357863,
         "actual_pump_eur_per_l": 1.743,
         "predicted_pump_eur_per_l": 1.7381785318959804,
         "direction_correct": true
@@ -642,7 +642,7 @@
       {
         "date": "2026-01-19",
         "actual_return": 0.0016734413149230853,
-        "predicted_return": -0.0008952717445016756,
+        "predicted_return": -0.0008952717445016755,
         "actual_pump_eur_per_l": 1.715,
         "predicted_pump_eur_per_l": 1.7125440185093863,
         "direction_correct": false
@@ -650,7 +650,7 @@
       {
         "date": "2026-01-26",
         "actual_return": 0.004594275365829681,
-        "predicted_return": 0.0021181982983146702,
+        "predicted_return": 0.0021181982983146694,
         "actual_pump_eur_per_l": 1.7194,
         "predicted_pump_eur_per_l": 1.7170286273177928,
         "direction_correct": true
@@ -666,7 +666,7 @@
       {
         "date": "2026-02-09",
         "actual_return": 0.006806835217657792,
-        "predicted_return": 0.01095939093138977,
+        "predicted_return": 0.010959390931389769,
         "actual_pump_eur_per_l": 1.7335,
         "predicted_pump_eur_per_l": 1.7375263744947922,
         "direction_correct": true
@@ -674,7 +674,7 @@
       {
         "date": "2026-02-16",
         "actual_return": 0.0015365489683814015,
-        "predicted_return": 0.016404932118246018,
+        "predicted_return": 0.016404932118246014,
         "actual_pump_eur_per_l": 1.735,
         "predicted_pump_eur_per_l": 1.7495147178409085,
         "direction_correct": true
@@ -698,7 +698,7 @@
       {
         "date": "2026-03-09",
         "actual_return": 0.009071324666175107,
-        "predicted_return": 0.030628964758217053,
+        "predicted_return": 0.03062896475821705,
         "actual_pump_eur_per_l": 1.7472999999999999,
         "predicted_pump_eur_per_l": 1.7684504938782077,
         "direction_correct": true
@@ -722,7 +722,7 @@
       {
         "date": "2026-03-30",
         "actual_return": 0.20681216435127747,
-        "predicted_return": 0.06638940298320907,
+        "predicted_return": 0.06638940298320908,
         "actual_pump_eur_per_l": 2.178,
         "predicted_pump_eur_per_l": 2.1676008883411746,
         "direction_correct": true
@@ -730,7 +730,7 @@
       {
         "date": "2026-04-06",
         "actual_return": -0.04968592293794816,
-        "predicted_return": 0.1142291823007523,
+        "predicted_return": 0.11422918230075228,
         "actual_pump_eur_per_l": 2.0987,
         "predicted_pump_eur_per_l": 2.3603126877961493,
         "direction_correct": false
@@ -738,7 +738,7 @@
       {
         "date": "2026-04-13",
         "actual_return": 0.04120719273197415,
-        "predicted_return": 0.052134587655613795,
+        "predicted_return": 0.052134587655613775,
         "actual_pump_eur_per_l": 2.1612,
         "predicted_pump_eur_per_l": 2.1777738585292545,
         "direction_correct": true
@@ -746,7 +746,7 @@
       {
         "date": "2026-04-20",
         "actual_return": -0.0051290965096498775,
-        "predicted_return": 0.01210874302245075,
+        "predicted_return": 0.012108743022450755,
         "actual_pump_eur_per_l": 2.1531,
         "predicted_pump_eur_per_l": 2.180322435754001,
         "direction_correct": false
@@ -754,7 +754,7 @@
       {
         "date": "2026-04-27",
         "actual_return": -0.06403053097922462,
-        "predicted_return": -0.015012220172320644,
+        "predicted_return": -0.015012220172320642,
         "actual_pump_eur_per_l": 2.0525,
         "predicted_pump_eur_per_l": 2.1295139180756526,
         "direction_correct": true
@@ -762,7 +762,7 @@
       {
         "date": "2026-05-04",
         "actual_return": -0.0538582975949754,
-        "predicted_return": 0.00734798423119343,
+        "predicted_return": 0.007347984231193437,
         "actual_pump_eur_per_l": 1.9733,
         "predicted_pump_eur_per_l": 2.0633053981855682,
         "direction_correct": false
@@ -770,7 +770,7 @@
       {
         "date": "2026-05-11",
         "actual_return": -0.012218564239640628,
-        "predicted_return": 0.005102860773929783,
+        "predicted_return": 0.005102860773929782,
         "actual_pump_eur_per_l": 1.9563,
         "predicted_pump_eur_per_l": 1.9803997403177183,
         "direction_correct": false
@@ -778,7 +778,7 @@
       {
         "date": "2026-05-18",
         "actual_return": -0.004947881706335089,
-        "predicted_return": -0.003152479876235375,
+        "predicted_return": -0.0031524798762353804,
         "actual_pump_eur_per_l": 1.9495,
         "predicted_pump_eur_per_l": 1.9519674665178528,
         "direction_correct": true
@@ -794,7 +794,7 @@
       {
         "date": "2026-06-01",
         "actual_return": -0.007773600187454877,
-        "predicted_return": 0.004624128112873087,
+        "predicted_return": 0.004624128112873091,
         "actual_pump_eur_per_l": 1.9222000000000001,
         "predicted_pump_eur_per_l": 1.9389459277573247,
         "direction_correct": false
@@ -802,7 +802,7 @@
       {
         "date": "2026-06-08",
         "actual_return": -0.019026648873641028,
-        "predicted_return": -0.005287818901669721,
+        "predicted_return": -0.005287818901669719,
         "actual_pump_eur_per_l": 1.8967,
         "predicted_pump_eur_per_l": 1.9151131302686004,
         "direction_correct": true
@@ -810,7 +810,7 @@
       {
         "date": "2026-06-15",
         "actual_return": -0.03978016703867082,
-        "predicted_return": -0.01112775091979532,
+        "predicted_return": -0.011127750919795315,
         "actual_pump_eur_per_l": 1.8444,
         "predicted_pump_eur_per_l": 1.8820700621080968,
         "direction_correct": true
@@ -826,7 +826,7 @@
       {
         "date": "2026-06-29",
         "actual_return": -0.03925487554123375,
-        "predicted_return": -0.04313446556193452,
+        "predicted_return": -0.04313446556193453,
         "actual_pump_eur_per_l": 1.7592,
         "predicted_pump_eur_per_l": 1.7544462394180897,
         "direction_correct": true
@@ -834,7 +834,7 @@
       {
         "date": "2026-07-06",
         "actual_return": -0.039499654059481415,
-        "predicted_return": -0.01570771861492702,
+        "predicted_return": -0.015707718614927018,
         "actual_pump_eur_per_l": 1.7127000000000001,
         "predicted_pump_eur_per_l": 1.7407084730996834,
         "direction_correct": true
@@ -858,7 +858,7 @@
       {
         "date": "2026-07-27",
         "actual_return": 0.050942229086395674,
-        "predicted_return": 0.036998968269411,
+        "predicted_return": 0.036998968269410994,
         "actual_pump_eur_per_l": 1.7517,
         "predicted_pump_eur_per_l": 1.7361807951575454,
         "direction_correct": true
@@ -866,7 +866,7 @@
       {
         "date": "2026-08-03",
         "actual_return": 0.08027524406367115,
-        "predicted_return": 0.02109505588367888,
+        "predicted_return": 0.021095055883678892,
         "actual_pump_eur_per_l": 1.8456,
         "predicted_pump_eur_per_l": 1.7763754247910644,
         "direction_correct": true
@@ -874,7 +874,7 @@
       {
         "date": "2026-08-10",
         "actual_return": 0.04352555405062675,
-        "predicted_return": 0.008793764883267814,
+        "predicted_return": 0.008793764883267817,
         "actual_pump_eur_per_l": 1.9005999999999998,
         "predicted_pump_eur_per_l": 1.8567120255475016,
         "direction_correct": true
@@ -895,7 +895,7 @@
     },
     "explanation": "Prices likely to rise over the next 1\u20133 weeks. Brent-in-EUR -7.0% over the prior 2 weeks and +6.8% over the prior 6 weeks (currently \u20ac75.92/bbl). ULSD refined-product proxy (\u20ac3.63/gal) -6.9% last week, +16.3% over 4 weeks. Crack spread ULSD\u2212Brent \u20ac+68.55/bbl (+10.26 vs 4 weeks ago) \u2014 refining margin. Last week's wholesale diesel return was +8.0%. No Irish excise/carbon-tax changes flagged in the \u00b13-week window. Model estimate: +1.4% weekly change in wholesale diesel. Pump \u20ac1.919 projected to \u20ac1.938 next week (50% band \u20ac1.926\u2013\u20ac1.950). Confidence 78%, walk-forward R\u00b2 0.16 (in-sample 0.43), trained on 946 weeks."
   },
-  "generated_at": "2026-08-20T05:35:44.338184Z",
+  "generated_at": "2026-08-20T06:53:16.975821Z",
   "brent_source": "YFINANCE_BZF",
   "notes": []
 }
