@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=11">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -54,6 +54,17 @@
                     <span class="decision-verdict">—</span>
                     <span class="decision-detail">Loading…</span>
                     <span class="decision-conf">confidence <b>—</b></span>
+                    <button type="button" class="decision-share" data-share-fuel="petrol"
+                            aria-label="Share this petrol call" hidden>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                             stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                            <polyline points="16 6 12 2 8 6"/>
+                            <line x1="12" y1="2" x2="12" y2="15"/>
+                        </svg>
+                        Share
+                    </button>
                 </article>
                 <article class="decision-card" data-fuel="diesel" id="decision-diesel">
                     <span class="decision-fuel">Diesel</span>
@@ -61,6 +72,17 @@
                     <span class="decision-verdict">—</span>
                     <span class="decision-detail">Loading…</span>
                     <span class="decision-conf">confidence <b>—</b></span>
+                    <button type="button" class="decision-share" data-share-fuel="diesel"
+                            aria-label="Share this diesel call" hidden>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                             stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                            <polyline points="16 6 12 2 8 6"/>
+                            <line x1="12" y1="2" x2="12" y2="15"/>
+                        </svg>
+                        Share
+                    </button>
                 </article>
             </div>
         </section>
@@ -191,6 +213,30 @@
             <p class="notes" id="prediction-notes"></p>
         </section>
 
+        <dialog class="share-modal" id="share-modal" aria-labelledby="share-modal-title">
+            <form method="dialog" class="share-modal-inner">
+                <header class="share-modal-head">
+                    <h2 id="share-modal-title">Share this call</h2>
+                    <button type="submit" class="share-close" aria-label="Close" value="cancel">×</button>
+                </header>
+                <div class="share-preview">
+                    <img id="share-preview-img" alt="Preview of the share card">
+                </div>
+                <div class="share-actions">
+                    <button type="button" id="share-native" class="btn primary" hidden>
+                        Share…
+                    </button>
+                    <button type="button" id="share-download" class="btn">
+                        Download PNG
+                    </button>
+                    <button type="button" id="share-copy" class="btn" hidden>
+                        Copy image
+                    </button>
+                </div>
+                <p class="share-hint muted">1200×630 · PNG · optimised for WhatsApp, iMessage &amp; social.</p>
+            </form>
+        </dialog>
+
         <section class="news">
             <h2>Recent oil-relevant news</h2>
             <ul id="news-list" class="news-list">
@@ -211,6 +257,6 @@
     </footer>
 
     <script src="shared.js?v=9"></script>
-    <script src="app.js?v=15"></script>
+    <script src="app.js?v=16"></script>
 </body>
 </html>

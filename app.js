@@ -253,6 +253,7 @@ async function loadPrediction() {
         renderHitRate(card.querySelector(".hr-list"), bt);
     });
     renderDecision(data);
+    wireShareButtons();
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
     updateCalculator();
     // If the historical chart already rendered before predictionData arrived,
@@ -328,6 +329,285 @@ function renderDecision(data) {
         card.querySelector(".decision-detail").textContent = detail;
         card.querySelector(".decision-conf b").textContent = `${Math.round(p.confidence * 100)}%`;
         card.dataset.signal = signal;
+    });
+}
+
+// ------------------ share card ------------------
+// Renders the current "Fill now / Wait / Either" call as a 1200×630 PNG that
+// slots into WhatsApp / iMessage / Twitter previews at the OG-standard size.
+// All drawing happens client-side so this works on GitHub Pages with zero
+// backend and zero third-party network calls.
+
+const SHARE_W = 1200;
+const SHARE_H = 630;
+
+// Waits for the exact weight/family combos we're about to draw with. Canvas
+// does not trigger the same lazy font-load path that live text does, so we
+// have to ask for them explicitly or fall back to system-ui the first time.
+async function ensureShareFonts() {
+    if (!document.fonts || !document.fonts.load) return;
+    try {
+        await Promise.all([
+            document.fonts.load('700 140px "IBM Plex Sans Condensed"'),
+            document.fonts.load('600 32px "IBM Plex Sans"'),
+            document.fonts.load('500 22px "IBM Plex Mono"'),
+            document.fonts.load('600 48px "IBM Plex Sans"'),
+        ]);
+    } catch { /* fall back to system font — not fatal */ }
+}
+
+// Draws text and returns the block height it consumed. Handles word wrap by
+// greedy splitting on spaces — good enough for our short verdict + detail
+// strings; no need for a real hyphenation pass.
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = String(text).split(/\s+/);
+    let line = "";
+    let lines = 0;
+    for (const word of words) {
+        const test = line ? line + " " + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, x, y + lines * lineHeight);
+            line = word;
+            lines += 1;
+        } else {
+            line = test;
+        }
+    }
+    if (line) {
+        ctx.fillText(line, x, y + lines * lineHeight);
+        lines += 1;
+    }
+    return lines * lineHeight;
+}
+
+function buildShareCardCanvas(opts) {
+    const canvas = document.createElement("canvas");
+    canvas.width  = SHARE_W;
+    canvas.height = SHARE_H;
+    const ctx = canvas.getContext("2d");
+
+    // ---- palette (mirrors style.css :root vars, hardcoded because canvas
+    // ---- has no CSS var access) ----
+    const BG        = "#0a0b0d";
+    const SURFACE   = "#101215";
+    const RULE      = "#23272e";
+    const INK       = "#ece7d8";
+    const INK_MID   = "#b6b2a6";
+    const INK_DIM   = "#7c828c";
+    const AMBER     = "#ffb648";
+    const UP        = "#ff5c4a";
+    const DOWN      = "#7bd88f";
+    const FLAT      = "#d6b45a";
+    const signalColor = { fill: UP, wait: DOWN, neutral: FLAT }[opts.signal] || FLAT;
+
+    // ---- background: petroleum black with a faint amber radial in the top-
+    // ---- right corner, matching the decision-card gradient in style.css ----
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, SHARE_W, SHARE_H);
+    const grad = ctx.createRadialGradient(SHARE_W, 0, 40, SHARE_W, 0, 800);
+    grad.addColorStop(0, "rgba(255, 182, 72, 0.14)");
+    grad.addColorStop(1, "rgba(255, 182, 72, 0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, SHARE_W, SHARE_H);
+
+    // Hairline border and inner rule so the exported PNG reads as a framed
+    // panel on any messaging-app background, not just dark ones.
+    ctx.strokeStyle = RULE;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, SHARE_W - 2, SHARE_H - 2);
+
+    const PAD_X = 72;
+    let cursorY = 88;
+
+    // ---- eyebrow ----
+    ctx.fillStyle = INK_DIM;
+    ctx.font = '500 22px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("IRISH FUEL TREND  ·  IE  ·  3-WEEK OUTLOOK", PAD_X, cursorY);
+
+    // ---- fuel label + LED ----
+    cursorY += 60;
+    const ledR = 14;
+    ctx.beginPath();
+    ctx.arc(PAD_X + ledR, cursorY - 12, ledR, 0, Math.PI * 2);
+    ctx.fillStyle = signalColor;
+    ctx.fill();
+    // Soft glow around the LED — approximated with a second, larger, translucent
+    // circle. Canvas has no box-shadow, so this is the manual equivalent.
+    ctx.beginPath();
+    ctx.arc(PAD_X + ledR, cursorY - 12, ledR * 2.4, 0, Math.PI * 2);
+    const ledGlow = ctx.createRadialGradient(
+        PAD_X + ledR, cursorY - 12, ledR,
+        PAD_X + ledR, cursorY - 12, ledR * 2.4,
+    );
+    ledGlow.addColorStop(0, signalColor + "66");
+    ledGlow.addColorStop(1, signalColor + "00");
+    ctx.fillStyle = ledGlow;
+    ctx.fill();
+
+    ctx.fillStyle = INK_MID;
+    ctx.font = '600 32px "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif';
+    ctx.fillText(opts.fuelLabel, PAD_X + ledR * 2 + 22, cursorY);
+
+    // ---- verdict (huge display type) ----
+    cursorY += 150;
+    ctx.fillStyle = signalColor;
+    ctx.font = '700 140px "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, sans-serif';
+    ctx.fillText(opts.verdict.toUpperCase(), PAD_X, cursorY);
+
+    // ---- headline savings line ----
+    cursorY += 70;
+    ctx.fillStyle = INK;
+    ctx.font = '600 40px "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif';
+    const headline = opts.headline;
+    drawWrappedText(ctx, headline, PAD_X, cursorY, SHARE_W - PAD_X * 2, 52);
+
+    // ---- footer strip: current price + updated ----
+    const footerY = SHARE_H - 60;
+    ctx.strokeStyle = RULE;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD_X, footerY - 34);
+    ctx.lineTo(SHARE_W - PAD_X, footerY - 34);
+    ctx.stroke();
+
+    ctx.fillStyle = INK_DIM;
+    ctx.font = '500 20px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(opts.footerLeft, PAD_X, footerY);
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = AMBER;
+    ctx.fillText(opts.footerRight, SHARE_W - PAD_X, footerY);
+    ctx.textAlign = "left";
+
+    return canvas;
+}
+
+// Turns the raw predictionData row into the strings the card wants. Mirrors
+// the wording in renderDecision so the shared image and the on-page card
+// always agree — no risk of a screenshot saying "€2.19" while the page has
+// silently refreshed to a different number after the user hit Share.
+function shareCardOptsFor(fuel, data) {
+    const p = data[fuel];
+    if (!p || p.trend === "unknown") return null;
+
+    const now  = p.current_pump_eur_per_l;
+    const then = p.predicted_pump_3w_eur_per_l;
+    const perL = then - now;
+    const perFill = perL * DECISION_REF_LITRES;
+    const signal = perL > 0.005 ? "fill" : perL < -0.005 ? "wait" : "neutral";
+    const verdict = { fill: "Fill now", wait: "Wait", neutral: "Either way" }[signal];
+    const abs = Math.abs(perFill).toFixed(2);
+    const centsPerL = Math.abs(perL * 100).toFixed(1);
+    const headline = signal === "fill"
+        ? `Predicted +${centsPerL}c/L in ~3 weeks. Fill a 60 L tank now, save about €${abs}.`
+        : signal === "wait"
+            ? `Predicted −${centsPerL}c/L in ~3 weeks. Delay a 60 L fill, save about €${abs}.`
+            : "Predicted move is inside the model's noise floor. Fill whenever — timing barely matters.";
+
+    const fuelLabel = fuel === "petrol" ? "Petrol (95)" : "Diesel";
+    const conf = Math.round((p.confidence || 0) * 100);
+    const updated = (window.__updatedAtLabel || "").replace(/^\s*\(updated at:\s*/, "").replace(/\)\s*$/, "");
+    const footerLeft = `Now €${now.toFixed(3)}/L  ·  Confidence ${conf}%`;
+    const footerRight = updated ? `irishfueltrend  ·  ${updated}` : "irishfueltrend";
+
+    return { fuel, fuelLabel, signal, verdict, headline, footerLeft, footerRight };
+}
+
+async function canvasToBlob(canvas) {
+    // toBlob is async and callback-based; wrap for await/use.
+    return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+async function openShareModal(fuel) {
+    if (!predictionData) return;
+    const opts = shareCardOptsFor(fuel, predictionData);
+    if (!opts) return;
+
+    const modal = document.getElementById("share-modal");
+    const img   = document.getElementById("share-preview-img");
+    const dlBtn = document.getElementById("share-download");
+    const shBtn = document.getElementById("share-native");
+    const cpBtn = document.getElementById("share-copy");
+    if (!modal || !img) return;
+
+    await ensureShareFonts();
+    const canvas = buildShareCardCanvas(opts);
+    const blob = await canvasToBlob(canvas);
+    if (!blob) return;
+
+    // Revoke any previous object URL to avoid a slow-growing leak across many
+    // open/close cycles.
+    if (img.dataset.objurl) URL.revokeObjectURL(img.dataset.objurl);
+    const objUrl = URL.createObjectURL(blob);
+    img.src = objUrl;
+    img.dataset.objurl = objUrl;
+
+    const fname = `irish-fuel-${fuel}-${opts.signal}.png`;
+    const file  = new File([blob], fname, { type: "image/png" });
+
+    // ---- Web Share API (mobile: opens native share sheet incl. WhatsApp) ----
+    const canShareFiles =
+        typeof navigator !== "undefined" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] });
+    shBtn.hidden = !canShareFiles;
+    shBtn.onclick = async () => {
+        try {
+            await navigator.share({
+                files: [file],
+                title: "Irish Fuel Trend",
+                text:  `${opts.verdict} — ${opts.headline}`,
+            });
+        } catch (err) {
+            // User cancelling the sheet throws AbortError — that's not a real
+            // failure, so stay silent. Anything else is worth logging.
+            if (err && err.name !== "AbortError") console.error("share failed", err);
+        }
+    };
+
+    // ---- Clipboard image copy (desktop Chromium / Safari 16+) ----
+    const canCopyImage =
+        typeof ClipboardItem !== "undefined" &&
+        navigator.clipboard && typeof navigator.clipboard.write === "function";
+    cpBtn.hidden = !canCopyImage;
+    cpBtn.onclick = async () => {
+        try {
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+            const orig = cpBtn.textContent;
+            cpBtn.textContent = "Copied";
+            setTimeout(() => { cpBtn.textContent = orig; }, 1500);
+        } catch (err) {
+            console.error("copy failed", err);
+        }
+    };
+
+    // ---- Download fallback (always available) ----
+    dlBtn.onclick = () => {
+        const a = document.createElement("a");
+        a.href = objUrl;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
+
+    // <dialog> supports native modal semantics + Esc-to-close for free.
+    if (typeof modal.showModal === "function") modal.showModal();
+    else modal.setAttribute("open", "");
+}
+
+function wireShareButtons() {
+    document.querySelectorAll(".decision-share").forEach(btn => {
+        // Show now that predictionData is loaded and a real verdict exists.
+        const fuel = btn.dataset.shareFuel;
+        const opts = predictionData ? shareCardOptsFor(fuel, predictionData) : null;
+        btn.hidden = !opts;
+        if (!opts) return;
+        // Replace listener defensively — renderDecision may be called again on
+        // dev-ingest refresh, and we don't want click handlers stacking up.
+        btn.onclick = () => openShareModal(fuel).catch(err => console.error(err));
     });
 }
 
