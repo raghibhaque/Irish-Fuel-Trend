@@ -9,12 +9,15 @@
 const FUELS = ["petrol", "diesel"];
 const DEFAULT_COUNTY = "Dublin";
 const STORAGE_KEY = "ift.county";
+const STORAGE_KEY_TO = "ift.county.to";
 const SPARK_POINTS = 12;
+const ROUTE_TOP_N = 8;
 
 let chart = null;
 let nationalPrices = null;   // prices.json
 let countyData = null;       // counties.json
 let selectedCounty = null;
+let selectedRouteTo = null;
 
 // ------------------ county selection ------------------
 function availableCounties() {
@@ -45,6 +48,46 @@ function buildDropdown() {
     const without = (countyData.counties_without_data || [])
         .map(c => `<option value="${escapeHtml(c)}" disabled>${escapeHtml(c)} — no reports</option>`);
     select.innerHTML = withData.join("") + without.join("");
+
+    // Route-mode "To" picker mirrors the same list, minus the without-data
+    // rows (a county with no stations has nothing to contribute to a route
+    // comparison). Placeholder stays selected until the user picks.
+    const toSelect = document.getElementById("route-to");
+    if (toSelect) {
+        const opts = [`<option value="">choose a second county</option>`]
+            .concat(availableCounties().map(c =>
+                `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
+        toSelect.innerHTML = opts.join("");
+    }
+}
+
+function initialRouteTo() {
+    const available = availableCounties();
+    if (!available.length) return null;
+    const fromUrl = new URLSearchParams(location.search).get("to");
+    const candidates = [fromUrl, localStorage.getItem(STORAGE_KEY_TO)];
+    for (const c of candidates) {
+        if (!c) continue;
+        const match = available.find(a => a.toLowerCase() === c.toLowerCase());
+        if (match && match !== selectedCounty) return match;
+    }
+    return null; // no default — force explicit pick
+}
+
+function selectRouteTo(name) {
+    selectedRouteTo = name || null;
+    const toSelect = document.getElementById("route-to");
+    if (toSelect) toSelect.value = selectedRouteTo || "";
+    const url = new URL(location.href);
+    if (selectedRouteTo) {
+        localStorage.setItem(STORAGE_KEY_TO, selectedRouteTo);
+        url.searchParams.set("to", selectedRouteTo);
+    } else {
+        localStorage.removeItem(STORAGE_KEY_TO);
+        url.searchParams.delete("to");
+    }
+    history.replaceState(null, "", url);
+    renderRoute();
 }
 
 function selectCounty(name) {
@@ -88,7 +131,85 @@ function render() {
     renderStations(entry);
     renderBrandStations(entry);
     renderChart(entry, parseInt(document.getElementById("chart-range").value, 10));
+    renderRoute();
     updateCalculator();
+}
+
+// Merge cheapest station lists from the selected From + To counties per fuel
+// and show the top N. Stations don't ship coordinates, so the "along the
+// route" bit is honest but coarse — this is a two-county comparison, not a
+// GPS-corridor search. Google Maps link uses county names as waypoints.
+function renderRoute() {
+    const grid = document.getElementById("route-grid");
+    const hint = document.getElementById("route-hint");
+    const maps = document.getElementById("route-maps");
+    const fromEl = document.getElementById("route-from-name");
+    if (!grid || !hint || !maps || !fromEl) return;
+
+    fromEl.textContent = selectedCounty || "—";
+
+    if (!selectedRouteTo) {
+        grid.hidden = true;
+        maps.hidden = true;
+        hint.textContent = "Pick a second county to see the cheapest reported stations across both — sorted by price, tagged by county.";
+        return;
+    }
+    if (selectedRouteTo === selectedCounty) {
+        grid.hidden = true;
+        maps.hidden = true;
+        hint.textContent = "Pick a different second county — the From and To are the same.";
+        return;
+    }
+
+    const fromEntry = entryFor(selectedCounty);
+    const toEntry   = entryFor(selectedRouteTo);
+    if (!fromEntry || !toEntry) {
+        grid.hidden = true;
+        maps.hidden = true;
+        hint.textContent = "One of the selected counties has no snapshot yet.";
+        return;
+    }
+
+    // Encoded county names — no user-authored strings, but treat as untrusted
+    // for URL construction anyway. `encodeURIComponent` covers the entire
+    // path segment safely.
+    const fromParam = encodeURIComponent(`${selectedCounty} County, Ireland`);
+    const toParam   = encodeURIComponent(`${selectedRouteTo} County, Ireland`);
+    maps.href = `https://www.google.com/maps/dir/?api=1&origin=${fromParam}&destination=${toParam}&travelmode=driving`;
+    maps.hidden = false;
+
+    let totalRendered = 0;
+    FUELS.forEach(fuel => {
+        const list = document.getElementById(`route-${fuel}`);
+        if (!list) return;
+        const rows = [
+            ...(fromEntry[fuel]?.stations || []).map(s => ({ ...s, _county: selectedCounty,  _role: "from" })),
+            ...(toEntry[fuel]?.stations   || []).map(s => ({ ...s, _county: selectedRouteTo, _role: "to"   })),
+        ].sort((a, b) => a.price_eur_per_litre - b.price_eur_per_litre).slice(0, ROUTE_TOP_N);
+
+        totalRendered += rows.length;
+
+        if (!rows.length) {
+            list.innerHTML = `<li class="empty">No ${fuel} reports in either county.</li>`;
+            return;
+        }
+        list.innerHTML = rows.map(s => {
+            const brand = s.brand && s.brand !== s.name ? ` · ${escapeHtml(s.brand)}` : "";
+            const when = s.reported_at ? fmtDate(s.reported_at.slice(0, 10)) : "";
+            return `<li>
+                <span class="station-name">${escapeHtml(s.name)}${brand}
+                    <span class="station-county" data-role="${s._role}">${escapeHtml(s._county)}</span>
+                </span>
+                <span class="station-price">€${s.price_eur_per_litre.toFixed(3)}</span>
+                <span class="station-when">${escapeHtml(when)}</span>
+            </li>`;
+        }).join("");
+    });
+
+    grid.hidden = false;
+    hint.textContent = totalRendered
+        ? `Showing up to ${ROUTE_TOP_N} cheapest per fuel across ${selectedCounty} and ${selectedRouteTo}. Times are report dates — older reports are still shown but ranked purely on price.`
+        : `No station-level reports in either county yet.`;
 }
 
 // Operator-published forecourt catalogue (Applegreen, Maxol, ...). No prices,
@@ -175,10 +296,15 @@ function renderPriceCards(entry) {
             `${fmtCents(snap.basis_eur_per_litre)} vs national · ${snap.station_count} stations${upd}`;
 
         // Sparkline uses the full national series so it stays stable across
-        // range changes, matching the national dashboard's behaviour.
+        // range changes, matching the national dashboard's behaviour. The
+        // forecast tail uses the county's own prediction fields — those
+        // already include the county offset, so no basis-shift needed here.
         const recent = nationalPrices[fuel].points.slice(-SPARK_POINTS)
             .map(p => p.price_eur_per_litre + snap.basis_eur_per_litre);
-        renderSparklineValues(`spark-${fuel}`, recent);
+        const anchor = recent[recent.length - 1];
+        renderSparklineValues(`spark-${fuel}`, recent, {
+            forecast: sparklineForecastFromPrediction(snap, anchor),
+        });
     });
 }
 
@@ -357,6 +483,7 @@ document.getElementById("county-select").addEventListener("change", (e) => selec
 document.getElementById("chart-range").addEventListener("change", () => render());
 document.getElementById("calc-litres").addEventListener("input", updateCalculator);
 document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
+document.getElementById("route-to").addEventListener("change", (e) => selectRouteTo(e.target.value));
 
 async function boot() {
     const [prices, counties, manifest] = await Promise.all([
@@ -385,6 +512,8 @@ async function boot() {
 
     buildDropdown();
     selectCounty(initialCounty());
+    // Route To — resolve after selectCounty so "must differ from From" holds.
+    selectRouteTo(initialRouteTo());
     attachDragCompare("price-chart", "dc-popup");
     mountDevIngestButton({
         onDone: async () => {
