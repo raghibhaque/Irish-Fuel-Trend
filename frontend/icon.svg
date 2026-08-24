@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="glow" cx="65%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#ffb648" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ffb648" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#0a0b0d"/>
+  <rect width="512" height="512" rx="96" fill="url(#glow)"/>
+  <rect x="12" y="12" width="488" height="488" rx="84" fill="none"
+        stroke="#23272e" stroke-width="2"/>
+  <g transform="translate(256 260)" fill="none" stroke="#ffb648" stroke-width="24"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-120 90 L-40 -30 L20 40 L120 -90"/>
+    <circle cx="120" cy="-90" r="14" fill="#ffb648" stroke="none"/>
+  </g>
+  <text x="256" y="430" text-anchor="middle" fill="#ece7d8"
+        font-family="'IBM Plex Sans Condensed','IBM Plex Sans',sans-serif"
+        font-weight="700" font-size="56" letter-spacing="6">IFT</text>
+</svg>

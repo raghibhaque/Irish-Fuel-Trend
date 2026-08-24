@@ -26,8 +26,18 @@ async function loadPrices(weeks = 26) {
 
     // Sparklines always use the last 12 weeks from the full series, not the
     // range-filtered view, so they stay stable when the user swaps ranges.
-    renderSparkline("spark-petrol", priceData.petrol.points.slice(-12));
-    renderSparkline("spark-diesel", priceData.diesel.points.slice(-12));
+    // The forecast tail only appears once predictionData is loaded; the
+    // second render in loadPrediction() picks that up.
+    const petrolPts = priceData.petrol.points.slice(-12);
+    const dieselPts = priceData.diesel.points.slice(-12);
+    const petrolAnchor = petrolPts[petrolPts.length - 1]?.price_eur_per_litre;
+    const dieselAnchor = dieselPts[dieselPts.length - 1]?.price_eur_per_litre;
+    renderSparkline("spark-petrol", petrolPts, {
+        forecast: sparklineForecastFromPrediction(predictionData?.petrol, petrolAnchor),
+    });
+    renderSparkline("spark-diesel", dieselPts, {
+        forecast: sparklineForecastFromPrediction(predictionData?.diesel, dieselAnchor),
+    });
 
     renderChart(view);
 }
@@ -262,6 +272,22 @@ async function loadPrediction() {
         renderChart({
             petrol: sliceByWeeks(priceData.petrol, currentRangeWeeks),
             diesel: sliceByWeeks(priceData.diesel, currentRangeWeeks),
+        });
+        // Same reason for the sparkline: it renders inside loadPrices, which
+        // may have run before predictionData was ready.
+        const petrolPts = priceData.petrol.points.slice(-12);
+        const dieselPts = priceData.diesel.points.slice(-12);
+        renderSparkline("spark-petrol", petrolPts, {
+            forecast: sparklineForecastFromPrediction(
+                predictionData.petrol,
+                petrolPts[petrolPts.length - 1]?.price_eur_per_litre,
+            ),
+        });
+        renderSparkline("spark-diesel", dieselPts, {
+            forecast: sparklineForecastFromPrediction(
+                predictionData.diesel,
+                dieselPts[dieselPts.length - 1]?.price_eur_per_litre,
+            ),
         });
     }
 }

@@ -138,24 +138,101 @@ function baseChartOptions() {
 
 // ------------------ sparkline ------------------
 // `values` is a plain array of numbers, oldest first.
-function renderSparklineValues(elId, values) {
+//
+// `opts.forecast`, when supplied, extends the sparkline with a 2-point
+// forecast tail (1w, 3w) drawn as a dashed line plus a shaded ±band. Shape:
+//   { mid: [n1w, n3w], low: [n1w, n3w], high: [n1w, n3w] }
+// Anchor for the tail is the last history value, so history + forecast join
+// seamlessly. The vertical scale is computed across BOTH history and the
+// band extremes so the band never spills off the top/bottom of the SVG.
+function renderSparklineValues(elId, values, opts = {}) {
     const svg = document.getElementById(elId);
     if (!svg || values.length < 2) return;
-    const lo = Math.min(...values);
-    const hi = Math.max(...values);
+    const forecast = opts.forecast || null;
+    const anchor = values[values.length - 1];
+
+    // Total x-slots = history + 2 forecast points (only when we have one).
+    const total = values.length + (forecast ? 2 : 0);
+    const forecastStart = values.length; // index of the first forecast point
+
+    // Include forecast band extremes in scaling so the shaded region fits.
+    const scaleVals = forecast
+        ? [...values, ...forecast.low, ...forecast.high, ...forecast.mid]
+        : values;
+    const lo = Math.min(...scaleVals);
+    const hi = Math.max(...scaleVals);
     const range = (hi - lo) || 1;
+
     const W = 200, H = 40, PAD = 2;
-    const x = (i) => (i / (values.length - 1)) * (W - 2 * PAD) + PAD;
+    const x = (i) => (i / (total - 1)) * (W - 2 * PAD) + PAD;
     const y = (v) => H - PAD - ((v - lo) / range) * (H - 2 * PAD);
-    const line = values.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+
+    // ---- history path ----
+    const line = values
+        .map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+        .join(" ");
     const fill = `M${x(0).toFixed(1)},${(H - PAD).toFixed(1)} ` +
                  values.map((v, i) => `L${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ") +
                  ` L${x(values.length - 1).toFixed(1)},${(H - PAD).toFixed(1)} Z`;
-    svg.innerHTML = `<path class="fill" d="${fill}"/><path d="${line}"/>`;
+
+    let extra = "";
+    if (forecast) {
+        // Band polygon: anchor → high[0] → high[1] → low[1] → low[0] → anchor.
+        // Closing back through the low path draws a filled envelope.
+        const ax = x(forecastStart - 1), ay = y(anchor);
+        const h0x = x(forecastStart),     h0y = y(forecast.high[0]);
+        const h1x = x(forecastStart + 1), h1y = y(forecast.high[1]);
+        const l1x = x(forecastStart + 1), l1y = y(forecast.low[1]);
+        const l0x = x(forecastStart),     l0y = y(forecast.low[0]);
+        const band =
+            `M${ax.toFixed(1)},${ay.toFixed(1)} ` +
+            `L${h0x.toFixed(1)},${h0y.toFixed(1)} ` +
+            `L${h1x.toFixed(1)},${h1y.toFixed(1)} ` +
+            `L${l1x.toFixed(1)},${l1y.toFixed(1)} ` +
+            `L${l0x.toFixed(1)},${l0y.toFixed(1)} Z`;
+
+        // Mid line: dashed, anchored to last history value so there is no gap.
+        const m0x = x(forecastStart),     m0y = y(forecast.mid[0]);
+        const m1x = x(forecastStart + 1), m1y = y(forecast.mid[1]);
+        const mid =
+            `M${ax.toFixed(1)},${ay.toFixed(1)} ` +
+            `L${m0x.toFixed(1)},${m0y.toFixed(1)} ` +
+            `L${m1x.toFixed(1)},${m1y.toFixed(1)}`;
+
+        extra =
+            `<path class="band" d="${band}"/>` +
+            `<path class="forecast" d="${mid}"/>`;
+    }
+
+    svg.innerHTML = `<path class="fill" d="${fill}"/>${extra}<path d="${line}"/>`;
 }
 
-function renderSparkline(elId, pts) {
-    renderSparklineValues(elId, pts.map(p => p.price_eur_per_litre));
+function renderSparkline(elId, pts, opts) {
+    renderSparklineValues(elId, pts.map(p => p.price_eur_per_litre), opts);
+}
+
+// Build the forecast opt block from a prediction record (national or county
+// shape — both expose the same key names for the pump forecast fields).
+// `anchor` is the price the tail should start from, in EUR/L.
+// Returns null when the record is missing / synthetic / unknown-trend.
+function sparklineForecastFromPrediction(pred, anchor) {
+    if (!pred) return null;
+    if (pred.trend === "unknown") return null;
+    if (pred.predicted_pump_eur_per_l == null || pred.predicted_pump_3w_eur_per_l == null) return null;
+    if (pred.predicted_pump_low_eur_per_l == null || pred.predicted_pump_high_eur_per_l == null) return null;
+
+    // Backend only ships a native band for the 1-week point. For the 3-week
+    // point we widen by √3 — random-walk approximation on weekly returns —
+    // to signal that the uncertainty envelope grows with horizon. Mirrors the
+    // same scaling done for the main chart in app.js.
+    const half1w = (pred.predicted_pump_high_eur_per_l - pred.predicted_pump_low_eur_per_l) / 2;
+    const half3w = half1w * Math.sqrt(3);
+    return {
+        mid:  [pred.predicted_pump_eur_per_l, pred.predicted_pump_3w_eur_per_l],
+        low:  [pred.predicted_pump_low_eur_per_l,  pred.predicted_pump_3w_eur_per_l - half3w],
+        high: [pred.predicted_pump_high_eur_per_l, pred.predicted_pump_3w_eur_per_l + half3w],
+        anchor,
+    };
 }
 
 // ------------------ drag-to-compare overlay ------------------

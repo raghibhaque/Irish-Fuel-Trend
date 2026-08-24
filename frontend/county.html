@@ -7,7 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <meta name="theme-color" content="#0a0b0d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Fuel Trend">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -142,6 +149,35 @@
             <p class="notes" id="prediction-notes"></p>
         </section>
 
+        <section class="route-mode">
+            <h2>Route mode <span class="muted">— cheapest stations across a two-county trip</span></h2>
+            <div class="route-picker">
+                <span class="route-from">From <strong id="route-from-name">—</strong></span>
+                <span class="route-arrow" aria-hidden="true">→</span>
+                <label>To
+                    <select id="route-to">
+                        <option value="">choose a second county</option>
+                    </select>
+                </label>
+                <a id="route-maps" class="route-maps" target="_blank" rel="noopener" hidden>
+                    Open route in Google Maps ↗
+                </a>
+            </div>
+            <div class="route-grid" id="route-grid" hidden>
+                <div class="route-col">
+                    <h3>Petrol</h3>
+                    <ul class="station-list" id="route-petrol"></ul>
+                </div>
+                <div class="route-col">
+                    <h3>Diesel</h3>
+                    <ul class="station-list" id="route-diesel"></ul>
+                </div>
+            </div>
+            <p class="route-hint muted" id="route-hint">
+                Pick a second county to see the cheapest reported stations across both — sorted by price, tagged by county.
+            </p>
+        </section>
+
         <section class="stations">
             <h2>Cheapest reported stations <span class="muted">in <span id="stations-county-name">—</span></span></h2>
             <div class="station-grid">
@@ -177,7 +213,15 @@
         </div>
     </footer>
 
-    <script src="shared.js?v=9"></script>
-    <script src="county.js?v=7"></script>
+    <script src="shared.js?v=10"></script>
+    <script src="county.js?v=8"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("sw.js").catch(err =>
+                    console.warn("SW registration failed:", err));
+            });
+        }
+    </script>
 </body>
 </html>
