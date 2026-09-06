@@ -20,6 +20,7 @@ from app.data_sources import (
     fuelwatch_ie,
     fx_rates,
     news_monitor,
+    nwe_gasoil,
     refined_products,
 )
 
@@ -30,7 +31,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", nargs="?", default="all",
                         choices=["all", "bulletin", "fx", "brent", "news", "fuelwatch",
-                                 "counties", "refined", "brands"])
+                                 "counties", "refined", "brands", "nwe"])
     parser.add_argument("--force", action="store_true",
                         help="force re-download of cached raw files")
     args = parser.parse_args()
@@ -65,6 +66,12 @@ def main() -> int:
     if args.source in ("all", "refined"):
         summary = refined_products.ingest(force_download=args.force)
         print("Refined products (RBOB/ULSD):", summary)
+
+    if args.source in ("all", "nwe"):
+        summary = nwe_gasoil.ingest(force_download=args.force)
+        # `nwe_gasoil` runs both symbols in one pass and reports per-symbol
+        # mock/real status inside the payload — keep the label plain.
+        print("Refined products (NWE gasoil / EBOB):", summary)
 
     if args.source in ("all", "brands"):
         summary = brand_stations.ingest()

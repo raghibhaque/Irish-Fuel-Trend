@@ -1,4 +1,4 @@
-"""Trend prediction model — v3.
+"""Trend prediction model — v4.
 
 Modelling target: **wholesale** weekly return (EU Bulletin's pre-tax price).
 Rationale: pump price = wholesale + fixed excise + carbon tax + NORA levy,
@@ -9,23 +9,37 @@ part of the price that actually moves with crude, refining margin, and FX.
 Features (per fuel):
     brent_eur_ret_2w   Brent (EUR/bbl) return over prior 2 weeks
     brent_eur_ret_6w   Brent (EUR/bbl) return over prior 6 weeks
-    product_eur_ret_1w  Refined-product (EUR/gal) return, prior 1 week
-    product_eur_ret_4w  Refined-product (EUR/gal) return, prior 4 weeks
+    product_eur_ret_1w Refined-product (EUR/gal) return, prior 1 week
+    product_eur_ret_4w Refined-product (EUR/gal) return, prior 4 weeks
+    crack_spread_ret_4w Refining-margin change (product − Brent, EUR/bbl)
+    pump_wholesale_residual_lag1  Error-correction term: pump − wholesale·(1+VAT)
+                                   at t-1. When pump has extended too far vs
+                                   what wholesale + VAT implies, next-week
+                                   wholesale return is systematically weaker
+                                   (mean reversion of the pump/wholesale gap).
     prev_return         wholesale return from the previous week (AR(1) term)
 
-Product = RBOB for petrol, ULSD (NY heating oil) for diesel. Refined-product
-futures move with refining margins that pure crude misses.
+Refined-product choice: preferred European benchmarks (NWE gasoil for diesel,
+EBOB-equivalent for petrol) when available, falling back to NYMEX ULSD / RBOB.
+Refined-product prices move with refining margins that pure crude misses.
 
-Regressor: equal-weight ensemble of Ridge (alpha=1.0) + shallow RandomForest
-+ shallow GradientBoosting. Ridge captures the linear pass-through from
-crude/product returns; the two tree learners pick up small non-linear
-interactions (e.g. large-Brent-move weeks) that Ridge cannot represent. The
-three are averaged rather than stacked to keep the blend robust on the ~500
-weekly rows available — a stacker would overfit.
+Regressor: equal-weight ensemble of Ridge + shallow RandomForest + shallow
+GradientBoosting. Ridge captures the linear pass-through from crude/product
+returns; the two tree learners pick up small non-linear interactions (e.g.
+large-Brent-move weeks) that Ridge cannot represent. The three are averaged
+rather than stacked to keep the blend robust on the ~500 weekly rows
+available — a stacker would overfit.
 
-Accuracy reporting: walk-forward CV via `TimeSeriesSplit` (5 folds) produces
-`r2_cv` — the honest out-of-sample number. In-sample `r2_in_sample` is kept
-for transparency but should never drive user-facing confidence.
+Uncertainty: the prediction band is derived from a **quantile GBM** trained
+on the same features at α=0.1 / 0.5 / 0.9. Quantile regression tolerates
+asymmetric residual distributions (crisis-week fat tails on the up-side)
+without the Gaussian assumption of the older σ·Φ⁻¹(p) band. The Gaussian
+residual std is retained only to feed `_direction_probability`, whose
+sensitivity analysis showed no material change under the two.
+
+Confidence tier: derived from (a) walk-forward CV skill and (b) ensemble
+disagreement on today's features. Members disagreeing wildly on a specific
+week is a live per-prediction warning that pure aggregate R² cannot flag.
 """
 from __future__ import annotations
 
@@ -49,7 +63,8 @@ FEATURE_COLS = [
     "brent_eur_ret_6w",
     "product_eur_ret_1w",
     "product_eur_ret_4w",
-    "crack_spread_ret_4w",    # 4-week change in refining margin (RBOB/ULSD − Brent, EUR/bbl)
+    "crack_spread_ret_4w",             # 4-week change in refining margin (product − Brent, EUR/bbl)
+    "pump_wholesale_residual_lag1",    # error-correction level, EUR/L (mean-reverting)
     "prev_return",
 ]
 
@@ -63,8 +78,23 @@ VAT_RATE_IE = 0.23
 # 0.6745 = Φ⁻¹(0.75) under the Normal residual assumption.
 BAND_Z_50PCT = 0.6745
 
-# fuel -> refined product symbol used as its downstream proxy
-FUEL_PRODUCT = {"petrol": "RBOB", "diesel": "ULSD"}
+# fuel -> ordered list of refined product symbols to try.
+# First symbol with usable rows in `refined_products` wins. NWE benchmarks are
+# preferred (they price European cargoes directly) but the NY futures remain
+# as robust fallbacks so the model still runs when NWE ingest is skipped or
+# an API key is missing.
+FUEL_PRODUCT_PREFERENCES: dict[str, list[str]] = {
+    "petrol": ["EBOB", "RBOB"],
+    "diesel": ["NWE_GASOIL", "ULSD"],
+}
+# Back-compat alias: existing tests import FUEL_PRODUCT expecting a single symbol.
+# Point at the fallback so `FUEL_PRODUCT["petrol"] == "RBOB"` continues to hold.
+FUEL_PRODUCT = {fuel: prefs[-1] for fuel, prefs in FUEL_PRODUCT_PREFERENCES.items()}
+
+# Quantile levels used for the price band. p10/p90 = 80% band around the
+# quantile-median forecast. Kept as attributes on TrendPrediction so downstream
+# callers (API, export_static, tests) can label the band.
+QUANTILE_ALPHAS = (0.10, 0.50, 0.90)
 
 CV_SPLITS = 5
 
@@ -152,10 +182,15 @@ class TrendPrediction:
     product_symbol: str
     current_pump_eur_per_l: float
     predicted_pump_eur_per_l: float
-    predicted_pump_low_eur_per_l: float   # 50% interquartile band lower bound
-    predicted_pump_high_eur_per_l: float  # 50% interquartile band upper bound
+    predicted_pump_low_eur_per_l: float   # 80% quantile band lower bound (p10)
+    predicted_pump_high_eur_per_l: float  # 80% quantile band upper bound (p90)
     predicted_pump_3w_eur_per_l: float    # ~3-week horizon, compounded weekly return
     backtest: list                        # list[dict] of recent one-step-ahead calls vs actual
+    # ---- v4 additions ----
+    band_alpha_low: float = QUANTILE_ALPHAS[0]
+    band_alpha_high: float = QUANTILE_ALPHAS[-1]
+    ensemble_spread_pct: float = 0.0      # normalised disagreement between Ridge/RF/GB on today's x
+    confidence_tier: str = "medium"       # 'high' | 'medium' | 'low' | 'exploratory' — for UI badge
 
 
 # Reject the freshest daily row when it deviates from the trailing week's
@@ -259,9 +294,30 @@ def _product_eur_series(refined: pd.DataFrame, fx: pd.DataFrame, symbol: str) ->
     return _to_eur(s, fx)
 
 
+# Minimum overlap between a candidate product series and the fuel-price index
+# before we'll pick it. NWE ingest sometimes lands empty on first run — we
+# don't want to switch onto a 3-row series when 4000 RBOB rows are available.
+MIN_PRODUCT_OVERLAP_ROWS = 100
+
+
+def _select_product_symbol(fuel_type: str, refined: pd.DataFrame) -> str:
+    """Return the highest-preference product symbol with enough rows.
+
+    Falls back all the way to the last preference (RBOB/ULSD) even if that
+    also has too few rows — build_dataset's downstream dropna will surface an
+    empty frame and raise a clearer error than an implicit ffill of NaNs.
+    """
+    prefs = FUEL_PRODUCT_PREFERENCES.get(fuel_type) or [FUEL_PRODUCT[fuel_type]]
+    counts = refined.groupby("symbol").size().to_dict() if not refined.empty else {}
+    for symbol in prefs:
+        if counts.get(symbol, 0) >= MIN_PRODUCT_OVERLAP_ROWS:
+            return symbol
+    return prefs[-1]
+
+
 def build_dataset(fuel_type: str) -> pd.DataFrame:
     prices, brent, fx, refined = _load_frames()
-    product_symbol = FUEL_PRODUCT[fuel_type]
+    product_symbol = _select_product_symbol(fuel_type, refined)
 
     fuel_rows = (
         prices[prices["fuel_type"] == fuel_type]
@@ -276,6 +332,15 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     df["wholesale_prev"] = df["wholesale"].shift(1)
     df["target_ret"] = df["wholesale"] / df["wholesale_prev"] - 1
     df["prev_return"] = df["target_ret"].shift(1)
+
+    # Error-correction / mean-reversion term. `pump − wholesale·(1+VAT)` is the
+    # part of the pump price contributed by the fixed tax stack (duty + carbon
+    # + NORA levy). If refiners or retailers stretch it above the long-run
+    # level, subsequent wholesale prints tend to catch up: Ridge learns the
+    # sign. Lagged by one week to avoid leakage — the feature at week t only
+    # uses information available before target_ret[t] is realised.
+    residual_level = df["pump"] - df["wholesale"] * (1.0 + VAT_RATE_IE)
+    df["pump_wholesale_residual_lag1"] = residual_level.shift(1)
 
     brent_eur_daily = _brent_eur_series(brent, fx)
     brent_eur_weekly = brent_eur_daily.reindex(df.index, method="ffill")
@@ -493,7 +558,38 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
 
     latest = df.iloc[-1]
     x_next = latest[FEATURE_COLS].values.reshape(1, -1)
-    predicted_ret = float(np.mean([m.predict(x_next)[0] for m in members]))
+    member_preds = np.array([float(m.predict(x_next)[0]) for m in members])
+    predicted_ret = float(member_preds.mean())
+
+    # Ensemble disagreement on today's row. Larger std → members are pulling
+    # in different directions on THIS week's features, which is a red flag no
+    # aggregate R² can catch. Normalised by resid_std so it lives on the same
+    # scale as typical weekly return error; capped at 3.0 for the UI.
+    ensemble_spread = float(member_preds.std(ddof=0))
+    ensemble_spread_norm = min(3.0, ensemble_spread / resid_std)
+
+    # Quantile GBM band. Trained on the same feature matrix at α=0.1 / 0.9,
+    # so the band width tracks empirical residual asymmetry (fat-tail up-side
+    # weeks widen the upper leg without inflating the lower leg). Fixed seed
+    # keeps the daily refresh deterministic.
+    qmodels: dict[float, GradientBoostingRegressor] = {}
+    for alpha in QUANTILE_ALPHAS:
+        qm = GradientBoostingRegressor(
+            loss="quantile",
+            alpha=alpha,
+            n_estimators=120,
+            max_depth=3,
+            learning_rate=0.05,
+            random_state=ENSEMBLE_SEED,
+        )
+        qm.fit(X, y)
+        qmodels[alpha] = qm
+    q_ret_low  = float(qmodels[QUANTILE_ALPHAS[0]].predict(x_next)[0])
+    q_ret_high = float(qmodels[QUANTILE_ALPHAS[-1]].predict(x_next)[0])
+    # Enforce ordering — GBM quantile regressions can cross on small samples,
+    # producing a nonsensical low>high band. Swap if that happens.
+    if q_ret_low > q_ret_high:
+        q_ret_low, q_ret_high = q_ret_high, q_ret_low
 
     if predicted_ret > FLAT_BAND:
         trend = "up"
@@ -519,7 +615,8 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
 
     # Price prediction: pump Δ = wholesale × Δreturn × (1 + VAT), since Irish
     # duties + carbon + NORA levy are fixed per litre and VAT applies to the
-    # whole stack. 50% band uses the OOS residual std scaled by Φ⁻¹(0.75).
+    # whole stack. The band is now the p10/p90 pump price implied by the
+    # quantile GBM's return quantiles (asymmetric-tolerant, no Normal assumption).
     current_wholesale = float(latest["wholesale"])
     # Anchor on the freshest observed pump price rather than the last row the
     # model could train on — see _latest_observed_pump. Falls back to the
@@ -527,10 +624,18 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
     current_pump      = _latest_observed_pump(fuel_type) or float(latest["pump"])
     pump_multiplier   = 1.0 + VAT_RATE_IE
     delta_pump        = current_wholesale * predicted_ret * pump_multiplier
-    band_half         = current_wholesale * resid_std * BAND_Z_50PCT * pump_multiplier
     predicted_pump    = current_pump + delta_pump
-    pump_low          = predicted_pump - band_half
-    pump_high         = predicted_pump + band_half
+    pump_low          = current_pump + current_wholesale * q_ret_low  * pump_multiplier
+    pump_high         = current_pump + current_wholesale * q_ret_high * pump_multiplier
+    # Guard against a degenerate collapsed band (quantile GBM occasionally
+    # produces near-identical predictions on very short training sets). Widen
+    # to at least ±½ typical weekly residual so the UI never renders a
+    # visually-zero band that would over-imply certainty.
+    min_half_band = 0.5 * current_wholesale * resid_std * pump_multiplier
+    if predicted_pump - pump_low  < min_half_band:
+        pump_low  = predicted_pump - min_half_band
+    if pump_high - predicted_pump < min_half_band:
+        pump_high = predicted_pump + min_half_band
     # 3-week horizon assumes the same weekly return compounds. Rough because
     # the model isn't retrained forward — this is signposting, not a forecast.
     delta_pump_3w     = current_wholesale * ((1.0 + predicted_ret) ** 3 - 1.0) * pump_multiplier
@@ -543,6 +648,7 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         "product_eur_ret_4w": float(latest["product_eur_ret_4w"]),
         "crack_spread_eur": float(latest["crack_spread_eur"]),
         "crack_spread_ret_4w": float(latest["crack_spread_ret_4w"]),
+        "pump_wholesale_residual_lag1": float(latest["pump_wholesale_residual_lag1"]),
         "prev_wholesale_return": float(latest["prev_return"]),
         "brent_eur_per_bbl_current": float(latest["brent_eur"]),
         "brent_eur_per_bbl_lag1": float(latest["brent_eur_lag1"]),
@@ -550,12 +656,34 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         "latest_wholesale_eur_per_l": float(latest["wholesale"]),
     }
 
+    # Confidence tier for the UI badge. Two live inputs:
+    #   * out-of-sample skill (walk-forward CV R²) — aggregate credibility;
+    #   * ensemble disagreement on today's row — per-prediction warning.
+    # Thresholds are tuned against back-of-envelope expectations for this
+    # dataset: r2_cv=0.05 is a meaningful weekly edge; spread_norm>1.5 means
+    # members differ by more than a typical residual, i.e. the specific inputs
+    # break the ensemble consensus.
+    if r2_cv <= 0.0:
+        confidence_tier = "exploratory"
+    elif r2_cv >= 0.10 and ensemble_spread_norm <= 0.75:
+        confidence_tier = "high"
+    elif ensemble_spread_norm >= 1.5:
+        confidence_tier = "low"
+    else:
+        confidence_tier = "medium"
+
     # Coefficients reflect the Ridge member only — surfaced for the
     # explanation string, which reads feature signs to describe direction.
     # RF/GB contribute to the numeric prediction but do not expose signed
     # linear weights, so they are intentionally omitted here.
     coefficients = {name: float(coef) for name, coef in zip(FEATURE_COLS, ridge_model.coef_)}
     coefficients["_intercept"] = float(ridge_model.intercept_)
+
+    # Re-derive the *actually-selected* product symbol here so it reflects
+    # the same preference logic used during dataset construction, rather than
+    # the fallback baked into FUEL_PRODUCT.
+    _refined_for_meta = _load_frames()[3]
+    active_product = _select_product_symbol(fuel_type, _refined_for_meta)
 
     return TrendPrediction(
         fuel_type=fuel_type,
@@ -568,11 +696,15 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         r2_in_sample=r2_in_sample,
         n_train=len(df),
         coefficients=coefficients,
-        product_symbol=FUEL_PRODUCT[fuel_type],
+        product_symbol=active_product,
         current_pump_eur_per_l=current_pump,
         predicted_pump_eur_per_l=predicted_pump,
         predicted_pump_low_eur_per_l=pump_low,
         predicted_pump_high_eur_per_l=pump_high,
         predicted_pump_3w_eur_per_l=predicted_pump_3w,
         backtest=backtest,
+        band_alpha_low=QUANTILE_ALPHAS[0],
+        band_alpha_high=QUANTILE_ALPHAS[-1],
+        ensemble_spread_pct=ensemble_spread_norm,
+        confidence_tier=confidence_tier,
     )

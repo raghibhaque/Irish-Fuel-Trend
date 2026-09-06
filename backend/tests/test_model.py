@@ -195,7 +195,10 @@ def test_train_and_predict_smoke_produces_sane_petrol_output():
 def test_train_and_predict_smoke_produces_sane_diesel_output():
     p = m.train_and_predict("diesel")
     assert p.trend in {"up", "down", "flat"}
-    assert p.product_symbol == "ULSD"
+    # Product symbol is now selected from a preference list — NWE gasoil when
+    # ingested, ULSD as the fallback. Both are legitimate; assert membership
+    # rather than a single string so a later re-ingest doesn't turn this red.
+    assert p.product_symbol in {"NWE_GASOIL", "ULSD"}
     assert p.predicted_pump_3w_eur_per_l > 0
     assert set(p.coefficients.keys()) >= set(m.FEATURE_COLS) | {"_intercept"}
 

@@ -867,6 +867,49 @@ h2 .muted {
 }
 .trend-pill[data-trend="unknown"]::before { content: "?"; font-size: 0.85em; }
 
+.confidence-badge {
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
+    cursor: help;
+    white-space: nowrap;
+}
+.confidence-badge::before {
+    content: "";
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+}
+.confidence-badge[data-tier="high"] {
+    background: rgba(123, 216, 143, 0.10);
+    border-color: rgba(123, 216, 143, 0.4);
+    color: var(--down);
+}
+.confidence-badge[data-tier="medium"] {
+    background: rgba(214, 180, 90, 0.10);
+    border-color: rgba(214, 180, 90, 0.4);
+    color: var(--flat);
+}
+.confidence-badge[data-tier="low"] {
+    background: rgba(255, 92, 74, 0.10);
+    border-color: rgba(255, 92, 74, 0.4);
+    color: var(--up);
+}
+.confidence-badge[data-tier="exploratory"] {
+    background: rgba(180, 140, 220, 0.10);
+    border-color: rgba(180, 140, 220, 0.4);
+    color: #b48cdc;
+}
+
 .pred-explain {
     margin: 0 0 20px;
     color: var(--text-mid);
@@ -1775,6 +1818,214 @@ h2 .muted {
     background: #ffc76a;
     border-color: #ffc76a;
 }
+/* ============================================================= ireland heatmap */
+.ireland-map {
+    margin: 2rem 0;
+    padding: 1.25rem 1.25rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+}
+.ireland-map-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+.ireland-map-head h2 { margin: 0; }
+.ireland-map-fuel {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+.ireland-fuel-chip {
+    appearance: none;
+    background: transparent;
+    color: var(--text-mid);
+    border: none;
+    padding: 0.35rem 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+.ireland-fuel-chip:hover { color: var(--text); }
+.ireland-fuel-chip.is-active {
+    background: var(--accent);
+    color: #14100a;
+}
+.ireland-map-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    position: relative;
+}
+.ireland-map-frame {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    aspect-ratio: 1450 / 1807;
+}
+.ireland-map-frame > svg.ireland-map-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.ireland-map-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+.ireland-map-svg .ireland-ctx path,
+.ireland-map-svg .ireland-ctx polygon { pointer-events: none; }
+.ireland-map-svg g.county {
+    cursor: pointer;
+    transition: filter 120ms ease, transform 120ms ease;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+.ireland-map-svg g.county:hover,
+.ireland-map-svg g.county:focus-visible {
+    outline: none;
+    filter: brightness(1.25) drop-shadow(0 0 6px var(--accent-glow));
+}
+.ireland-map-svg g.county:focus-visible path,
+.ireland-map-svg g.county:focus-visible polygon {
+    stroke: var(--accent);
+    stroke-width: 2.2;
+}
+.ireland-map-svg g.county.is-stale {
+    opacity: 0.65;
+}
+.ireland-map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 0.9rem;
+    padding: 0.5rem 0.25rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    position: relative;
+}
+.ireland-legend-label { white-space: nowrap; }
+.ireland-legend-bar {
+    display: inline-block;
+    width: min(220px, 40vw);
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(90deg,
+        rgb(123, 216, 143) 0%,
+        rgb(48, 53, 60) 50%,
+        rgb(255, 92, 74) 100%);
+    border: 1px solid var(--border);
+}
+.ireland-legend-stops {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(0.5rem + 10px + 6px);
+    display: flex;
+    justify-content: space-between;
+    width: min(220px, 40vw);
+    padding: 0 2px;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+}
+.ireland-legend-stale {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.9rem;
+}
+.ireland-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+    background: #22252b;
+    border: 1px solid var(--border);
+}
+.ireland-map-hint {
+    text-align: center;
+    margin: 0.75rem 0 0;
+    font-size: 0.75rem;
+}
+.ireland-map-tip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 12px));
+    min-width: 180px;
+    max-width: 240px;
+    padding: 0.6rem 0.75rem;
+    background: rgba(10, 11, 13, 0.96);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.ireland-map-tip strong {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.ireland-tip-stale {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 999px;
+}
+.ireland-tip-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+}
+.ireland-tip-row.is-lead { font-size: 0.85rem; }
+.ireland-tip-row.is-lead[data-sign="up"]   { color: var(--up); }
+.ireland-tip-row.is-lead[data-sign="down"] { color: var(--down); }
+.ireland-tip-row.is-lead[data-sign="flat"] { color: var(--flat); }
+@media (max-width: 720px) {
+    .ireland-map-head { flex-direction: column; align-items: flex-start; }
+    .ireland-map-frame { max-width: 100%; }
+}
+@media (hover: none) {
+    /* On touch the hover-to-tooltip pattern loses. Clicks still deep-link;
+       the tooltip becomes purely a tap-to-preview visible on focus. */
+    .ireland-map-tip { display: none; }
+}
+
 .share-hint {
     font-family: var(--font-mono);
     font-size: 0.68rem;

@@ -41,6 +41,7 @@ class PredictionFeatures(BaseModel):
     product_eur_ret_4w: float
     crack_spread_eur: float          # kept for display only, not a model feature
     crack_spread_ret_4w: float
+    pump_wholesale_residual_lag1: float
     prev_wholesale_return: float
     brent_eur_per_bbl_current: float
     brent_eur_per_bbl_lag1: float
@@ -60,12 +61,19 @@ class Prediction(BaseModel):
     r2: float                    # walk-forward out-of-sample R² (can be negative)
     r2_in_sample: float
     n_train: int
-    product_symbol: str          # 'RBOB' | 'ULSD'
+    product_symbol: str          # e.g. 'RBOB', 'ULSD', 'NWE_GASOIL', 'EBOB'
     current_pump_eur_per_l: float
     predicted_pump_eur_per_l: float
     predicted_pump_low_eur_per_l: float
     predicted_pump_high_eur_per_l: float
     predicted_pump_3w_eur_per_l: float
+    band_alpha_low: float = 0.10
+    band_alpha_high: float = 0.90
+    ensemble_spread_pct: float = 0.0
+    # Confidence tier for the UI badge — derived from walk-forward skill and
+    # ensemble disagreement on today's row. Only these four literals ever leave
+    # the model layer; the API constrains the type so a stray value trips 500.
+    confidence_tier: Literal["high", "medium", "low", "exploratory"] = "medium"
     backtest: list[BacktestPoint] = Field(default_factory=list)
     features: PredictionFeatures
     explanation: str

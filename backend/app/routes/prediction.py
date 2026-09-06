@@ -34,10 +34,14 @@ def _predict_for(fuel_type: str, mock_brent: bool) -> Prediction:
         trend = "unknown"
         confidence = 0.0
         r2 = 0.0
+        # Same rationale as the trend downgrade — the badge would otherwise
+        # sit alongside a fabricated Brent series and imply meaningful skill.
+        confidence_tier = "exploratory"
     else:
         trend = pred.trend
         confidence = pred.confidence
         r2 = pred.r2
+        confidence_tier = pred.confidence_tier
     return Prediction(
         fuel_type=fuel_type,
         as_of=pred.as_of,
@@ -53,6 +57,10 @@ def _predict_for(fuel_type: str, mock_brent: bool) -> Prediction:
         predicted_pump_low_eur_per_l=pred.predicted_pump_low_eur_per_l,
         predicted_pump_high_eur_per_l=pred.predicted_pump_high_eur_per_l,
         predicted_pump_3w_eur_per_l=pred.predicted_pump_3w_eur_per_l,
+        band_alpha_low=pred.band_alpha_low,
+        band_alpha_high=pred.band_alpha_high,
+        ensemble_spread_pct=pred.ensemble_spread_pct,
+        confidence_tier=confidence_tier,
         backtest=pred.backtest,
         features=PredictionFeatures(**pred.features),
         explanation=explanation,

@@ -65,13 +65,15 @@ def explain(pred: TrendPrediction, mock_brent: bool = False) -> str:
 
     parts.append(_tax_sentence(pred.fuel_type, pred.as_of))
 
+    band_pct = int(round((pred.band_alpha_high - pred.band_alpha_low) * 100))
     parts.append(
         f"Model estimate: {_pct(pred.predicted_weekly_return)} weekly change "
         f"in wholesale {pred.fuel_type}. Pump €{pred.current_pump_eur_per_l:.3f} "
         f"projected to €{pred.predicted_pump_eur_per_l:.3f} next week "
-        f"(50% band €{pred.predicted_pump_low_eur_per_l:.3f}–€{pred.predicted_pump_high_eur_per_l:.3f}). "
-        f"Confidence {pred.confidence:.0%}, walk-forward R² {pred.r2:.2f} "
-        f"(in-sample {pred.r2_in_sample:.2f}), trained on {pred.n_train} weeks."
+        f"({band_pct}% band €{pred.predicted_pump_low_eur_per_l:.3f}–€{pred.predicted_pump_high_eur_per_l:.3f}). "
+        f"Confidence {pred.confidence:.0%} ({pred.confidence_tier}), "
+        f"walk-forward R² {pred.r2:.2f} (in-sample {pred.r2_in_sample:.2f}), "
+        f"trained on {pred.n_train} weeks."
     )
 
     if mock_brent:

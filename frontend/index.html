@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=14">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -50,6 +50,32 @@
                 <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
                 <span class="asof" id="asof-diesel"></span>
             </article>
+        </section>
+
+        <section class="ireland-map" id="ireland-map" aria-labelledby="ireland-map-title">
+            <div class="ireland-map-head">
+                <h2 id="ireland-map-title">County outlook <span class="muted">(3-week predicted change)</span></h2>
+                <div class="ireland-map-fuel" role="tablist" aria-label="Fuel">
+                    <button type="button" class="ireland-fuel-chip is-active" data-fuel="petrol" role="tab" aria-selected="true">Petrol</button>
+                    <button type="button" class="ireland-fuel-chip" data-fuel="diesel" role="tab" aria-selected="false">Diesel</button>
+                </div>
+            </div>
+            <div class="ireland-map-body">
+                <div class="ireland-map-frame" id="ireland-map-frame" aria-live="polite">
+                    <p class="ireland-map-loading muted">Loading map…</p>
+                </div>
+                <div class="ireland-map-legend" aria-hidden="true">
+                    <span class="ireland-legend-label">Cheaper</span>
+                    <span class="ireland-legend-bar"></span>
+                    <span class="ireland-legend-label">Pricier</span>
+                    <span class="ireland-legend-stops">
+                        <span>−1.5%</span><span>0</span><span>+1.5%</span>
+                    </span>
+                    <span class="ireland-legend-stale"><span class="ireland-legend-swatch is-stale"></span>stale / no data</span>
+                </div>
+            </div>
+            <div class="ireland-map-tip" id="ireland-map-tip" role="tooltip" hidden></div>
+            <p class="ireland-map-hint muted">Tap or hover a county for detail. Click to open its full page.</p>
         </section>
 
         <section class="fill-decision">
@@ -152,11 +178,12 @@
                     <header>
                         <h3>Petrol</h3>
                         <span class="trend-pill" data-trend="flat">…</span>
+                        <span class="confidence-badge" data-tier="medium" title="Model confidence tier — combines walk-forward skill with ensemble disagreement on today's inputs.">—</span>
                     </header>
                     <p class="pred-explain">Loading…</p>
                     <dl class="pred-meta">
                         <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
-                        <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>80% band</dt><dd class="pred-band">—</dd></div>
                         <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
                         <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
@@ -186,11 +213,12 @@
                     <header>
                         <h3>Diesel</h3>
                         <span class="trend-pill" data-trend="flat">…</span>
+                        <span class="confidence-badge" data-tier="medium" title="Model confidence tier — combines walk-forward skill with ensemble disagreement on today's inputs.">—</span>
                     </header>
                     <p class="pred-explain">Loading…</p>
                     <dl class="pred-meta">
                         <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
-                        <div><dt>50% band</dt><dd class="pred-band">—</dd></div>
+                        <div><dt>80% band</dt><dd class="pred-band">—</dd></div>
                         <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
                         <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
                         <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
@@ -264,7 +292,7 @@
     </footer>
 
     <script src="shared.js?v=10"></script>
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=19"></script>
     <script>
         // Register PWA service worker. Guarded so file:// and old browsers stay
         // quiet — this is progressive enhancement, not a hard dependency.

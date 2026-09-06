@@ -245,6 +245,26 @@ async function loadPrediction() {
         const card = document.getElementById(`pred-${fuel}`);
         card.querySelector(".trend-pill").textContent = p.trend;
         card.querySelector(".trend-pill").setAttribute("data-trend", p.trend);
+        const badge = card.querySelector(".confidence-badge");
+        if (badge) {
+            const tier = p.confidence_tier || "medium";
+            const labels = {
+                high: "high skill",
+                medium: "medium skill",
+                low: "low skill",
+                exploratory: "exploratory",
+            };
+            badge.dataset.tier = tier;
+            badge.textContent = labels[tier] || tier;
+            const skill = typeof p.r2 === "number" ? p.r2.toFixed(2) : "—";
+            const spread = typeof p.ensemble_spread_pct === "number" ? p.ensemble_spread_pct.toFixed(2) : "—";
+            badge.title =
+                `Model confidence tier: ${tier}. ` +
+                `Walk-forward R² = ${skill}. ` +
+                `Ensemble disagreement = ${spread}×typical residual. ` +
+                `High = strong skill and members agree; low = members disagree on today's inputs; ` +
+                `exploratory = no demonstrable out-of-sample edge.`;
+        }
         card.querySelector(".pred-explain").textContent = p.explanation;
         card.querySelector(".pred-delta").textContent = fmtPct(p.predicted_weekly_return);
         card.querySelector(".pred-conf").textContent  = `${Math.round(p.confidence * 100)}%`;
@@ -760,6 +780,206 @@ async function loadNews() {
     }).join("");
 }
 
+// ------------------ ireland heatmap ------------------
+//
+// Read the counties.json snapshot, compute predicted 3-week % change per
+// county for the selected fuel, and tint the SVG paths with a diverging
+// scale. Green = predicted cheaper, red = predicted pricier, grey = stale.
+
+const MAP_CLAMP = 0.015;   // ±1.5% pins the ends of the colour scale
+const MAP_COLOR_DOWN = [0x7b, 0xd8, 0x8f];   // matches --down
+const MAP_COLOR_MID  = [0x30, 0x35, 0x3c];   // near-black neutral
+const MAP_COLOR_UP   = [0xff, 0x5c, 0x4a];   // matches --up
+const MAP_COLOR_STALE = "#22252b";
+let mapCountiesData = null;
+let mapCurrentFuel = "petrol";
+let mapSvgReady = false;
+
+function _mixRgb(a, b, t) {
+    return [
+        Math.round(a[0] + (b[0] - a[0]) * t),
+        Math.round(a[1] + (b[1] - a[1]) * t),
+        Math.round(a[2] + (b[2] - a[2]) * t),
+    ];
+}
+
+function mapColorFor(pct) {
+    if (pct == null || Number.isNaN(pct)) return MAP_COLOR_STALE;
+    const clamped = Math.max(-MAP_CLAMP, Math.min(MAP_CLAMP, pct));
+    // -MAP_CLAMP → 0 (down), 0 → 0.5 (mid), +MAP_CLAMP → 1 (up)
+    const t = (clamped + MAP_CLAMP) / (2 * MAP_CLAMP);
+    const rgb = t <= 0.5
+        ? _mixRgb(MAP_COLOR_DOWN, MAP_COLOR_MID, t * 2)
+        : _mixRgb(MAP_COLOR_MID, MAP_COLOR_UP, (t - 0.5) * 2);
+    return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+}
+
+function _countyEntryFor(name) {
+    if (!mapCountiesData || !mapCountiesData.counties) return null;
+    return mapCountiesData.counties.find(c => c.county === name) || null;
+}
+
+function _countyPct(entry, fuel) {
+    if (!entry) return null;
+    const f = entry[fuel];
+    if (!f || f.stale) return null;
+    const now = f.current_pump_eur_per_l;
+    const then = f.predicted_pump_3w_eur_per_l;
+    if (now == null || then == null || now <= 0) return null;
+    return (then - now) / now;
+}
+
+function paintIrelandMap() {
+    if (!mapSvgReady || !mapCountiesData) return;
+    const frame = document.getElementById("ireland-map-frame");
+    if (!frame) return;
+    const nodes = frame.querySelectorAll("g.county[data-county]");
+    nodes.forEach(node => {
+        const name = node.dataset.county;
+        const entry = _countyEntryFor(name);
+        const pct = _countyPct(entry, mapCurrentFuel);
+        const fill = mapColorFor(pct);
+        node.style.fill = fill;
+        node.classList.toggle("is-stale", pct == null);
+        node.dataset.pct = pct == null ? "" : pct.toFixed(4);
+        // aria-label per fuel — screen readers hear "Dublin, +0.4% predicted"
+        const short = pct == null
+            ? `${name}, no data`
+            : `${name}, ${(pct * 100).toFixed(1)}% predicted 3-week change`;
+        node.setAttribute("aria-label", short);
+    });
+}
+
+function _positionTooltip(tip, evt, frame) {
+    const rect = frame.getBoundingClientRect();
+    // Position relative to the frame (which the tooltip is nested under).
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+    tip.style.left = `${x}px`;
+    tip.style.top  = `${y}px`;
+}
+
+function _renderTooltip(tip, name) {
+    const entry = _countyEntryFor(name);
+    const fuel = mapCurrentFuel;
+    const f = entry ? entry[fuel] : null;
+    if (!f) {
+        tip.innerHTML = `<strong>${escapeHtml(name)}</strong><span class="muted">No data</span>`;
+        return;
+    }
+    const now = f.current_pump_eur_per_l;
+    const then = f.predicted_pump_3w_eur_per_l;
+    const pct = _countyPct(entry, fuel);
+    const staleTag = f.stale ? `<span class="ireland-tip-stale">stale</span>` : "";
+    const pctTxt = pct == null ? "—" : `${(pct * 100).toFixed(2)}%`;
+    const sign = pct == null ? "" : (pct > 0 ? "up" : pct < 0 ? "down" : "flat");
+    tip.innerHTML = `
+        <strong>${escapeHtml(name)} ${staleTag}</strong>
+        <span class="ireland-tip-row">
+            <span class="muted">now (${fuel})</span>
+            <span>${fmtEur(now)}</span>
+        </span>
+        <span class="ireland-tip-row">
+            <span class="muted">predicted 3w</span>
+            <span>${fmtEur(then)}</span>
+        </span>
+        <span class="ireland-tip-row is-lead" data-sign="${sign}">
+            <span class="muted">Δ</span>
+            <span>${pctTxt}</span>
+        </span>`;
+}
+
+function _wireMapInteractions(frame) {
+    const tip = document.getElementById("ireland-map-tip");
+    if (!tip) return;
+
+    const show = (evt, node) => {
+        const name = node.dataset.county;
+        _renderTooltip(tip, name);
+        tip.hidden = false;
+        _positionTooltip(tip, evt, frame);
+    };
+    const hide = () => { tip.hidden = true; };
+
+    frame.addEventListener("mousemove", (evt) => {
+        const node = evt.target.closest("g.county[data-county]");
+        if (node) show(evt, node);
+        else hide();
+    });
+    frame.addEventListener("mouseleave", hide);
+
+    // Keyboard focus (each <g> is tabindex=0 role=button)
+    frame.addEventListener("focusin", (evt) => {
+        const node = evt.target.closest("g.county[data-county]");
+        if (!node) return;
+        const rect = node.getBoundingClientRect();
+        _renderTooltip(tip, node.dataset.county);
+        tip.hidden = false;
+        const frect = frame.getBoundingClientRect();
+        tip.style.left = `${rect.left - frect.left + rect.width / 2}px`;
+        tip.style.top  = `${rect.top  - frect.top  + rect.height / 2}px`;
+    });
+    frame.addEventListener("focusout", hide);
+
+    // Click / Enter → open county page
+    const go = (node) => {
+        const name = node.dataset.county;
+        if (!name) return;
+        location.href = `county.html?county=${encodeURIComponent(name)}`;
+    };
+    frame.addEventListener("click", (evt) => {
+        const node = evt.target.closest("g.county[data-county]");
+        if (node) go(node);
+    });
+    frame.addEventListener("keydown", (evt) => {
+        if (evt.key !== "Enter" && evt.key !== " ") return;
+        const node = evt.target.closest("g.county[data-county]");
+        if (!node) return;
+        evt.preventDefault();
+        go(node);
+    });
+}
+
+function _wireMapFuelToggle() {
+    const wrap = document.querySelector(".ireland-map-fuel");
+    if (!wrap) return;
+    wrap.addEventListener("click", (evt) => {
+        const btn = evt.target.closest(".ireland-fuel-chip");
+        if (!btn) return;
+        const fuel = btn.dataset.fuel;
+        if (!fuel || fuel === mapCurrentFuel) return;
+        mapCurrentFuel = fuel;
+        wrap.querySelectorAll(".ireland-fuel-chip").forEach(el => {
+            const active = el.dataset.fuel === fuel;
+            el.classList.toggle("is-active", active);
+            el.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        paintIrelandMap();
+    });
+}
+
+async function initIrelandMap() {
+    const frame = document.getElementById("ireland-map-frame");
+    if (!frame) return;
+    try {
+        const [svgText, counties] = await Promise.all([
+            fetch("ireland-counties.svg", { cache: "force-cache" }).then(r => r.text()),
+            jget("data/counties.json"),
+        ]);
+        // innerHTML with a static asset we control — no untrusted content in
+        // this SVG. Any user-facing text (tooltip) is rendered separately.
+        frame.innerHTML = svgText;
+        mapSvgReady = true;
+        mapCountiesData = counties;
+        _wireMapFuelToggle();
+        _wireMapInteractions(frame);
+        paintIrelandMap();
+    } catch (err) {
+        console.warn("Ireland map load failed:", err);
+        frame.innerHTML = `<p class="ireland-map-loading muted">Map unavailable.</p>`;
+    }
+}
+
 // ------------------ boot ------------------
 document.getElementById("chart-range").addEventListener("change", (e) => {
     loadPrices(parseInt(e.target.value, 10)).catch(console.error);
@@ -789,7 +1009,7 @@ loadManifest().then(m => {
         const chip = document.getElementById("hdr-updated");
         if (chip) { chip.textContent = "Awaiting refresh"; chip.dataset.tone = "warn"; }
     }
-    return Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
+    return Promise.all([loadPrices(26), loadPrediction(), loadNews(), initIrelandMap()]);
 }).then(() => {
     updateCalculator();
     attachDragCompare("price-chart", "dc-popup");
@@ -797,7 +1017,13 @@ loadManifest().then(m => {
         onDone: async () => {
             priceData = null;
             predictionData = null;
-            await Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
+            mapCountiesData = null;
+            await Promise.all([
+                loadPrices(26),
+                loadPrediction(),
+                loadNews(),
+                jget("data/counties.json").then(c => { mapCountiesData = c; paintIrelandMap(); }),
+            ]);
             updateCalculator();
         },
     });
