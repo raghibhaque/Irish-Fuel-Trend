@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+from statistics import median as _median
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -37,6 +38,14 @@ OBSERVED_DAYS = 180
 
 # Cheapest stations shown per county per fuel.
 STATIONS_PER_COUNTY = 5
+
+# How far back to look when a county has no median in the latest snapshot.
+# Leitrim is the recurring case — FuelWatch's ranking RPC almost never returns
+# it, but the county does surface every few weeks. Carrying the most recent
+# median forward lets the heatmap render a stale-tagged number instead of a
+# permanent grey hole. Beyond 60 days the crowd median stops tracking retail
+# reality closely enough to be worth showing.
+CARRY_FORWARD_DAYS = 60
 
 
 def _as_date(value) -> date:
@@ -69,6 +78,112 @@ def _load_snapshot_rows(conn, snapshot_date: str) -> list[dict]:
         (snapshot_date,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def _load_carry_forward_rows(conn, snapshot_date: str,
+                             absent: list[tuple[str, str]]) -> list[dict]:
+    """Most recent prior median per (county, fuel_type) for each (county, fuel)
+    absent from today's snapshot.
+
+    Kept out of the same-pool national reference calculation — mixing an older
+    county median into a today-weighted mean would shift the reference and
+    leak into every basis. These rows exist only so the county renders with
+    its last known level and a visible age.
+
+    Only the freshest matching window per (county, fuel) is returned — carry-
+    forward is meant to backfill the tint, not to reintroduce the full
+    window-selection cascade against a stale snapshot day.
+    """
+    if not absent:
+        return []
+    since = (_as_date(snapshot_date) - timedelta(days=CARRY_FORWARD_DAYS)).isoformat()
+    absent_set = set(absent)
+    counties = sorted({c for c, _ in absent})
+    placeholders = ",".join("?" for _ in counties)
+    rows = conn.execute(
+        f"SELECT county, fuel_type, median_eur_per_litre, station_count, "
+        f"window_days, snapshot_date AS origin_snapshot_date "
+        f"FROM county_prices "
+        f"WHERE county IN ({placeholders}) "
+        f"AND snapshot_date >= ? AND snapshot_date < ? "
+        f"ORDER BY snapshot_date DESC, window_days ASC",
+        (*counties, since, snapshot_date),
+    ).fetchall()
+    seen: set[tuple[str, str]] = set()
+    out: list[dict] = []
+    for r in rows:
+        key = (r["county"], r["fuel_type"])
+        if key in seen or key not in absent_set:
+            continue
+        seen.add(key)
+        d = dict(r)
+        d["carry_forward"] = True
+        out.append(d)
+    return out
+
+
+def _load_station_fallback_rows(conn, snapshot_date: str,
+                                absent: list[tuple[str, str]]) -> list[dict]:
+    """Approximate a county median from raw station prices for (county, fuel)
+    pairs that have no county_prices row inside the carry-forward window.
+
+    Leitrim is the standing case: the FuelWatch ranking RPC has never returned
+    it, but station reports do surface every few weeks. Taking the median of
+    whatever stations reported on the freshest day in-window still gives a
+    truer tint than a permanent grey hole. Rows are flagged carry_forward so
+    the snapshot builder marks them stale — the accuracy claim here is the
+    same as for county_prices carry-forward: a level from N days ago, not a
+    live number.
+    """
+    if not absent:
+        return []
+    since = (_as_date(snapshot_date) - timedelta(days=CARRY_FORWARD_DAYS)).isoformat()
+    absent_set = set(absent)
+    counties = sorted({c for c, _ in absent})
+    placeholders = ",".join("?" for _ in counties)
+    rows = conn.execute(
+        f"SELECT county, fuel_type, snapshot_date, price_eur_per_litre "
+        f"FROM county_stations "
+        f"WHERE county IN ({placeholders}) "
+        f"AND snapshot_date >= ? AND snapshot_date <= ?",
+        (*counties, since, snapshot_date),
+    ).fetchall()
+
+    latest: dict[tuple[str, str], str] = {}
+    for r in rows:
+        key = (r["county"], r["fuel_type"])
+        if key not in absent_set:
+            continue
+        d = str(r["snapshot_date"])[:10]
+        if d > latest.get(key, ""):
+            latest[key] = d
+
+    buckets: dict[tuple[str, str], list[float]] = defaultdict(list)
+    for r in rows:
+        key = (r["county"], r["fuel_type"])
+        if key not in absent_set:
+            continue
+        if str(r["snapshot_date"])[:10] != latest.get(key):
+            continue
+        try:
+            buckets[key].append(float(r["price_eur_per_litre"]))
+        except (TypeError, ValueError):
+            continue
+
+    out: list[dict] = []
+    for (c, f), prices in buckets.items():
+        if not prices:
+            continue
+        out.append({
+            "county": c,
+            "fuel_type": f,
+            "median_eur_per_litre": float(_median(prices)),
+            "station_count": len(prices),
+            "window_days": PRIMARY_WINDOW_DAYS,
+            "origin_snapshot_date": latest[(c, f)],
+            "carry_forward": True,
+        })
+    return out
 
 
 def _load_observations(conn, since: str) -> dict[tuple[str, str], list[CountyObservation]]:
@@ -170,6 +285,28 @@ def _build_snapshot(fuel: str, rows: list[dict], refs, national: dict,
     except county_mod.UnknownCountyError:
         return None
 
+    # Carry-forward rows fall back to a stale-only snapshot: last known crowd
+    # median, no basis, no forecast. The heatmap tints them grey and the
+    # tooltip shows the origin date, which is the honest thing to display when
+    # the reference for that snapshot day was measured against a different
+    # county pool. Zero basis is a placeholder; the fields are non-optional on
+    # the model but the frontend never reads them for stale entries.
+    if chosen.get("carry_forward"):
+        n = int(chosen.get("station_count") or 0)
+        return CountyFuelSnapshot(
+            fuel_type=fuel,
+            crowd_median_eur_per_litre=chosen["median_eur_per_litre"],
+            station_count=n,
+            window_days=int(chosen["window_days"]),
+            stale=True,
+            low_sample=n < county_mod.LOW_SAMPLE_THRESHOLD,
+            basis_eur_per_litre=0.0,
+            basis_raw_eur_per_litre=0.0,
+            origin_snapshot_date=_as_date(chosen["origin_snapshot_date"]),
+            observations=observations.get((chosen["county"], fuel), []),
+            stations=stations.get((chosen["county"], fuel), []),
+        )
+
     ref = refs.get((fuel, int(chosen["window_days"])))
     if ref is None:
         return None
@@ -221,8 +358,22 @@ def get_counties(
     national, notes = _national_predictions()
     refs = _national_references(rows)
 
+    # Which (county, fuel) pairs are absent from today's snapshot? Per-fuel so
+    # a county that reports petrol but not diesel still gets a carried diesel.
+    present: set[tuple[str, str]] = {(r["county"], r["fuel_type"]) for r in rows}
+    absent = [(c, f) for c in IE_COUNTIES for f in FUELS if (c, f) not in present]
+    with connection() as conn:
+        carried = _load_carry_forward_rows(conn, snapshot_date, absent)
+        # Anything still absent (county has no county_prices row at all inside
+        # the window) falls through to raw station reports.
+        still_absent = [
+            k for k in absent
+            if k not in {(r["county"], r["fuel_type"]) for r in carried}
+        ]
+        station_fallback = _load_station_fallback_rows(conn, snapshot_date, still_absent)
+
     by_county: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
-    for r in rows:
+    for r in rows + carried + station_fallback:
         by_county[r["county"]][r["fuel_type"]].append(r)
 
     wanted = sorted(by_county)

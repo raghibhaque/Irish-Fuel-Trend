@@ -782,17 +782,79 @@ async function loadNews() {
 
 // ------------------ ireland heatmap ------------------
 //
-// Read the counties.json snapshot, compute predicted 3-week % change per
-// county for the selected fuel, and tint the SVG paths with a diverging
-// scale. Green = predicted cheaper, red = predicted pricier, grey = stale.
+// Read the counties.json snapshot, compute the chosen metric per county for
+// the selected fuel, and tint the SVG paths. Diverging modes (percent
+// predictions, level vs national) use green→mid→red; sequential modes
+// (confidence, station density) ramp mid→accent. Grey = stale / no data.
 
-const MAP_CLAMP = 0.015;   // ±1.5% pins the ends of the colour scale
-const MAP_COLOR_DOWN = [0x7b, 0xd8, 0x8f];   // matches --down
-const MAP_COLOR_MID  = [0x30, 0x35, 0x3c];   // near-black neutral
-const MAP_COLOR_UP   = [0xff, 0x5c, 0x4a];   // matches --up
-const MAP_COLOR_STALE = "#22252b";
+const MAP_COLOR_DOWN   = [0x7b, 0xd8, 0x8f];   // matches --down
+const MAP_COLOR_MID    = [0x30, 0x35, 0x3c];   // near-black neutral
+const MAP_COLOR_UP     = [0xff, 0x5c, 0x4a];   // matches --up
+const MAP_COLOR_ACCENT = [0xff, 0xb6, 0x48];   // matches --accent
+const MAP_COLOR_STALE  = "#22252b";
+
+// Metric registry — id, chip label, legend labels/stops, colour scheme, and
+// value extractor. Adding a mode is one entry here plus a chip in the HTML.
+const MAP_METRICS = [
+    {
+        id: "pct3w",
+        subtitle: "(3-week predicted change)",
+        type: "div",
+        clamp: 0.015,
+        low: "Cheaper", high: "Pricier",
+        stops: ["−1.5%", "0", "+1.5%"],
+        get: f => _pctChange(f.current_pump_eur_per_l, f.predicted_pump_3w_eur_per_l),
+        fmt: v => (v > 0 ? "+" : "") + (v * 100).toFixed(2) + "%",
+        aria: "predicted 3-week change",
+    },
+    {
+        id: "pct1w",
+        subtitle: "(1-week predicted change)",
+        type: "div",
+        clamp: 0.005,
+        low: "Cheaper", high: "Pricier",
+        stops: ["−0.5%", "0", "+0.5%"],
+        get: f => _pctChange(f.current_pump_eur_per_l, f.predicted_pump_eur_per_l),
+        fmt: v => (v > 0 ? "+" : "") + (v * 100).toFixed(2) + "%",
+        aria: "predicted 1-week change",
+    },
+    {
+        id: "level",
+        subtitle: "(current level vs national)",
+        type: "div",
+        clamp: 0.05,
+        low: "Cheaper", high: "Pricier",
+        stops: ["−5¢", "0", "+5¢"],
+        get: f => (typeof f.basis_eur_per_litre === "number") ? f.basis_eur_per_litre : null,
+        fmt: v => (v >= 0 ? "+" : "−") + "€" + Math.abs(v).toFixed(3),
+        aria: "basis vs national",
+    },
+    {
+        id: "conf",
+        subtitle: "(model confidence)",
+        type: "seq",
+        lo: 0, hi: 1,
+        low: "Low", high: "High",
+        stops: ["0", "0.5", "1"],
+        get: f => (typeof f.confidence === "number") ? f.confidence : null,
+        fmt: v => v.toFixed(2),
+        aria: "confidence",
+    },
+    {
+        id: "stations",
+        subtitle: "(reporting stations per county)",
+        type: "seq_dyn",
+        low: "Few", high: "Many",
+        stops: null,   // labelled from data
+        get: f => (typeof f.station_count === "number") ? f.station_count : null,
+        fmt: v => String(Math.round(v)),
+        aria: "station count",
+    },
+];
+
 let mapCountiesData = null;
 let mapCurrentFuel = "petrol";
+let mapCurrentMetric = "pct3w";
 let mapSvgReady = false;
 
 function _mixRgb(a, b, t) {
@@ -803,15 +865,31 @@ function _mixRgb(a, b, t) {
     ];
 }
 
-function mapColorFor(pct) {
-    if (pct == null || Number.isNaN(pct)) return MAP_COLOR_STALE;
-    const clamped = Math.max(-MAP_CLAMP, Math.min(MAP_CLAMP, pct));
-    // -MAP_CLAMP → 0 (down), 0 → 0.5 (mid), +MAP_CLAMP → 1 (up)
-    const t = (clamped + MAP_CLAMP) / (2 * MAP_CLAMP);
+function _pctChange(now, then) {
+    if (now == null || then == null || now <= 0) return null;
+    return (then - now) / now;
+}
+
+function _rgb(arr) { return `rgb(${arr[0]},${arr[1]},${arr[2]})`; }
+
+function _tintDiv(v, clamp) {
+    if (v == null || Number.isNaN(v)) return MAP_COLOR_STALE;
+    const c = Math.max(-clamp, Math.min(clamp, v));
+    const t = (c + clamp) / (2 * clamp);
     const rgb = t <= 0.5
         ? _mixRgb(MAP_COLOR_DOWN, MAP_COLOR_MID, t * 2)
         : _mixRgb(MAP_COLOR_MID, MAP_COLOR_UP, (t - 0.5) * 2);
-    return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    return _rgb(rgb);
+}
+
+function _tintSeq(v, lo, hi) {
+    if (v == null || Number.isNaN(v) || hi <= lo) return MAP_COLOR_STALE;
+    const t = Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+    return _rgb(_mixRgb(MAP_COLOR_MID, MAP_COLOR_ACCENT, t));
+}
+
+function _metricConfig(id) {
+    return MAP_METRICS.find(m => m.id === id) || MAP_METRICS[0];
 }
 
 function _countyEntryFor(name) {
@@ -819,35 +897,94 @@ function _countyEntryFor(name) {
     return mapCountiesData.counties.find(c => c.county === name) || null;
 }
 
-function _countyPct(entry, fuel) {
+// Value used both for tinting and for the tooltip lead row. Staleness here
+// means "the crowd median came from a wider window than the standard 30d" —
+// the level is older, the basis is noisier. But the percent-change forecasts
+// are still national_pred vs national_now (the basis largely cancels), so a
+// stale county produces a valid tint on pct modes. Only rows with no forecast
+// fields at all (station-fallback carry-forward) return null on pct/conf.
+function _countyMetric(entry, fuel, metricId) {
     if (!entry) return null;
     const f = entry[fuel];
-    if (!f || f.stale) return null;
-    const now = f.current_pump_eur_per_l;
-    const then = f.predicted_pump_3w_eur_per_l;
-    if (now == null || then == null || now <= 0) return null;
-    return (then - now) / now;
+    if (!f) return null;
+    const metric = _metricConfig(metricId);
+    const v = metric.get(f);
+    return (v == null || Number.isNaN(v)) ? null : v;
+}
+
+function _updateLegend(metric, dynLo, dynHi) {
+    const legend = document.getElementById("ireland-map-legend");
+    if (!legend) return;
+    legend.classList.toggle("is-seq", metric.type === "seq" || metric.type === "seq_dyn");
+    const loLbl = legend.querySelector('[data-role="lo"]');
+    const hiLbl = legend.querySelector('[data-role="hi"]');
+    if (loLbl) loLbl.textContent = metric.low;
+    if (hiLbl) hiLbl.textContent = metric.high;
+    const stops = document.getElementById("ireland-legend-stops");
+    if (stops) {
+        let labels = metric.stops;
+        if (!labels && metric.type === "seq_dyn") {
+            const lo = Number.isFinite(dynLo) ? dynLo : 0;
+            const hi = Number.isFinite(dynHi) ? dynHi : 0;
+            labels = [String(Math.round(lo)), String(Math.round((lo + hi) / 2)), String(Math.round(hi))];
+        }
+        stops.innerHTML = (labels || []).map(t => `<span>${t}</span>`).join("");
+    }
+    const subtitle = document.getElementById("ireland-map-subtitle");
+    if (subtitle) subtitle.textContent = metric.subtitle;
 }
 
 function paintIrelandMap() {
     if (!mapSvgReady || !mapCountiesData) return;
     const frame = document.getElementById("ireland-map-frame");
     if (!frame) return;
+    const metric = _metricConfig(mapCurrentMetric);
     const nodes = frame.querySelectorAll("g.county[data-county]");
+
+    // First pass — gather values so seq_dyn can size its domain.
+    let dynLo = Infinity, dynHi = -Infinity;
+    const values = new Map();
+    nodes.forEach(node => {
+        const name = node.dataset.county;
+        const v = _countyMetric(_countyEntryFor(name), mapCurrentFuel, mapCurrentMetric);
+        values.set(name, v);
+        if (v != null && Number.isFinite(v)) {
+            if (v < dynLo) dynLo = v;
+            if (v > dynHi) dynHi = v;
+        }
+    });
+
     nodes.forEach(node => {
         const name = node.dataset.county;
         const entry = _countyEntryFor(name);
-        const pct = _countyPct(entry, mapCurrentFuel);
-        const fill = mapColorFor(pct);
+        const f = entry ? entry[mapCurrentFuel] : null;
+        const v = values.get(name);
+        let fill;
+        if (metric.type === "div") {
+            fill = _tintDiv(v, metric.clamp);
+        } else if (metric.type === "seq") {
+            fill = _tintSeq(v, metric.lo, metric.hi);
+        } else {
+            // seq_dyn — pad the domain slightly so the darkest county still
+            // reads as distinct from the "no data" grey when the min is 0.
+            const lo = Number.isFinite(dynLo) ? dynLo : 0;
+            const hi = Number.isFinite(dynHi) ? Math.max(dynHi, lo + 1) : 1;
+            fill = _tintSeq(v, lo, hi);
+        }
         node.style.fill = fill;
-        node.classList.toggle("is-stale", pct == null);
-        node.dataset.pct = pct == null ? "" : pct.toFixed(4);
-        // aria-label per fuel — screen readers hear "Dublin, +0.4% predicted"
-        const short = pct == null
+        // Two-state dim: `is-stale` (opacity 0.65) covers both a stale-median
+        // county that still paints a tint and a truly no-data county that
+        // paints grey. Fresh counties render at full brightness so the tint
+        // reads first.
+        node.classList.toggle("is-stale", v == null || (f && !!f.stale));
+        node.dataset.pct = v == null ? "" : v.toFixed(4);
+        const short = v == null
             ? `${name}, no data`
-            : `${name}, ${(pct * 100).toFixed(1)}% predicted 3-week change`;
+            : `${name}, ${metric.fmt(v)} ${metric.aria}`;
         node.setAttribute("aria-label", short);
     });
+
+    _updateLegend(metric, dynLo, dynHi);
 }
 
 function _positionTooltip(tip, evt, frame) {
@@ -867,25 +1004,44 @@ function _renderTooltip(tip, name) {
         tip.innerHTML = `<strong>${escapeHtml(name)}</strong><span class="muted">No data</span>`;
         return;
     }
+    const metric = _metricConfig(mapCurrentMetric);
     const now = f.current_pump_eur_per_l;
     const then = f.predicted_pump_3w_eur_per_l;
-    const pct = _countyPct(entry, fuel);
+    const v = _countyMetric(entry, fuel, mapCurrentMetric);
     const staleTag = f.stale ? `<span class="ireland-tip-stale">stale</span>` : "";
-    const pctTxt = pct == null ? "—" : `${(pct * 100).toFixed(2)}%`;
-    const sign = pct == null ? "" : (pct > 0 ? "up" : pct < 0 ? "down" : "flat");
-    tip.innerHTML = `
-        <strong>${escapeHtml(name)} ${staleTag}</strong>
+    const valTxt = v == null ? "—" : metric.fmt(v);
+    // Lead colour: diverging metrics use the up/down/flat convention. Sequential
+    // metrics (confidence, stations) are neither — leave them accent-toned via
+    // the default row class.
+    let sign = "";
+    if (v != null && metric.type === "div") {
+        sign = v > 0 ? "up" : v < 0 ? "down" : "flat";
+    }
+    const asOfLine = f.origin_snapshot_date
+        ? `<span class="ireland-tip-row"><span class="muted">as of</span><span>${escapeHtml(f.origin_snapshot_date)}</span></span>`
+        : "";
+    // Level lines skipped when both values are absent (station-fallback
+    // carry-forward has neither current_pump nor predicted).
+    const priceLines = (now != null || then != null) ? `
         <span class="ireland-tip-row">
             <span class="muted">now (${fuel})</span>
-            <span>${fmtEur(now)}</span>
+            <span>${now == null ? "—" : fmtEur(now)}</span>
         </span>
         <span class="ireland-tip-row">
             <span class="muted">predicted 3w</span>
-            <span>${fmtEur(then)}</span>
-        </span>
+            <span>${then == null ? "—" : fmtEur(then)}</span>
+        </span>` : `
+        <span class="ireland-tip-row">
+            <span class="muted">last median</span>
+            <span>${fmtEur(f.crowd_median_eur_per_litre)}</span>
+        </span>`;
+    tip.innerHTML = `
+        <strong>${escapeHtml(name)} ${staleTag}</strong>
+        ${priceLines}
+        ${asOfLine}
         <span class="ireland-tip-row is-lead" data-sign="${sign}">
-            <span class="muted">Δ</span>
-            <span>${pctTxt}</span>
+            <span class="muted">${escapeHtml(metric.aria)}</span>
+            <span>${valTxt}</span>
         </span>`;
 }
 
@@ -958,6 +1114,25 @@ function _wireMapFuelToggle() {
     });
 }
 
+function _wireMapMetricToggle() {
+    const wrap = document.querySelector(".ireland-map-metric");
+    if (!wrap) return;
+    wrap.addEventListener("click", (evt) => {
+        const btn = evt.target.closest(".ireland-metric-chip");
+        if (!btn) return;
+        const metric = btn.dataset.metric;
+        if (!metric || metric === mapCurrentMetric) return;
+        if (!MAP_METRICS.some(m => m.id === metric)) return;
+        mapCurrentMetric = metric;
+        wrap.querySelectorAll(".ireland-metric-chip").forEach(el => {
+            const active = el.dataset.metric === metric;
+            el.classList.toggle("is-active", active);
+            el.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        paintIrelandMap();
+    });
+}
+
 async function initIrelandMap() {
     const frame = document.getElementById("ireland-map-frame");
     if (!frame) return;
@@ -972,6 +1147,7 @@ async function initIrelandMap() {
         mapSvgReady = true;
         mapCountiesData = counties;
         _wireMapFuelToggle();
+        _wireMapMetricToggle();
         _wireMapInteractions(frame);
         paintIrelandMap();
     } catch (err) {

@@ -54,21 +54,28 @@
 
         <section class="ireland-map" id="ireland-map" aria-labelledby="ireland-map-title">
             <div class="ireland-map-head">
-                <h2 id="ireland-map-title">County outlook <span class="muted">(3-week predicted change)</span></h2>
+                <h2 id="ireland-map-title">County outlook <span class="muted" id="ireland-map-subtitle">(3-week predicted change)</span></h2>
                 <div class="ireland-map-fuel" role="tablist" aria-label="Fuel">
                     <button type="button" class="ireland-fuel-chip is-active" data-fuel="petrol" role="tab" aria-selected="true">Petrol</button>
                     <button type="button" class="ireland-fuel-chip" data-fuel="diesel" role="tab" aria-selected="false">Diesel</button>
                 </div>
             </div>
+            <div class="ireland-map-metric" role="tablist" aria-label="Metric">
+                <button type="button" class="ireland-metric-chip is-active" data-metric="pct3w" role="tab" aria-selected="true">3w Δ%</button>
+                <button type="button" class="ireland-metric-chip" data-metric="pct1w" role="tab" aria-selected="false">1w Δ%</button>
+                <button type="button" class="ireland-metric-chip" data-metric="level" role="tab" aria-selected="false">vs nat'l</button>
+                <button type="button" class="ireland-metric-chip" data-metric="conf" role="tab" aria-selected="false">Confidence</button>
+                <button type="button" class="ireland-metric-chip" data-metric="stations" role="tab" aria-selected="false">Stations</button>
+            </div>
             <div class="ireland-map-body">
                 <div class="ireland-map-frame" id="ireland-map-frame" aria-live="polite">
                     <p class="ireland-map-loading muted">Loading map…</p>
                 </div>
-                <div class="ireland-map-legend" aria-hidden="true">
-                    <span class="ireland-legend-label">Cheaper</span>
-                    <span class="ireland-legend-bar"></span>
-                    <span class="ireland-legend-label">Pricier</span>
-                    <span class="ireland-legend-stops">
+                <div class="ireland-map-legend" id="ireland-map-legend" aria-hidden="true">
+                    <span class="ireland-legend-label" data-role="lo">Cheaper</span>
+                    <span class="ireland-legend-bar" id="ireland-legend-bar"></span>
+                    <span class="ireland-legend-label" data-role="hi">Pricier</span>
+                    <span class="ireland-legend-stops" id="ireland-legend-stops">
                         <span>−1.5%</span><span>0</span><span>+1.5%</span>
                     </span>
                     <span class="ireland-legend-stale"><span class="ireland-legend-swatch is-stale"></span>stale / no data</span>

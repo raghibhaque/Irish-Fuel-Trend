@@ -123,6 +123,11 @@ class CountyFuelSnapshot(BaseModel):
     predicted_pump_high_eur_per_l: Optional[float] = None
     predicted_pump_3w_eur_per_l: Optional[float] = None
 
+    # Only set when the row is carried forward from a prior snapshot because the
+    # latest upstream ranking never returned this county. Frontend uses it to
+    # tell users how old the number is; absent = row is from today's snapshot.
+    origin_snapshot_date: Optional[date] = None
+
     observations: list[CountyObservation] = Field(default_factory=list)
     stations: list[CountyStation] = Field(default_factory=list)
 
