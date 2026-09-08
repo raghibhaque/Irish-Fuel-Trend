@@ -58,6 +58,23 @@ def explain(pred: TrendPrediction, mock_brent: bool = False) -> str:
         f"Crack spread {pred.product_symbol}−Brent €{f['crack_spread_eur']:+.2f}/bbl "
         f"({f['crack_spread_ret_4w']:+.2f} vs 4 weeks ago) — refining margin."
     )
+
+    curve_slope = f.get("brent_curve_slope_4w", 0.0)
+    if abs(curve_slope) >= 0.005:
+        shape = "backwardation" if curve_slope > 0 else "contango"
+        parts.append(
+            f"Brent forward curve in {shape} "
+            f"(front-vs-BNO 4-week spread {_pct(curve_slope)})."
+        )
+
+    gbp_ret = f.get("eur_gbp_ret_2w", 0.0)
+    if abs(gbp_ret) >= 0.005:
+        direction = "weaker" if gbp_ret > 0 else "stronger"
+        parts.append(
+            f"Sterling {direction} vs euro over the prior 2 weeks "
+            f"(EUR/GBP {_pct(gbp_ret)})."
+        )
+
     parts.append(
         f"Last week's wholesale {pred.fuel_type} return was "
         f"{_pct(f['prev_wholesale_return'])}."

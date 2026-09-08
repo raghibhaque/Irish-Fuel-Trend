@@ -30,8 +30,21 @@ CREATE INDEX IF NOT EXISTS ix_fuel_prices_date ON fuel_prices(date);
 CREATE TABLE IF NOT EXISTS fx_rates (
     date         DATE PRIMARY KEY,
     eur_usd      REAL NOT NULL,
+    eur_gbp      REAL,                       -- ECB publishes GBP alongside USD; used as a UK/IE supply-route signal
     source       TEXT NOT NULL,
     inserted_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Brent futures curve proxy. Storing the BNO ETF close (USDollar per share)
+-- lets the model compare its return against front-month Brent (BZ=F) to infer
+-- backwardation/contango — a rising BNO/Brent ratio signals contango
+-- (curve upward-sloping, forward prices above spot) and vice versa. Cheaper
+-- than fetching individual dated Brent contracts and stitching a rolling M3.
+CREATE TABLE IF NOT EXISTS brent_curve_etf (
+    date          DATE PRIMARY KEY,
+    price_usd     REAL NOT NULL,
+    source        TEXT NOT NULL,
+    inserted_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS brent_crude (
@@ -154,6 +167,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     """Idempotent, forward-only migrations for pre-existing DBs."""
     if not _column_exists(conn, "fuel_prices", "price_wo_tax_eur_per_litre"):
         conn.execute("ALTER TABLE fuel_prices ADD COLUMN price_wo_tax_eur_per_litre REAL;")
+    if not _column_exists(conn, "fx_rates", "eur_gbp"):
+        conn.execute("ALTER TABLE fx_rates ADD COLUMN eur_gbp REAL;")
 
 
 def init_db() -> None:

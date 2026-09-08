@@ -12,6 +12,17 @@ Features (per fuel):
     product_eur_ret_1w Refined-product (EUR/gal) return, prior 1 week
     product_eur_ret_4w Refined-product (EUR/gal) return, prior 4 weeks
     crack_spread_ret_4w Refining-margin change (product − Brent, EUR/bbl)
+    brent_curve_slope_4w  Front-month Brent return minus BNO ETF return, both
+                          over 4 weeks in USD. Approximates the roll yield on
+                          the Brent forward curve: positive = backwardation
+                          (spot rising faster than mid-curve → tight physical
+                          supply → bullish next-week wholesale), negative =
+                          contango. Zero when the two series stopped tracking
+                          each other (e.g. BNO series missing pre-2010).
+    eur_gbp_ret_2w     2-week return of EUR/GBP (GBP per EUR), lagged 1 week.
+                       A meaningful share of Irish product moves via UK
+                       terminals; sterling weakness cheapens that leg of the
+                       wholesale stack. Expected negative coefficient.
     pump_wholesale_residual_lag1  Error-correction term: pump − wholesale·(1+VAT)
                                    at t-1. When pump has extended too far vs
                                    what wholesale + VAT implies, next-week
@@ -64,6 +75,8 @@ FEATURE_COLS = [
     "product_eur_ret_1w",
     "product_eur_ret_4w",
     "crack_spread_ret_4w",             # 4-week change in refining margin (product − Brent, EUR/bbl)
+    "brent_curve_slope_4w",            # Brent front vs BNO ETF 4-week roll-yield proxy (USD returns)
+    "eur_gbp_ret_2w",                  # 2-week EUR/GBP change (UK-supply-route signal)
     "pump_wholesale_residual_lag1",    # error-correction level, EUR/L (mean-reverting)
     "prev_return",
 ]
@@ -249,7 +262,15 @@ def _latest_observed_pump(fuel_type: str) -> float | None:
     return _spike_guarded_price(latest, trailing)
 
 
-def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _load_frames() -> tuple[
+    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+]:
+    """Return (prices, brent, fx, refined, brent_curve).
+
+    `brent_curve` may be empty if the BNO ingest hasn't run yet — the model
+    tolerates that by falling back to a zero curve-slope feature (see
+    `build_dataset`).
+    """
     with connection() as conn:
         prices = pd.read_sql_query(
             "SELECT date, fuel_type, price_eur_per_litre, price_wo_tax_eur_per_litre "
@@ -263,7 +284,7 @@ def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFra
             parse_dates=["date"],
         )
         fx = pd.read_sql_query(
-            "SELECT date, eur_usd FROM fx_rates ORDER BY date",
+            "SELECT date, eur_usd, eur_gbp FROM fx_rates ORDER BY date",
             conn,
             parse_dates=["date"],
         )
@@ -272,7 +293,12 @@ def _load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFra
             conn,
             parse_dates=["date"],
         )
-    return prices, brent, fx, refined
+        brent_curve = pd.read_sql_query(
+            "SELECT date, price_usd FROM brent_curve_etf ORDER BY date",
+            conn,
+            parse_dates=["date"],
+        )
+    return prices, brent, fx, refined, brent_curve
 
 
 def _to_eur(usd_series: pd.Series, fx: pd.DataFrame) -> pd.Series:
@@ -316,7 +342,7 @@ def _select_product_symbol(fuel_type: str, refined: pd.DataFrame) -> str:
 
 
 def build_dataset(fuel_type: str) -> pd.DataFrame:
-    prices, brent, fx, refined = _load_frames()
+    prices, brent, fx, refined, brent_curve = _load_frames()
     product_symbol = _select_product_symbol(fuel_type, refined)
 
     fuel_rows = (
@@ -373,6 +399,40 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
         crack_daily = (product_eur_per_bbl - brent_eur_weekly).dropna()
         df["crack_spread_eur"]      = crack_daily.shift(1)
         df["crack_spread_ret_4w"]   = crack_daily.shift(1) - crack_daily.shift(5)
+
+    # ---- Brent forward-curve slope proxy via BNO ETF ----
+    # Compare front-month Brent (USD/bbl) to the BNO ETF (USD/share). Their
+    # 4-week return differential approximates the roll yield: when Brent
+    # front outruns BNO the curve is backwardated (bullish for near-term
+    # wholesale); when BNO outruns Brent the curve is in contango. Kept in
+    # USD on both sides so EUR/USD noise doesn't contaminate the signal.
+    brent_usd_daily = brent.set_index("date")["price_usd_per_barrel"].sort_index()
+    brent_usd_weekly = brent_usd_daily.reindex(df.index, method="ffill")
+    if brent_curve.empty:
+        # BNO series not ingested yet — feature is zero (neutral).
+        df["brent_curve_slope_4w"] = 0.0
+    else:
+        bno_daily = brent_curve.set_index("date")["price_usd"].sort_index()
+        bno_weekly = bno_daily.reindex(df.index, method="ffill")
+        brent_ret_4w = brent_usd_weekly.shift(1) / brent_usd_weekly.shift(5) - 1
+        bno_ret_4w   = bno_weekly.shift(1)       / bno_weekly.shift(5)       - 1
+        curve_slope = (brent_ret_4w - bno_ret_4w)
+        # Rows before BNO began trading (pre-2010) get NaN slope — treat as
+        # zero rather than dropping the row, so early wholesale weeks still
+        # train the model on the other features.
+        df["brent_curve_slope_4w"] = curve_slope.fillna(0.0)
+
+    # ---- EUR/GBP short-window return ----
+    # 2-week return of GBP-per-EUR (positive = EUR strengthening / GBP
+    # weakening). GBP weakness cheapens UK-terminal-anchored supply for
+    # Ireland; Ridge should learn a negative coefficient.
+    gbp_daily = fx.set_index("date")["eur_gbp"].sort_index().dropna()
+    if gbp_daily.empty:
+        df["eur_gbp_ret_2w"] = 0.0
+    else:
+        gbp_weekly = gbp_daily.reindex(df.index, method="ffill")
+        eur_gbp_ret = gbp_weekly.shift(1) / gbp_weekly.shift(3) - 1
+        df["eur_gbp_ret_2w"] = eur_gbp_ret.fillna(0.0)
 
     keep = ["wholesale", "pump", "target_ret", "brent_eur", "brent_eur_lag1",
             "product_eur", "product_eur_lag1", "crack_spread_eur"] + FEATURE_COLS
@@ -648,6 +708,8 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         "product_eur_ret_4w": float(latest["product_eur_ret_4w"]),
         "crack_spread_eur": float(latest["crack_spread_eur"]),
         "crack_spread_ret_4w": float(latest["crack_spread_ret_4w"]),
+        "brent_curve_slope_4w": float(latest["brent_curve_slope_4w"]),
+        "eur_gbp_ret_2w": float(latest["eur_gbp_ret_2w"]),
         "pump_wholesale_residual_lag1": float(latest["pump_wholesale_residual_lag1"]),
         "prev_wholesale_return": float(latest["prev_return"]),
         "brent_eur_per_bbl_current": float(latest["brent_eur"]),

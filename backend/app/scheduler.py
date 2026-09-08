@@ -6,6 +6,7 @@ Refresh cadence:
     counties    daily at 06:10 UTC (county medians + station prices, same upstream)
     fx          daily at 16:30 UTC (after ECB publishes)
     brent       daily at 22:00 UTC (after markets close)
+    brent_curve daily at 22:05 UTC (BNO ETF close for curve-slope proxy)
     bulletin    weekly, Monday 10:00 UTC (EU updates roughly weekly)
 
 Started from the FastAPI lifespan on app boot.
@@ -20,6 +21,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.data_sources import (
     brent_crude,
+    brent_curve,
     eu_oil_bulletin,
     fuelwatch_counties,
     fuelwatch_ie,
@@ -69,6 +71,10 @@ def start() -> BackgroundScheduler:
     sched.add_job(_safe(brent_crude.ingest, "brent"),
                   CronTrigger(hour=22, minute=0),
                   id="brent", replace_existing=True, max_instances=1)
+
+    sched.add_job(_safe(brent_curve.ingest, "brent_curve"),
+                  CronTrigger(hour=22, minute=5),
+                  id="brent_curve", replace_existing=True, max_instances=1)
 
     sched.add_job(_safe(refined_products.ingest, "refined"),
                   CronTrigger(hour=22, minute=15),
