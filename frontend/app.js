@@ -89,21 +89,25 @@ function renderChart(data) {
             label: "Petrol (95)",
             data: tail(petrolHist),
             borderColor: FUEL_COLORS.petrol.line,
-            backgroundColor: FUEL_COLORS.petrol.fill,
+            backgroundColor: (ctx) => verticalGradient(
+                ctx, FUEL_GRADIENT.petrol.from, FUEL_GRADIENT.petrol.to,
+            ),
             tension: 0.25,
             pointRadius: 0,
             borderWidth: 2,
-            fill: true,
+            fill: "origin",
         },
         {
             label: "Diesel",
             data: tail(dieselHist),
             borderColor: FUEL_COLORS.diesel.line,
-            backgroundColor: FUEL_COLORS.diesel.fill,
+            backgroundColor: (ctx) => verticalGradient(
+                ctx, FUEL_GRADIENT.diesel.from, FUEL_GRADIENT.diesel.to,
+            ),
             tension: 0.25,
             pointRadius: 0,
             borderWidth: 2,
-            fill: true,
+            fill: "origin",
         },
     ];
 
@@ -210,6 +214,52 @@ function renderChart(data) {
     const origLabel = opts.plugins.tooltip.callbacks.label;
     opts.plugins.tooltip.callbacks.label = (c) =>
         c.dataset.__hideTooltip ? null : origLabel(c);
+
+    // -------- polish plugin options ----------
+    // Pinned latest-value pill on each history line's endpoint.
+    const lastP = petrolHist[petrolHist.length - 1];
+    const lastD = dieselHist[dieselHist.length - 1];
+    const tags = [];
+    if (typeof lastP === "number") tags.push({
+        datasetIndex: 0, index: histLen - 1,
+        color: FUEL_COLORS.petrol.line, text: `€${lastP.toFixed(3)}`,
+    });
+    if (typeof lastD === "number") tags.push({
+        datasetIndex: 1, index: histLen - 1,
+        color: FUEL_COLORS.diesel.line, text: `€${lastD.toFixed(3)}`,
+    });
+    opts.plugins.latestTags = { tags };
+
+    // "NOW" divider only when there is a forecast tail to divide off.
+    opts.plugins.nowDivider = wantForecast
+        ? { index: histLen - 1, datasetIndex: 0, label: "NOW" }
+        : null;
+
+    // 12-month rolling mean per fuel, computed from the visible slice so the
+    // reference tracks the range the user picked rather than always being the
+    // last-52-weeks. Falls back to the whole visible window when the slice is
+    // shorter than a year.
+    const meanOf = (arr) => {
+        const cleaned = arr.filter(v => typeof v === "number");
+        if (!cleaned.length) return null;
+        return cleaned.reduce((a, b) => a + b, 0) / cleaned.length;
+    };
+    const refWindow = 52;
+    const refs = [];
+    const meanP = meanOf(petrolHist.slice(-Math.min(refWindow, petrolHist.length)));
+    const meanD = meanOf(dieselHist.slice(-Math.min(refWindow, dieselHist.length)));
+    if (petrolHist.length >= 8 && meanP != null) refs.push({
+        color: FUEL_COLORS.petrol.line,
+        value: meanP,
+        label: `Petrol avg €${meanP.toFixed(3)}`,
+    });
+    if (dieselHist.length >= 8 && meanD != null) refs.push({
+        color: FUEL_COLORS.diesel.line,
+        value: meanD,
+        label: `Diesel avg €${meanD.toFixed(3)}`,
+    });
+    opts.plugins.refLines = { refs };
+    opts.plugins.crosshair = { enabled: true };
 
     chart = new Chart(ctx, {
         type: "line",

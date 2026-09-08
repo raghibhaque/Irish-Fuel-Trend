@@ -72,6 +72,28 @@ const FUEL_COLORS = {
     diesel: { line: "#7bd3cf", fill: "rgba(123, 211, 207, 0.09)" },
 };
 
+// Gradient stops for the historical-trend fill under each line. Denser at the
+// line, transparent at the axis — reads as an atmospheric envelope rather
+// than a flat wash, and lets both series overlap without one washing the
+// other out.
+const FUEL_GRADIENT = {
+    petrol: { from: "rgba(255, 182, 72, 0.34)", to: "rgba(255, 182, 72, 0.00)" },
+    diesel: { from: "rgba(123, 211, 207, 0.30)", to: "rgba(123, 211, 207, 0.00)" },
+};
+
+// Chart.js gives the fill helpers a scriptable context — use it to build a
+// vertical gradient sized to the current chart area. Falls back to the
+// solid end-stop before the first layout pass, when chartArea is undefined.
+function verticalGradient(context, from, to) {
+    const { chart } = context;
+    const area = chart.chartArea;
+    if (!area) return from;
+    const g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    g.addColorStop(0, from);
+    g.addColorStop(1, to);
+    return g;
+}
+
 const CHART_INK  = "#ece7d8";
 const CHART_DIM  = "#7c828c";
 const CHART_GRID = "rgba(236, 231, 216, 0.05)";
@@ -282,7 +304,211 @@ const DragComparePlugin = {
         ctx.restore();
     },
 };
-if (typeof Chart !== "undefined") Chart.register(DragComparePlugin);
+// ------------------ historical-trend polish plugins ------------------
+// Each plugin reads its state from Chart.js scriptable options
+// (`options.plugins.<id>`) so a chart opts in per-instance without any
+// global side effects. When options are absent the plugin is a no-op —
+// the county page uses `baseChartOptions()` too and inherits nothing.
+
+// Faint horizontal reference lines (e.g. 12-month rolling mean per fuel).
+// Drawn under the datasets so the actual price line reads on top.
+const RefLinesPlugin = {
+    id: "refLines",
+    beforeDatasetsDraw(chart, _args, options) {
+        const refs = options && options.refs;
+        if (!refs || !refs.length) return;
+        const { ctx, chartArea, scales } = chart;
+        for (const r of refs) {
+            const y = scales.y.getPixelForValue(r.value);
+            if (!Number.isFinite(y)) continue;
+            ctx.save();
+            ctx.strokeStyle = r.color;
+            ctx.globalAlpha = 0.5;
+            ctx.setLineDash([2, 4]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(chartArea.left, y);
+            ctx.lineTo(chartArea.right, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = r.color;
+            ctx.font = "600 9px " + CHART_MONO;
+            ctx.textBaseline = "bottom";
+            ctx.textAlign = "right";
+            ctx.fillText(r.label, chartArea.right - 4, y - 2);
+            ctx.restore();
+        }
+    },
+};
+
+// Vertical rule + coloured dots at the currently hovered x. Reuses Chart.js's
+// own tooltip active-elements so it stays in sync with the tooltip without
+// tracking mouse state independently. Suppressed while a drag-compare is
+// active — that plugin already draws its own guide lines and popup.
+const CrosshairPlugin = {
+    id: "crosshair",
+    afterDatasetsDraw(chart, _args, options) {
+        if (!options || options.enabled === false) return;
+        if (chart._dragCompare) return;
+        const tooltip = chart.tooltip;
+        const active = tooltip && typeof tooltip.getActiveElements === "function"
+            ? tooltip.getActiveElements()
+            : [];
+        if (!active.length) return;
+        const x = active[0].element.x;
+        const { ctx, scales } = chart;
+        ctx.save();
+        ctx.strokeStyle = "rgba(236, 231, 216, 0.32)";
+        ctx.setLineDash([2, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, scales.y.top);
+        ctx.lineTo(x, scales.y.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        for (const a of active) {
+            const ds = chart.data.datasets[a.datasetIndex];
+            if (!ds || ds.__hideTooltip) continue;
+            const el = a.element;
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(10, 11, 13, 0.95)";
+            ctx.strokeStyle = ds.borderColor;
+            ctx.lineWidth = 2;
+            ctx.arc(el.x, el.y, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+    },
+};
+
+// Vertical dashed divider at the boundary between measured history and the
+// forecast tail. Reads the anchor index from a history dataset so it lines up
+// with the exact x-pixel of the last real point.
+const NowDividerPlugin = {
+    id: "nowDivider",
+    afterDatasetsDraw(chart, _args, options) {
+        if (!options || options.index == null) return;
+        const meta = chart.getDatasetMeta(options.datasetIndex ?? 0);
+        const el = meta && meta.data && meta.data[options.index];
+        if (!el) return;
+        const { ctx, scales } = chart;
+        ctx.save();
+        ctx.strokeStyle = "rgba(236, 231, 216, 0.40)";
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(el.x, scales.y.top);
+        ctx.lineTo(el.x, scales.y.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Label pill sits just below the top gridline so it does not clash
+        // with the legend row above.
+        const label = options.label || "NOW";
+        ctx.font = "600 9px " + CHART_MONO;
+        const padX = 6, padY = 3;
+        const w = ctx.measureText(label).width + padX * 2;
+        const h = 14;
+        const x = Math.max(scales.x.left, Math.min(el.x - w / 2, scales.x.right - w));
+        const y = scales.y.top + 4;
+        ctx.fillStyle = "rgba(16, 18, 21, 0.92)";
+        ctx.strokeStyle = "rgba(236, 231, 216, 0.35)";
+        ctx.lineWidth = 1;
+        const r = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "rgba(236, 231, 216, 0.85)";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillText(label, x + w / 2, y + h / 2 + 0.5);
+        ctx.restore();
+    },
+};
+
+// Pinned latest-value pills flush to the right of each line. Stacks vertically
+// when two lines end within one pill height, so petrol/diesel never overlap.
+// Colour tracks the borderColor of the corresponding dataset so the mapping
+// pill → line is unambiguous.
+const LatestTagsPlugin = {
+    id: "latestTags",
+    afterDatasetsDraw(chart, _args, options) {
+        const tags = options && options.tags;
+        if (!tags || !tags.length) return;
+        const { ctx, chartArea } = chart;
+        // Two-pass: measure + resolve collisions, then paint.
+        const boxes = [];
+        for (const t of tags) {
+            const meta = chart.getDatasetMeta(t.datasetIndex);
+            const el = meta && meta.data && meta.data[t.index];
+            if (!el) continue;
+            ctx.font = "600 11px " + CHART_MONO;
+            const w = ctx.measureText(t.text).width + 12;
+            const h = 18;
+            let x = el.x + 10;
+            let y = el.y - h / 2;
+            if (x + w > chartArea.right - 2) x = el.x - w - 10;
+            if (y < chartArea.top + 2) y = chartArea.top + 2;
+            if (y + h > chartArea.bottom - 2) y = chartArea.bottom - h - 2;
+            boxes.push({ x, y, w, h, el, color: t.color, text: t.text });
+        }
+        // Simple downward dodge — if two pills overlap vertically, push the
+        // second one below the first.
+        boxes.sort((a, b) => a.y - b.y);
+        for (let i = 1; i < boxes.length; i++) {
+            const prev = boxes[i - 1];
+            const cur = boxes[i];
+            if (cur.y < prev.y + prev.h + 2) cur.y = prev.y + prev.h + 2;
+        }
+        for (const b of boxes) {
+            ctx.save();
+            ctx.fillStyle = "rgba(10, 11, 13, 0.90)";
+            ctx.strokeStyle = b.color;
+            ctx.lineWidth = 1;
+            const r = 4;
+            ctx.beginPath();
+            ctx.moveTo(b.x + r, b.y);
+            ctx.arcTo(b.x + b.w, b.y, b.x + b.w, b.y + b.h, r);
+            ctx.arcTo(b.x + b.w, b.y + b.h, b.x, b.y + b.h, r);
+            ctx.arcTo(b.x, b.y + b.h, b.x, b.y, r);
+            ctx.arcTo(b.x, b.y, b.x + b.w, b.y, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = b.color;
+            ctx.font = "600 11px " + CHART_MONO;
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "left";
+            ctx.fillText(b.text, b.x + 6, b.y + b.h / 2 + 0.5);
+            // Connector dot on the line endpoint.
+            ctx.beginPath();
+            ctx.arc(b.el.x, b.el.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    },
+};
+
+if (typeof Chart !== "undefined") {
+    // Register order controls draw order inside the same hook. RefLines uses
+    // beforeDatasetsDraw so it always paints under the price lines; the other
+    // three run afterDatasetsDraw and are ordered crosshair → divider → tags
+    // so the pinned tags always sit on top of the guide lines.
+    Chart.register(
+        DragComparePlugin,
+        RefLinesPlugin,
+        CrosshairPlugin,
+        NowDividerPlugin,
+        LatestTagsPlugin,
+    );
+}
 
 function attachDragCompare(canvasId, popupId) {
     const canvas = document.getElementById(canvasId);
