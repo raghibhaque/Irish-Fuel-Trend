@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=16">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -279,6 +279,39 @@
             </form>
         </dialog>
 
+        <section class="fill-log panel" aria-labelledby="fill-log-title">
+            <div class="fill-log-head">
+                <h2 id="fill-log-title">Your fill log <span class="muted">(saved on this device)</span></h2>
+            </div>
+            <div class="fill-log-stats" id="fill-log-stats" role="group" aria-label="Rolling 30-day stats">
+                <div class="fl-stat"><span class="fl-stat-label">Fills (30d)</span><span class="fl-stat-value" id="fl-count">0</span></div>
+                <div class="fl-stat"><span class="fl-stat-label">Litres (30d)</span><span class="fl-stat-value" id="fl-litres">0</span></div>
+                <div class="fl-stat"><span class="fl-stat-label">Spent (30d)</span><span class="fl-stat-value" id="fl-spent">€0.00</span></div>
+                <div class="fl-stat"><span class="fl-stat-label">Your avg €/L</span><span class="fl-stat-value" id="fl-avg">—</span></div>
+                <div class="fl-stat"><span class="fl-stat-label">vs national (30d)</span><span class="fl-stat-value" id="fl-diff" data-sign="flat">—</span></div>
+            </div>
+            <form class="fill-log-form" id="fill-log-form" autocomplete="off">
+                <label>Date
+                    <input type="date" id="fl-date" required>
+                </label>
+                <label>Fuel
+                    <select id="fl-fuel">
+                        <option value="petrol" selected>Petrol</option>
+                        <option value="diesel">Diesel</option>
+                    </select>
+                </label>
+                <label>Litres
+                    <input type="number" id="fl-litres-in" min="0.1" max="500" step="0.1" required inputmode="decimal">
+                </label>
+                <label>€/L
+                    <input type="number" id="fl-price-in" min="0.5" max="5" step="0.001" required inputmode="decimal">
+                </label>
+                <button type="submit" class="btn primary">Log fill</button>
+            </form>
+            <ul class="fill-log-list" id="fill-log-list" aria-label="Recent fills"></ul>
+            <p class="fill-log-hint muted">Data stays on this device only — nothing sent to a server. Comparison uses the latest national average per fuel, weighted by your fill mix.</p>
+        </section>
+
         <section class="news">
             <h2>Recent oil-relevant news</h2>
             <ul id="news-list" class="news-list">
@@ -299,7 +332,7 @@
     </footer>
 
     <script src="shared.js?v=11"></script>
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=24"></script>
     <script>
         // Register PWA service worker. Guarded so file:// and old browsers stay
         // quiet — this is progressive enhancement, not a hard dependency.
