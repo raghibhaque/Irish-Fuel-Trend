@@ -18,7 +18,7 @@ Free. No login. Refreshed every morning.
 
 ### Demo
 
-<video src="https://github.com/raghibhaque/Irish-Fuel-Trend/raw/main/docs/petrolpredictordemo.mp4" controls muted playsinline width="720"></video>
+![Site demo](docs/petrolpredictordemo.gif)
 
 ---
 
