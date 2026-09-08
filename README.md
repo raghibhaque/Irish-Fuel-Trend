@@ -16,6 +16,15 @@ Free. No login. Refreshed every morning.
 
 ![National dashboard](docs/screenshots/national.png)
 
+### Demo
+
+https://github.com/raghibhaque/Irish-Fuel-Trend/raw/main/docs/petrolpredictordemo.mp4
+
+<video src="docs/petrolpredictordemo.mp4" controls width="720">
+  Your browser can't play the embedded video —
+  <a href="docs/petrolpredictordemo.mp4">download it here</a>.
+</video>
+
 ---
 
 ## Why people use it
