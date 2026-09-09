@@ -59,7 +59,7 @@ jobs:
       - name: Ensure .nojekyll
         run: touch frontend/.nojekyll
 
-      - name: Publish to gh-pages branch
+      - name: Publish site to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -72,3 +72,16 @@ jobs:
           # top of the existing history keep Pages happy and the branch
           # still stays small — nothing here is heavy.
           keep_files: false
+
+      # Also mirror the JSON snapshots to the `data` branch so jsDelivr — the
+      # frontend's data source — is fresh on the daily cadence too, not just
+      # the hourly one. Without this, a browser hitting the site right after
+      # the daily run but before the next hourly would fetch stale data.
+      - name: Publish JSON snapshots to data branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend/data
+          publish_branch: data
+          commit_message: "data: daily refresh"
+          force_orphan: true

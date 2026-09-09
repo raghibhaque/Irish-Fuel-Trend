@@ -4,6 +4,11 @@ name: Hourly light refresh
 # (market ticks during trading hours). Skips FuelWatch, ECB and the EU
 # Bulletin — those publish once a day or less, so hourly polling would just
 # burn API calls.
+#
+# Deploy target is the `data` branch (JSON only), NOT gh-pages. The frontend
+# fetches snapshots via jsDelivr's mirror of that branch, so hourly refreshes
+# never trigger a Pages deployment — the site's build queue stays clear and
+# the hourly cadence stays truthful.
 
 on:
   schedule:
@@ -14,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: pages-branch-deploy
+  group: data-branch-deploy
   cancel-in-progress: false
 
 jobs:
@@ -57,14 +62,15 @@ jobs:
         working-directory: backend
         run: python export_static.py
 
-      - name: Ensure .nojekyll
-        run: touch frontend/.nojekyll
-
-      - name: Publish to gh-pages branch
+      - name: Publish JSON snapshots to data branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./frontend
-          publish_branch: gh-pages
-          commit_message: "deploy: hourly refresh"
-          keep_files: false
+          publish_dir: ./frontend/data
+          publish_branch: data
+          commit_message: "data: hourly refresh"
+          # force_orphan is safe here — the data branch has no history worth
+          # keeping (each push is a full snapshot) and this keeps the branch
+          # size flat over time. jsDelivr resolves the branch tip each fetch,
+          # so history depth doesn't matter for readers.
+          force_orphan: true
