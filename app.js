@@ -642,7 +642,7 @@ function buildShareCardCanvas(opts) {
 // forecast points are rendered on the card so the receiver still sees the
 // full 1-3 week arc, but the featured verdict + savings track the sender's
 // pick.
-function shareCardOptsFor(fuel, data, weeks = 3) {
+function shareCardOptsFor(fuel, data, weeks = 3, litres = DECISION_REF_LITRES) {
     const p = data[fuel];
     if (!p || p.trend === "unknown") return null;
 
@@ -652,26 +652,30 @@ function shareCardOptsFor(fuel, data, weeks = 3) {
     const p3w  = predictedPumpAtWeeks(p, 3);
     const featured = predictedPumpAtWeeks(p, weeks);
     const perL = featured - now;
-    const perFill = perL * DECISION_REF_LITRES;
+    // Clamp to sane range so a paste-in "1e9" doesn't blow up the card. UI
+    // <input> already carries min/max but that only guards the widget itself.
+    const litresSafe = Math.max(1, Math.min(500, Math.round(litres || DECISION_REF_LITRES)));
+    const perFill = perL * litresSafe;
     const signal = perL > 0.005 ? "fill" : perL < -0.005 ? "wait" : "neutral";
     const verdict = { fill: "Fill now", wait: "Wait", neutral: "Either way" }[signal];
     const abs = Math.abs(perFill).toFixed(2);
     const centsPerL = Math.abs(perL * 100).toFixed(1);
     const horizonLabel = weeks === 1 ? "1 week" : `${weeks} weeks`;
     const headline = signal === "fill"
-        ? `Predicted +${centsPerL}c/L in ~${horizonLabel}. Fill a 60 L tank now, save about €${abs}.`
+        ? `Predicted +${centsPerL}c/L in ~${horizonLabel}. Fill a ${litresSafe} L tank now, save about €${abs}.`
         : signal === "wait"
-            ? `Predicted −${centsPerL}c/L in ~${horizonLabel}. Delay a 60 L fill, save about €${abs}.`
+            ? `Predicted −${centsPerL}c/L in ~${horizonLabel}. Delay a ${litresSafe} L fill, save about €${abs}.`
             : "Predicted move is inside the model's noise floor. Fill whenever — timing barely matters.";
 
     const fuelLabel = fuel === "petrol" ? "Petrol (95)" : "Diesel";
     const conf = Math.round((p.confidence || 0) * 100);
     const updated = (window.__updatedAtLabel || "").replace(/^\s*\(updated at:\s*/, "").replace(/\)\s*$/, "");
-    const footerLeft = `Confidence ${conf}%  ·  60 L reference`;
+    const footerLeft = `Confidence ${conf}%  ·  ${litresSafe} L reference`;
     const footerRight = updated ? `irishfueltrend  ·  ${updated}` : "irishfueltrend";
 
     return {
-        fuel, fuelLabel, weeks, horizonLabel, signal, verdict, headline,
+        fuel, fuelLabel, weeks, horizonLabel, litres: litresSafe,
+        signal, verdict, headline,
         now, p1w, p2w, p3w,
         footerLeft, footerRight,
     };
@@ -685,11 +689,11 @@ async function canvasToBlob(canvas) {
 // Modal state — lives at module scope so the fuel/horizon chips inside the
 // modal can retarget the render without re-opening the dialog. Reset on each
 // open(), so a stale pick from a previous session never leaks in.
-const _shareState = { fuel: "petrol", weeks: 3, blob: null, objUrl: null };
+const _shareState = { fuel: "petrol", weeks: 3, litres: DECISION_REF_LITRES, blob: null, objUrl: null };
 
 async function _renderShareCard() {
     if (!predictionData) return;
-    const opts = shareCardOptsFor(_shareState.fuel, predictionData, _shareState.weeks);
+    const opts = shareCardOptsFor(_shareState.fuel, predictionData, _shareState.weeks, _shareState.litres);
     if (!opts) return;
 
     const img   = document.getElementById("share-preview-img");
@@ -767,7 +771,7 @@ function _syncShareChips() {
     });
 }
 
-// Wired once at boot — subsequent openShareModal() calls just re-sync the
+// Wired once at boot — subsequent focusShareCard() calls just re-sync the
 // chips, no listener stacking.
 function _wireShareChipsOnce() {
     const wrap = document.getElementById("share-controls");
@@ -790,6 +794,23 @@ function _wireShareChipsOnce() {
         _syncShareChips();
         _renderShareCard().catch(err => console.error(err));
     });
+
+    const litresInput = document.getElementById("share-litres-input");
+    if (litresInput) {
+        // Debounce so a rapid keystroke run doesn't kick off a canvas render
+        // per digit. 180ms is short enough to feel live, long enough to
+        // collapse "60" typed as 6→60 into a single re-render.
+        let t = null;
+        litresInput.addEventListener("input", () => {
+            clearTimeout(t);
+            t = setTimeout(() => {
+                const v = parseInt(litresInput.value, 10);
+                if (!Number.isFinite(v) || v < 1) return;
+                _shareState.litres = v;
+                _renderShareCard().catch(err => console.error(err));
+            }, 180);
+        });
+    }
 }
 
 async function focusShareCard(fuel) {
