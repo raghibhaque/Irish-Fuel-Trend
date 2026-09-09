@@ -363,6 +363,7 @@ async function loadPrediction() {
     });
     renderDecision(data);
     wireShareButtons();
+    initSharePanel().catch(err => console.error(err));
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
     updateCalculator();
     // If the historical chart already rendered before predictionData arrived,
@@ -575,17 +576,40 @@ function buildShareCardCanvas(opts) {
     ctx.fillText(opts.fuelLabel, PAD_X + ledR * 2 + 22, cursorY);
 
     // ---- verdict (huge display type) ----
-    cursorY += 150;
+    cursorY += 130;
     ctx.fillStyle = signalColor;
-    ctx.font = '700 140px "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, sans-serif';
+    ctx.font = '700 120px "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, sans-serif';
     ctx.fillText(opts.verdict.toUpperCase(), PAD_X, cursorY);
 
+    // ---- price ladder: NOW, 1W, 2W, 3W. The featured horizon (opts.weeks)
+    // ---- reads in accent, the others in dim text — a glance shows which
+    // ---- horizon the verdict is tied to without hiding the full arc.
+    cursorY += 50;
+    const rungs = [
+        { label: "NOW", value: opts.now,  weeks: 0 },
+        { label: "1W",  value: opts.p1w,  weeks: 1 },
+        { label: "2W",  value: opts.p2w,  weeks: 2 },
+        { label: "3W",  value: opts.p3w,  weeks: 3 },
+    ];
+    const rungW = (SHARE_W - PAD_X * 2) / rungs.length;
+    rungs.forEach((r, i) => {
+        const cx = PAD_X + rungW * i + rungW / 2;
+        const active = r.weeks === opts.weeks;
+        ctx.textAlign = "center";
+        ctx.fillStyle = INK_DIM;
+        ctx.font = '500 20px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+        ctx.fillText(r.label, cx, cursorY);
+        ctx.fillStyle = active ? signalColor : (r.weeks === 0 ? INK : INK_MID);
+        ctx.font = `${active ? 700 : 600} 44px "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif`;
+        ctx.fillText(`€${r.value.toFixed(3)}`, cx, cursorY + 46);
+    });
+    ctx.textAlign = "left";
+
     // ---- headline savings line ----
-    cursorY += 70;
+    cursorY += 110;
     ctx.fillStyle = INK;
-    ctx.font = '600 40px "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif';
-    const headline = opts.headline;
-    drawWrappedText(ctx, headline, PAD_X, cursorY, SHARE_W - PAD_X * 2, 52);
+    ctx.font = '600 32px "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif';
+    drawWrappedText(ctx, opts.headline, PAD_X, cursorY, SHARE_W - PAD_X * 2, 42);
 
     // ---- footer strip: current price + updated ----
     const footerY = SHARE_H - 60;
@@ -613,31 +637,44 @@ function buildShareCardCanvas(opts) {
 // the wording in renderDecision so the shared image and the on-page card
 // always agree — no risk of a screenshot saying "€2.19" while the page has
 // silently refreshed to a different number after the user hit Share.
-function shareCardOptsFor(fuel, data) {
+//
+// `weeks` (1..3) selects which horizon drives the headline. All three
+// forecast points are rendered on the card so the receiver still sees the
+// full 1-3 week arc, but the featured verdict + savings track the sender's
+// pick.
+function shareCardOptsFor(fuel, data, weeks = 3) {
     const p = data[fuel];
     if (!p || p.trend === "unknown") return null;
 
     const now  = p.current_pump_eur_per_l;
-    const then = p.predicted_pump_3w_eur_per_l;
-    const perL = then - now;
+    const p1w  = predictedPumpAtWeeks(p, 1);
+    const p2w  = predictedPumpAtWeeks(p, 2);
+    const p3w  = predictedPumpAtWeeks(p, 3);
+    const featured = predictedPumpAtWeeks(p, weeks);
+    const perL = featured - now;
     const perFill = perL * DECISION_REF_LITRES;
     const signal = perL > 0.005 ? "fill" : perL < -0.005 ? "wait" : "neutral";
     const verdict = { fill: "Fill now", wait: "Wait", neutral: "Either way" }[signal];
     const abs = Math.abs(perFill).toFixed(2);
     const centsPerL = Math.abs(perL * 100).toFixed(1);
+    const horizonLabel = weeks === 1 ? "1 week" : `${weeks} weeks`;
     const headline = signal === "fill"
-        ? `Predicted +${centsPerL}c/L in ~3 weeks. Fill a 60 L tank now, save about €${abs}.`
+        ? `Predicted +${centsPerL}c/L in ~${horizonLabel}. Fill a 60 L tank now, save about €${abs}.`
         : signal === "wait"
-            ? `Predicted −${centsPerL}c/L in ~3 weeks. Delay a 60 L fill, save about €${abs}.`
+            ? `Predicted −${centsPerL}c/L in ~${horizonLabel}. Delay a 60 L fill, save about €${abs}.`
             : "Predicted move is inside the model's noise floor. Fill whenever — timing barely matters.";
 
     const fuelLabel = fuel === "petrol" ? "Petrol (95)" : "Diesel";
     const conf = Math.round((p.confidence || 0) * 100);
     const updated = (window.__updatedAtLabel || "").replace(/^\s*\(updated at:\s*/, "").replace(/\)\s*$/, "");
-    const footerLeft = `Now €${now.toFixed(3)}/L  ·  Confidence ${conf}%`;
+    const footerLeft = `Confidence ${conf}%  ·  60 L reference`;
     const footerRight = updated ? `irishfueltrend  ·  ${updated}` : "irishfueltrend";
 
-    return { fuel, fuelLabel, signal, verdict, headline, footerLeft, footerRight };
+    return {
+        fuel, fuelLabel, weeks, horizonLabel, signal, verdict, headline,
+        now, p1w, p2w, p3w,
+        footerLeft, footerRight,
+    };
 }
 
 async function canvasToBlob(canvas) {
@@ -645,34 +682,36 @@ async function canvasToBlob(canvas) {
     return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
 
-async function openShareModal(fuel) {
+// Modal state — lives at module scope so the fuel/horizon chips inside the
+// modal can retarget the render without re-opening the dialog. Reset on each
+// open(), so a stale pick from a previous session never leaks in.
+const _shareState = { fuel: "petrol", weeks: 3, blob: null, objUrl: null };
+
+async function _renderShareCard() {
     if (!predictionData) return;
-    const opts = shareCardOptsFor(fuel, predictionData);
+    const opts = shareCardOptsFor(_shareState.fuel, predictionData, _shareState.weeks);
     if (!opts) return;
 
-    const modal = document.getElementById("share-modal");
     const img   = document.getElementById("share-preview-img");
     const dlBtn = document.getElementById("share-download");
     const shBtn = document.getElementById("share-native");
     const cpBtn = document.getElementById("share-copy");
-    if (!modal || !img) return;
+    if (!img) return;
 
     await ensureShareFonts();
     const canvas = buildShareCardCanvas(opts);
     const blob = await canvasToBlob(canvas);
     if (!blob) return;
 
-    // Revoke any previous object URL to avoid a slow-growing leak across many
-    // open/close cycles.
-    if (img.dataset.objurl) URL.revokeObjectURL(img.dataset.objurl);
+    if (_shareState.objUrl) URL.revokeObjectURL(_shareState.objUrl);
     const objUrl = URL.createObjectURL(blob);
+    _shareState.blob = blob;
+    _shareState.objUrl = objUrl;
     img.src = objUrl;
-    img.dataset.objurl = objUrl;
 
-    const fname = `irish-fuel-${fuel}-${opts.signal}.png`;
+    const fname = `irish-fuel-${opts.fuel}-${opts.weeks}w-${opts.signal}.png`;
     const file  = new File([blob], fname, { type: "image/png" });
 
-    // ---- Web Share API (mobile: opens native share sheet incl. WhatsApp) ----
     const canShareFiles =
         typeof navigator !== "undefined" &&
         typeof navigator.canShare === "function" &&
@@ -686,13 +725,10 @@ async function openShareModal(fuel) {
                 text:  `${opts.verdict} — ${opts.headline}`,
             });
         } catch (err) {
-            // User cancelling the sheet throws AbortError — that's not a real
-            // failure, so stay silent. Anything else is worth logging.
             if (err && err.name !== "AbortError") console.error("share failed", err);
         }
     };
 
-    // ---- Clipboard image copy (desktop Chromium / Safari 16+) ----
     const canCopyImage =
         typeof ClipboardItem !== "undefined" &&
         navigator.clipboard && typeof navigator.clipboard.write === "function";
@@ -708,7 +744,6 @@ async function openShareModal(fuel) {
         }
     };
 
-    // ---- Download fallback (always available) ----
     dlBtn.onclick = () => {
         const a = document.createElement("a");
         a.href = objUrl;
@@ -717,10 +752,67 @@ async function openShareModal(fuel) {
         a.click();
         a.remove();
     };
+}
 
-    // <dialog> supports native modal semantics + Esc-to-close for free.
-    if (typeof modal.showModal === "function") modal.showModal();
-    else modal.setAttribute("open", "");
+function _syncShareChips() {
+    document.querySelectorAll("[data-share-fuel-chip]").forEach(el => {
+        const active = el.dataset.shareFuelChip === _shareState.fuel;
+        el.classList.toggle("is-active", active);
+        el.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    document.querySelectorAll("[data-share-horizon]").forEach(el => {
+        const active = parseInt(el.dataset.shareHorizon, 10) === _shareState.weeks;
+        el.classList.toggle("is-active", active);
+        el.setAttribute("aria-selected", active ? "true" : "false");
+    });
+}
+
+// Wired once at boot — subsequent openShareModal() calls just re-sync the
+// chips, no listener stacking.
+function _wireShareChipsOnce() {
+    const wrap = document.getElementById("share-controls");
+    if (!wrap || wrap.dataset.wired === "1") return;
+    wrap.dataset.wired = "1";
+    wrap.addEventListener("click", (evt) => {
+        const fuelBtn = evt.target.closest("[data-share-fuel-chip]");
+        const horBtn  = evt.target.closest("[data-share-horizon]");
+        if (fuelBtn) {
+            const f = fuelBtn.dataset.shareFuelChip;
+            if (!predictionData || !predictionData[f] || predictionData[f].trend === "unknown") return;
+            _shareState.fuel = f;
+        } else if (horBtn) {
+            const w = parseInt(horBtn.dataset.shareHorizon, 10);
+            if (!Number.isFinite(w) || w < 1 || w > 3) return;
+            _shareState.weeks = w;
+        } else {
+            return;
+        }
+        _syncShareChips();
+        _renderShareCard().catch(err => console.error(err));
+    });
+}
+
+async function focusShareCard(fuel) {
+    if (!predictionData) return;
+    const panel = document.getElementById("share-panel");
+    if (!panel) return;
+    _shareState.fuel  = fuel || _shareState.fuel || "petrol";
+    _wireShareChipsOnce();
+    _syncShareChips();
+    await _renderShareCard();
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// First paint of the share panel — runs when predictionData first lands so
+// the preview is visible immediately, without the user having to click the
+// per-fuel share button. Never scrolls; scroll is reserved for the explicit
+// focus path.
+async function initSharePanel() {
+    if (!predictionData) return;
+    if (!document.getElementById("share-panel")) return;
+    _wireShareChipsOnce();
+    _syncShareChips();
+    await _renderShareCard();
 }
 
 function wireShareButtons() {
@@ -732,7 +824,7 @@ function wireShareButtons() {
         if (!opts) return;
         // Replace listener defensively — renderDecision may be called again on
         // dev-ingest refresh, and we don't want click handlers stacking up.
-        btn.onclick = () => openShareModal(fuel).catch(err => console.error(err));
+        btn.onclick = () => focusShareCard(fuel).catch(err => console.error(err));
     });
 }
 
