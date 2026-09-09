@@ -2027,8 +2027,11 @@ h2 .muted {
 }
 /* Explicit override — the display: flex above beats the browser's default
    [hidden] { display: none } via CSS specificity + author-vs-UA order, so
-   tip.hidden = true from JS visually does nothing without this rule. */
-.ireland-map-tip[hidden] { display: none; }
+   tip.hidden = true from JS visually does nothing without this rule.
+   !important because any future rule that touches display on .ireland-map-tip
+   (even by accident) would otherwise let a stale tip stay painted after the
+   cursor leaves the map. */
+.ireland-map-tip[hidden] { display: none !important; }
 .ireland-map-tip strong {
     font-family: var(--font-display);
     font-size: 0.9rem;
