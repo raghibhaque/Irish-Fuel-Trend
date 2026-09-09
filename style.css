@@ -2025,6 +2025,10 @@ h2 .muted {
     flex-direction: column;
     gap: 0.2rem;
 }
+/* Explicit override — the display: flex above beats the browser's default
+   [hidden] { display: none } via CSS specificity + author-vs-UA order, so
+   tip.hidden = true from JS visually does nothing without this rule. */
+.ireland-map-tip[hidden] { display: none; }
 .ireland-map-tip strong {
     font-family: var(--font-display);
     font-size: 0.9rem;
@@ -2068,4 +2072,160 @@ h2 .muted {
     letter-spacing: 0.14em;
     text-transform: uppercase;
     margin: 0;
+}
+
+/* ------------------------------------------------------------- fill log */
+.fill-log { padding: 26px 28px; }
+.fill-log-head { margin-bottom: 18px; }
+.fill-log-head h2 { margin: 0; }
+
+.fill-log-stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.fl-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    min-width: 0;
+}
+.fl-stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+.fl-stat-value {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.15rem;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+}
+.fl-stat-value[data-sign="down"] { color: var(--down); }
+.fl-stat-value[data-sign="up"]   { color: var(--up); }
+.fl-stat-value[data-sign="flat"] { color: var(--text); }
+
+.fill-log-form {
+    display: grid;
+    grid-template-columns: auto auto 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+.fill-log-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    min-width: 0;
+}
+.fill-log-form input,
+.fill-log-form select {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    min-width: 0;
+}
+.fill-log-form input:focus,
+.fill-log-form select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(255, 182, 72, 0.18);
+}
+.fill-log-form button.btn.primary {
+    padding: 9px 16px;
+    background: var(--accent);
+    color: #14100a;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.fill-log-form button.btn.primary:hover,
+.fill-log-form button.btn.primary:focus-visible {
+    background: #ffc76a;
+    border-color: #ffc76a;
+    outline: none;
+}
+
+.fill-log-list {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.fill-log-list:empty::after {
+    content: "No fills logged yet.";
+    display: block;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 12px 0;
+}
+.fl-item {
+    display: grid;
+    grid-template-columns: 92px 60px 1fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+}
+.fl-item-fuel {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+}
+.fl-item-fuel[data-fuel="petrol"] { color: var(--accent); }
+.fl-item-fuel[data-fuel="diesel"] { color: var(--diesel); }
+.fl-item-del {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+}
+.fl-item-del:hover { color: var(--up); border-color: var(--up); }
+
+.fill-log-hint { margin: 6px 0 0; font-size: 0.75rem; }
+
+@media (max-width: 720px) {
+    .fill-log-stats { grid-template-columns: repeat(2, 1fr); }
+    .fill-log-form  { grid-template-columns: 1fr 1fr; }
+    .fill-log-form button { grid-column: 1 / -1; }
+    .fl-item { grid-template-columns: 1fr 1fr auto; }
+    .fl-item .fl-item-date { grid-column: 1 / 3; }
 }

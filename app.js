@@ -49,24 +49,43 @@ function shiftIso(iso, days) {
     return d.toISOString().slice(0, 10);
 }
 
+// Forecast tail horizon in weeks. Draws a smooth uncertainty cone rather than
+// the previous 1w + 3w anchor points — makes it visually obvious that the
+// band widens further out. 6 is where the weekly model's signal starts to
+// fade (see calc-hint in index.html); no point extending past that.
+const FORECAST_WEEKS = 6;
+
 // Build forecast tail datasets (line + band) per fuel. Returns null when
 // prediction data isn't loaded yet — chart still renders history-only.
+//
+// Band widening follows a random-walk sqrt(t) scaling on the shipped 1-week
+// half-width. The backend only ships a native band at t=1w, so anything past
+// that is a linear-model approximation, not a fresh quantile prediction. It
+// still communicates the right thing: uncertainty grows with horizon.
 function forecastDatasetsFor(fuel, histPointsLen, lastIso, lastPrice) {
     if (!predictionData || !lastIso || lastPrice == null) return null;
     const p = predictionData[fuel];
     if (!p) return null;
-    // The forecast segment anchors on the last historical point so the line
-    // visually continues from history into projection without a gap.
     const nulls = Array(histPointsLen - 1).fill(null);
-    const line = [...nulls, lastPrice, p.predicted_pump_eur_per_l, p.predicted_pump_3w_eur_per_l];
-    // 50% band widths: model ships symmetric high/low for 1w. For 3w we don't
-    // ship a native band, so we scale the 1w half-width by sqrt(3) (random-walk
-    // approximation on weekly returns) — signposts uncertainty widens.
     const half1w = (p.predicted_pump_high_eur_per_l - p.predicted_pump_low_eur_per_l) / 2;
-    const half3w = half1w * Math.sqrt(3);
-    const low  = [...nulls, lastPrice, p.predicted_pump_low_eur_per_l,  p.predicted_pump_3w_eur_per_l - half3w];
-    const high = [...nulls, lastPrice, p.predicted_pump_high_eur_per_l, p.predicted_pump_3w_eur_per_l + half3w];
-    return { line, low, high };
+    // Anchor on the last historical point so the tail visually continues from
+    // history into projection without a gap, then extend one row per week out
+    // to FORECAST_WEEKS.
+    const line = [lastPrice];
+    const low  = [lastPrice];
+    const high = [lastPrice];
+    for (let w = 1; w <= FORECAST_WEEKS; w++) {
+        const centre = predictedPumpAtWeeks(p, w);
+        const half   = half1w * Math.sqrt(w);
+        line.push(centre);
+        low.push(centre - half);
+        high.push(centre + half);
+    }
+    return {
+        line: [...nulls, ...line],
+        low:  [...nulls, ...low],
+        high: [...nulls, ...high],
+    };
 }
 
 function renderChart(data) {
@@ -77,12 +96,14 @@ function renderChart(data) {
     const lastIso = data.petrol.latest?.date || data.diesel.latest?.date;
     const wantForecast = !!(predictionData && lastIso);
     const forecastLabels = wantForecast
-        ? [fmtDMY(shiftIso(lastIso, 7)), fmtDMY(shiftIso(lastIso, 21))]
+        ? Array.from({ length: FORECAST_WEEKS },
+                     (_, i) => fmtDMY(shiftIso(lastIso, (i + 1) * 7)))
         : [];
     const labels = [...histLabels, ...forecastLabels];
 
     const histLen = histLabels.length;
-    const tail = (arr) => wantForecast ? [...arr, null, null] : arr;
+    const forecastNulls = Array(FORECAST_WEEKS).fill(null);
+    const tail = (arr) => wantForecast ? [...arr, ...forecastNulls] : arr;
 
     const datasets = [
         {
@@ -122,9 +143,11 @@ function renderChart(data) {
         if (pFcast) {
             datasets.push(
                 {
-                    label: "Petrol 50% band low",
+                    label: "Petrol 80% band low",
                     data: pFcast.low,
-                    borderColor: "rgba(0,0,0,0)",
+                    borderColor: "rgba(255, 182, 72, 0.55)",
+                    borderDash: [2, 3],
+                    borderWidth: 1,
                     backgroundColor: "rgba(0,0,0,0)",
                     pointRadius: 0,
                     fill: false,
@@ -136,10 +159,12 @@ function renderChart(data) {
                     __hideTooltip: true,
                 },
                 {
-                    label: "Petrol 50% band",
+                    label: "Petrol 80% band",
                     data: pFcast.high,
-                    borderColor: "rgba(0,0,0,0)",
-                    backgroundColor: "rgba(255, 182, 72, 0.18)",
+                    borderColor: "rgba(255, 182, 72, 0.55)",
+                    borderDash: [2, 3],
+                    borderWidth: 1,
+                    backgroundColor: "rgba(255, 182, 72, 0.32)",
                     pointRadius: 0,
                     fill: "-1",
                     tension: 0.25,
@@ -164,9 +189,11 @@ function renderChart(data) {
         if (dFcast) {
             datasets.push(
                 {
-                    label: "Diesel 50% band low",
+                    label: "Diesel 80% band low",
                     data: dFcast.low,
-                    borderColor: "rgba(0,0,0,0)",
+                    borderColor: "rgba(123, 211, 207, 0.55)",
+                    borderDash: [2, 3],
+                    borderWidth: 1,
                     backgroundColor: "rgba(0,0,0,0)",
                     pointRadius: 0,
                     fill: false,
@@ -176,10 +203,12 @@ function renderChart(data) {
                     __hideTooltip: true,
                 },
                 {
-                    label: "Diesel 50% band",
+                    label: "Diesel 80% band",
                     data: dFcast.high,
-                    borderColor: "rgba(0,0,0,0)",
-                    backgroundColor: "rgba(123, 211, 207, 0.18)",
+                    borderColor: "rgba(123, 211, 207, 0.55)",
+                    borderDash: [2, 3],
+                    borderWidth: 1,
+                    backgroundColor: "rgba(123, 211, 207, 0.30)",
                     pointRadius: 0,
                     fill: "-1",
                     tension: 0.25,
@@ -790,6 +819,175 @@ function updateCalculator() {
     diffEl.setAttribute("data-sign", sign);
 }
 
+// ------------------ fill log (localStorage-only) ------------------
+// Personal fill history. Never leaves the device. Compares the user's
+// litre-weighted average against the latest national per-fuel average so a
+// "vs national" delta reads as real money saved/overpaid across their 30-day
+// volume — not a per-litre curiosity.
+
+const FILL_LOG_KEY = "ift.fills.v1";
+const FILL_LOG_WINDOW_DAYS = 30;
+
+function loadFills() {
+    try {
+        const raw = localStorage.getItem(FILL_LOG_KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+    } catch {
+        // Corrupt JSON in storage (older schema, manual edit) — start fresh
+        // rather than break the whole page. The user's data is unrecoverable
+        // at this point anyway.
+        return [];
+    }
+}
+
+function saveFills(fills) {
+    try {
+        localStorage.setItem(FILL_LOG_KEY, JSON.stringify(fills));
+    } catch (err) {
+        console.warn("fill log save failed", err);
+    }
+}
+
+function fillLogWithinWindow(fills, days = FILL_LOG_WINDOW_DAYS) {
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    const cutIso = cutoff.toISOString().slice(0, 10);
+    return fills.filter(f => f.date >= cutIso);
+}
+
+// Litre-weighted average pump price today across the user's fuel mix. Used as
+// the "if you'd paid national average" reference for the savings figure.
+function nationalWeightedReference(fills) {
+    if (!priceData) return null;
+    const latestP = priceData.petrol?.latest?.price_eur_per_litre;
+    const latestD = priceData.diesel?.latest?.price_eur_per_litre;
+    let litresP = 0, litresD = 0;
+    for (const f of fills) {
+        if (f.fuel === "petrol") litresP += f.litres;
+        else if (f.fuel === "diesel") litresD += f.litres;
+    }
+    const total = litresP + litresD;
+    if (total <= 0) return null;
+    // Fallback: if only one fuel has a national price, ignore the other side
+    // rather than skew the weighted average with a zero.
+    const pRef = typeof latestP === "number" ? latestP : null;
+    const dRef = typeof latestD === "number" ? latestD : null;
+    if (pRef == null && dRef == null) return null;
+    const num = (pRef ?? 0) * litresP + (dRef ?? 0) * litresD;
+    const den = (pRef != null ? litresP : 0) + (dRef != null ? litresD : 0);
+    return den > 0 ? num / den : null;
+}
+
+function computeFillStats(fills) {
+    const recent = fillLogWithinWindow(fills);
+    const count = recent.length;
+    let litres = 0, spent = 0;
+    for (const f of recent) {
+        litres += f.litres;
+        spent  += f.litres * f.price_eur_per_l;
+    }
+    const avg = litres > 0 ? spent / litres : null;
+    const ref = nationalWeightedReference(recent);
+    const savedPerL = (avg != null && ref != null) ? (ref - avg) : null;
+    const savedTotal = (savedPerL != null) ? savedPerL * litres : null;
+    return { count, litres, spent, avg, ref, savedPerL, savedTotal };
+}
+
+function renderFillStats(stats) {
+    document.getElementById("fl-count").textContent  = String(stats.count);
+    document.getElementById("fl-litres").textContent = stats.litres > 0 ? stats.litres.toFixed(1) : "0";
+    document.getElementById("fl-spent").textContent  = `€${stats.spent.toFixed(2)}`;
+    document.getElementById("fl-avg").textContent    = stats.avg == null ? "—" : `€${stats.avg.toFixed(3)}`;
+    const diffEl = document.getElementById("fl-diff");
+    if (stats.savedTotal == null) {
+        diffEl.textContent = "—";
+        diffEl.dataset.sign = "flat";
+    } else {
+        const abs = Math.abs(stats.savedTotal).toFixed(2);
+        const sign = stats.savedTotal > 0.005 ? "down" : stats.savedTotal < -0.005 ? "up" : "flat";
+        // "down" = user paid less than reference = good. Mirrors the price
+        // colour convention (down = cheaper = green) already used everywhere.
+        const verb = stats.savedTotal > 0 ? "saved" : stats.savedTotal < 0 ? "overpaid" : "even";
+        diffEl.textContent = sign === "flat" ? "±€0.00" : `${verb} €${abs}`;
+        diffEl.dataset.sign = sign;
+    }
+}
+
+function renderFillList(fills) {
+    const list = document.getElementById("fill-log-list");
+    if (!list) return;
+    // Newest first — the interesting fill is the most recent one.
+    const sorted = [...fills].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    list.innerHTML = sorted.map(f => {
+        const total = (f.litres * f.price_eur_per_l).toFixed(2);
+        return `
+            <li class="fl-item">
+                <span class="fl-item-date">${escapeHtml(fmtDMY(f.date))}</span>
+                <span class="fl-item-fuel" data-fuel="${escapeHtml(f.fuel)}">${escapeHtml(f.fuel)}</span>
+                <span class="fl-item-litres">${f.litres.toFixed(1)} L</span>
+                <span class="fl-item-price">€${f.price_eur_per_l.toFixed(3)}/L</span>
+                <span class="fl-item-total">€${total}</span>
+                <button type="button" class="fl-item-del" data-id="${escapeHtml(f.id)}" aria-label="Delete this fill">Delete</button>
+            </li>`;
+    }).join("");
+}
+
+function renderFillLog() {
+    const fills = loadFills();
+    renderFillStats(computeFillStats(fills));
+    renderFillList(fills);
+}
+
+function newFillId() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    return `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function wireFillLog() {
+    const form = document.getElementById("fill-log-form");
+    const list = document.getElementById("fill-log-list");
+    if (!form || !list) return;
+    // Prefill date input with today so a one-hand mobile add takes two taps.
+    const dateEl = document.getElementById("fl-date");
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const date   = document.getElementById("fl-date").value;
+        const fuel   = document.getElementById("fl-fuel").value;
+        const litres = parseFloat(document.getElementById("fl-litres-in").value);
+        const price  = parseFloat(document.getElementById("fl-price-in").value);
+        if (!date || !fuel || !(litres > 0) || !(price > 0)) return;
+        const fills = loadFills();
+        fills.push({
+            id: newFillId(),
+            date,
+            fuel,
+            litres,
+            price_eur_per_l: price,
+        });
+        saveFills(fills);
+        renderFillLog();
+        // Reset the volatile inputs only — leave the date + fuel so a user
+        // logging a run of past fills doesn't have to reset every field.
+        document.getElementById("fl-litres-in").value = "";
+        document.getElementById("fl-price-in").value = "";
+        document.getElementById("fl-litres-in").focus();
+    });
+
+    list.addEventListener("click", (e) => {
+        const btn = e.target.closest(".fl-item-del");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        if (!id) return;
+        const fills = loadFills().filter(f => f.id !== id);
+        saveFills(fills);
+        renderFillLog();
+    });
+}
+
 // ------------------ news ------------------
 async function loadNews() {
     const data = await jget("data/news.json");
@@ -1107,12 +1305,54 @@ function _wireMapInteractions(frame) {
     };
     const hide = () => { tip.hidden = true; };
 
+    // Track which county is currently painting the tooltip. Any change (move
+    // to a different county, or off the map) triggers explicit hide/redraw
+    // rather than relying on mouseleave/mouseout timing quirks.
+    let currentCounty = null;
+
+    const showForNode = (evt, node) => {
+        const name = node.dataset.county;
+        if (name !== currentCounty) {
+            currentCounty = name;
+        }
+        show(evt, node);
+    };
+    const clear = () => {
+        if (currentCounty !== null || !tip.hidden) {
+            currentCounty = null;
+            hide();
+        }
+    };
+
     frame.addEventListener("mousemove", (evt) => {
         const node = evt.target.closest("g.county[data-county]");
-        if (node) show(evt, node);
-        else hide();
+        if (node) showForNode(evt, node);
+        else clear();
     });
-    frame.addEventListener("mouseleave", hide);
+
+    // Multiple hide triggers because a single one is fragile:
+    //   * `mouseleave`/`mouseout` on the frame — normal exit path.
+    //   * `pointerleave` — fires when a stylus / touch drags off the map,
+    //     which mouse events do not cover.
+    //   * document-level mousemove — safety net when the cursor moves onto a
+    //     non-frame page area and the frame handlers never fire (Chromium bug
+    //     when exiting via an SVG <path> child that swallows pointer events).
+    //   * window blur + document mouseleave — cursor leaves the browser
+    //     window entirely (task bar, alt-tab). No mousemove fires until it
+    //     returns, so without these the tooltip is stuck until re-entry.
+    frame.addEventListener("mouseleave", clear);
+    frame.addEventListener("pointerleave", clear);
+    frame.addEventListener("mouseout", (evt) => {
+        const to = evt.relatedTarget;
+        if (!to || !frame.contains(to)) clear();
+    });
+    document.addEventListener("mousemove", (evt) => {
+        if (tip.hidden) return;
+        if (!frame.contains(evt.target)) clear();
+    });
+    document.addEventListener("mouseleave", clear);
+    window.addEventListener("blur", clear);
+    document.addEventListener("scroll", clear, { passive: true });
 
     // Keyboard focus (each <g> is tabindex=0 role=button)
     frame.addEventListener("focusin", (evt) => {
@@ -1239,6 +1479,8 @@ loadManifest().then(m => {
 }).then(() => {
     updateCalculator();
     attachDragCompare("price-chart", "dc-popup");
+    wireFillLog();
+    renderFillLog();
     mountDevIngestButton({
         onDone: async () => {
             priceData = null;
@@ -1251,6 +1493,7 @@ loadManifest().then(m => {
                 jget("data/counties.json").then(c => { mapCountiesData = c; paintIrelandMap(); }),
             ]);
             updateCalculator();
+            renderFillLog();
         },
     });
 }).catch(err => console.error("Dashboard load failed:", err));
