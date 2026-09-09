@@ -30,8 +30,28 @@ async function loadManifest() {
     catch { return null; }
 }
 
+// jsDelivr-hosted mirror of the exported JSON snapshots. The hourly refresh
+// workflow pushes to the `data` branch instead of touching gh-pages, so this
+// URL is where fresh data actually lives — the copy bundled into gh-pages is
+// only a fallback from before the split.
+const DATA_BASE = "https://cdn.jsdelivr.net/gh/raghibhaque/Irish-Fuel-Trend@data";
+
+// Local dev keeps hitting ./data/* on the same origin so devs don't need the
+// `data` branch to exist on GitHub before they can run the site. Any non-
+// localhost host is treated as production.
+const _isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+
 async function jget(path) {
-    const r = await fetch(path, { cache: "no-cache" });
+    // Data snapshots are cross-origin (jsDelivr) in production; everything
+    // else stays same-origin. The `?t=` bust makes each request a unique URL
+    // so jsDelivr never serves us the ~12h-cached copy of the branch tip —
+    // the whole point of the split was to keep the hourly cadence, so
+    // staleness would defeat it.
+    let url = path;
+    if (path.startsWith("data/") && !_isLocalHost) {
+        url = `${DATA_BASE}/${path.slice(5)}?t=${Date.now()}`;
+    }
+    const r = await fetch(url, { cache: "no-cache" });
     if (!r.ok) throw new Error(`${path} → ${r.status}`);
     return r.json();
 }
