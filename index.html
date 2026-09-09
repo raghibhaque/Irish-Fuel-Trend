@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="style.css?v=18">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -255,29 +255,41 @@
             <p class="notes" id="prediction-notes"></p>
         </section>
 
-        <dialog class="share-modal" id="share-modal" aria-labelledby="share-modal-title">
-            <form method="dialog" class="share-modal-inner">
-                <header class="share-modal-head">
-                    <h2 id="share-modal-title">Share this call</h2>
-                    <button type="submit" class="share-close" aria-label="Close" value="cancel">×</button>
-                </header>
+        <section class="share-panel panel" id="share-panel" aria-labelledby="share-panel-title">
+            <div class="share-panel-head">
+                <h2 id="share-panel-title">Share the call <span class="muted">(WhatsApp-ready card)</span></h2>
+            </div>
+            <div class="share-panel-body">
                 <div class="share-preview">
                     <img id="share-preview-img" alt="Preview of the share card">
                 </div>
-                <div class="share-actions">
-                    <button type="button" id="share-native" class="btn primary" hidden>
-                        Share…
-                    </button>
-                    <button type="button" id="share-download" class="btn">
-                        Download PNG
-                    </button>
-                    <button type="button" id="share-copy" class="btn" hidden>
-                        Copy image
-                    </button>
+                <div class="share-panel-controls">
+                    <div class="share-controls" id="share-controls">
+                        <div class="share-chip-row" role="tablist" aria-label="Fuel">
+                            <button type="button" class="share-chip is-active" data-share-fuel-chip="petrol" role="tab" aria-selected="true">Petrol</button>
+                            <button type="button" class="share-chip" data-share-fuel-chip="diesel" role="tab" aria-selected="false">Diesel</button>
+                        </div>
+                        <div class="share-chip-row" role="tablist" aria-label="Horizon">
+                            <button type="button" class="share-chip" data-share-horizon="1" role="tab" aria-selected="false">1 week</button>
+                            <button type="button" class="share-chip" data-share-horizon="2" role="tab" aria-selected="false">2 weeks</button>
+                            <button type="button" class="share-chip is-active" data-share-horizon="3" role="tab" aria-selected="true">3 weeks</button>
+                        </div>
+                    </div>
+                    <div class="share-actions">
+                        <button type="button" id="share-native" class="btn primary" hidden>
+                            Share…
+                        </button>
+                        <button type="button" id="share-download" class="btn">
+                            Download PNG
+                        </button>
+                        <button type="button" id="share-copy" class="btn" hidden>
+                            Copy image
+                        </button>
+                    </div>
+                    <p class="share-hint muted">1200×630 · PNG · optimised for WhatsApp, iMessage &amp; social.</p>
                 </div>
-                <p class="share-hint muted">1200×630 · PNG · optimised for WhatsApp, iMessage &amp; social.</p>
-            </form>
-        </dialog>
+            </div>
+        </section>
 
         <section class="fill-log panel" aria-labelledby="fill-log-title">
             <div class="fill-log-head">
@@ -332,7 +344,7 @@
     </footer>
 
     <script src="shared.js?v=12"></script>
-    <script src="app.js?v=24"></script>
+    <script src="app.js?v=25"></script>
     <script>
         // Register PWA service worker. Guarded so file:// and old browsers stay
         // quiet — this is progressive enhancement, not a hard dependency.
