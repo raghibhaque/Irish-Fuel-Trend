@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=19">
+    <link rel="stylesheet" href="style.css?v=20">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -18,341 +18,464 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <header class="site-header">
-        <div class="wrap">
-            <nav class="site-nav">
-                <a href="index.html" class="active" aria-current="page">Ireland</a>
-                <a href="county.html">County</a>
-            </nav>
-            <h1 data-eyebrow="IE · Weekly Fuel Signal · v1">Irish Fuel Trend</h1>
-            <p class="tagline">
-                Weekly petrol &amp; diesel price direction for Ireland — from EU Oil Bulletin, ECB &amp; Brent crude.
-            </p>
-            <div class="status-strip">
-                <span class="status-chip" id="hdr-updated">Live · fetching</span>
-            </div>
-        </div>
-    </header>
+    <div class="app-shell">
+        <main class="app-main">
 
-    <main class="wrap">
-        <section class="current-prices" id="current-prices">
-            <article class="price-card" data-fuel="petrol">
-                <span class="label">Petrol (95)</span>
-                <span class="value" id="current-petrol">—</span>
-                <span class="unit">EUR / L</span>
-                <svg class="sparkline" id="spark-petrol" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
-                <span class="asof" id="asof-petrol"></span>
-            </article>
-            <article class="price-card" data-fuel="diesel">
-                <span class="label">Diesel</span>
-                <span class="value" id="current-diesel">—</span>
-                <span class="unit">EUR / L</span>
-                <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
-                <span class="asof" id="asof-diesel"></span>
-            </article>
-        </section>
+            <!-- =========================================================
+                 OVERVIEW
+                 ========================================================= -->
+            <section class="view is-active" data-view="overview" id="view-overview">
+                <header class="page-header">
+                    <h2 class="page-title">Overview</h2>
+                    <p class="page-sub">Weekly petrol &amp; diesel snapshot for Ireland — from EU Oil Bulletin, ECB &amp; Brent crude.</p>
+                </header>
 
-        <section class="ireland-map" id="ireland-map" aria-labelledby="ireland-map-title">
-            <div class="ireland-map-head">
-                <h2 id="ireland-map-title">County outlook <span class="muted" id="ireland-map-subtitle">(3-week predicted change)</span></h2>
-                <div class="ireland-map-fuel" role="tablist" aria-label="Fuel">
-                    <button type="button" class="ireland-fuel-chip is-active" data-fuel="petrol" role="tab" aria-selected="true">Petrol</button>
-                    <button type="button" class="ireland-fuel-chip" data-fuel="diesel" role="tab" aria-selected="false">Diesel</button>
-                </div>
-            </div>
-            <div class="ireland-map-metric" role="tablist" aria-label="Metric">
-                <button type="button" class="ireland-metric-chip is-active" data-metric="pct3w" role="tab" aria-selected="true">3w Δ%</button>
-                <button type="button" class="ireland-metric-chip" data-metric="pct1w" role="tab" aria-selected="false">1w Δ%</button>
-                <button type="button" class="ireland-metric-chip" data-metric="level" role="tab" aria-selected="false">vs nat'l</button>
-                <button type="button" class="ireland-metric-chip" data-metric="conf" role="tab" aria-selected="false">Confidence</button>
-                <button type="button" class="ireland-metric-chip" data-metric="stations" role="tab" aria-selected="false">Stations</button>
-            </div>
-            <div class="ireland-map-body">
-                <div class="ireland-map-frame" id="ireland-map-frame" aria-live="polite">
-                    <p class="ireland-map-loading muted">Loading map…</p>
-                </div>
-                <div class="ireland-map-legend" id="ireland-map-legend" aria-hidden="true">
-                    <span class="ireland-legend-label" data-role="lo">Cheaper</span>
-                    <span class="ireland-legend-bar" id="ireland-legend-bar"></span>
-                    <span class="ireland-legend-label" data-role="hi">Pricier</span>
-                    <span class="ireland-legend-stops" id="ireland-legend-stops">
-                        <span>−1.5%</span><span>0</span><span>+1.5%</span>
-                    </span>
-                    <span class="ireland-legend-stale"><span class="ireland-legend-swatch is-stale"></span>stale / no data</span>
-                </div>
-            </div>
-            <div class="ireland-map-tip" id="ireland-map-tip" role="tooltip" hidden></div>
-            <p class="ireland-map-hint muted">Tap or hover a county for detail. Click to open its full page.</p>
-        </section>
+                <div class="tile-grid">
 
-        <section class="fill-decision">
-            <h2>When to fill up <span class="muted">(3-week outlook · 60 L reference)</span></h2>
-            <div class="decision-grid">
-                <article class="decision-card" data-fuel="petrol" id="decision-petrol">
-                    <span class="decision-fuel">Petrol (95)</span>
-                    <span class="decision-light" data-signal="neutral"></span>
-                    <span class="decision-verdict">—</span>
-                    <span class="decision-detail">Loading…</span>
-                    <span class="decision-conf">confidence <b>—</b></span>
-                    <button type="button" class="decision-share" data-share-fuel="petrol"
-                            aria-label="Share this petrol call" hidden>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                             stroke-linejoin="round" aria-hidden="true">
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                            <polyline points="16 6 12 2 8 6"/>
-                            <line x1="12" y1="2" x2="12" y2="15"/>
-                        </svg>
-                        Share
-                    </button>
-                </article>
-                <article class="decision-card" data-fuel="diesel" id="decision-diesel">
-                    <span class="decision-fuel">Diesel</span>
-                    <span class="decision-light" data-signal="neutral"></span>
-                    <span class="decision-verdict">—</span>
-                    <span class="decision-detail">Loading…</span>
-                    <span class="decision-conf">confidence <b>—</b></span>
-                    <button type="button" class="decision-share" data-share-fuel="diesel"
-                            aria-label="Share this diesel call" hidden>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                             stroke-linejoin="round" aria-hidden="true">
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                            <polyline points="16 6 12 2 8 6"/>
-                            <line x1="12" y1="2" x2="12" y2="15"/>
-                        </svg>
-                        Share
-                    </button>
-                </article>
-            </div>
-        </section>
-
-        <section class="fillup-calc">
-            <h2>Fill-up impact <span class="muted">(vs chosen outlook)</span></h2>
-            <div class="calc-row">
-                <label>Tank litres
-                    <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
-                </label>
-                <label>Fuel
-                    <select id="calc-fuel">
-                        <option value="petrol" selected>Petrol</option>
-                        <option value="diesel">Diesel</option>
-                    </select>
-                </label>
-                <label>Horizon
-                    <div class="horizon-chips" id="calc-horizon" role="tablist" aria-label="Forecast horizon">
-                        <button type="button" class="horizon-chip" data-weeks="1" role="tab">1w</button>
-                        <button type="button" class="horizon-chip" data-weeks="2" role="tab">2w</button>
-                        <button type="button" class="horizon-chip is-active" data-weeks="3" role="tab" aria-selected="true">3w</button>
-                        <button type="button" class="horizon-chip" data-weeks="6" role="tab">6w</button>
-                    </div>
-                </label>
-                <div class="calc-output">
-                    <span class="calc-line" id="calc-now">Today: —</span>
-                    <span class="calc-line" id="calc-then">In ~3 weeks: —</span>
-                    <span class="calc-line strong" id="calc-diff">Difference: —</span>
-                </div>
-            </div>
-            <p class="calc-hint muted">Weekly model — signal fades past ~4 weeks.</p>
-        </section>
-
-        <section class="chart-section">
-            <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
-            <div class="chart-controls">
-                <label>Show
-                    <select id="chart-range">
-                        <option value="26" selected>6 months</option>
-                        <option value="52">1 year</option>
-                        <option value="156">3 years</option>
-                        <option value="520">10 years</option>
-                        <option value="1200">All</option>
-                    </select>
-                </label>
-            </div>
-            <div class="chart-wrap">
-                <canvas id="price-chart" role="img"
-                        aria-label="Historical petrol and diesel pump prices for Ireland"></canvas>
-                <div class="dc-popup" id="dc-popup" hidden></div>
-            </div>
-            <p class="chart-hint">Tip: click and drag between two points to compare.</p>
-            <p id="chart-a11y-summary" class="sr-only" aria-live="polite"></p>
-        </section>
-
-        <section class="predictions">
-            <h2>Next 1–3 weeks</h2>
-            <div class="pred-grid">
-                <article class="pred-card" id="pred-petrol">
-                    <header>
-                        <h3>Petrol</h3>
-                        <span class="trend-pill" data-trend="flat">…</span>
-                        <span class="confidence-badge" data-tier="medium" title="Model confidence tier — combines walk-forward skill with ensemble disagreement on today's inputs.">—</span>
-                    </header>
-                    <p class="pred-explain">Loading…</p>
-                    <dl class="pred-meta">
-                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
-                        <div><dt>80% band</dt><dd class="pred-band">—</dd></div>
-                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
-                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
-                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
-                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
-                    </dl>
-                    <div class="backtest-strip">
-                        <div class="bt-header">
-                            <span class="bt-label">Recent calls</span>
-                            <span class="bt-legend" aria-hidden="true">
-                                <span class="bt-swatch" data-hit="true"></span>hit
-                                <span class="bt-swatch" data-hit="false"></span>miss
-                            </span>
+                    <!-- 1. Live prices -->
+                    <div class="tile tile-prices">
+                        <div class="tile-head">
+                            <h3 class="tile-title">Live prices · national avg</h3>
+                            <span class="tile-link-hint">refresh · hourly</span>
                         </div>
-                        <ul class="bt-list"></ul>
-                        <p class="bt-hint">Each square is one past week — green if the model called the direction (up/down) correctly, red if not. Hover any square for the actual vs. predicted move.</p>
+                        <section class="current-prices" id="current-prices">
+                            <article class="price-card" data-fuel="petrol">
+                                <span class="label">Petrol (95)</span>
+                                <span class="value" id="current-petrol">—</span>
+                                <span class="unit">EUR / L</span>
+                                <svg class="sparkline" id="spark-petrol" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+                                <span class="asof" id="asof-petrol"></span>
+                            </article>
+                            <article class="price-card" data-fuel="diesel">
+                                <span class="label">Diesel</span>
+                                <span class="value" id="current-diesel">—</span>
+                                <span class="unit">EUR / L</span>
+                                <svg class="sparkline" id="spark-diesel" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+                                <span class="asof" id="asof-diesel"></span>
+                            </article>
+                        </section>
                     </div>
-                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
-                        <span class="bt-label">Direction hit-rate</span>
-                        <ul class="hr-list">
-                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
-                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
-                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
-                        </ul>
-                    </div>
-                </article>
-                <article class="pred-card" id="pred-diesel">
-                    <header>
-                        <h3>Diesel</h3>
-                        <span class="trend-pill" data-trend="flat">…</span>
-                        <span class="confidence-badge" data-tier="medium" title="Model confidence tier — combines walk-forward skill with ensemble disagreement on today's inputs.">—</span>
-                    </header>
-                    <p class="pred-explain">Loading…</p>
-                    <dl class="pred-meta">
-                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
-                        <div><dt>80% band</dt><dd class="pred-band">—</dd></div>
-                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
-                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
-                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
-                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
-                    </dl>
-                    <div class="backtest-strip">
-                        <div class="bt-header">
-                            <span class="bt-label">Recent calls</span>
-                            <span class="bt-legend" aria-hidden="true">
-                                <span class="bt-swatch" data-hit="true"></span>hit
-                                <span class="bt-swatch" data-hit="false"></span>miss
-                            </span>
-                        </div>
-                        <ul class="bt-list"></ul>
-                        <p class="bt-hint">Each square is one past week — green if the model called the direction (up/down) correctly, red if not. Hover any square for the actual vs. predicted move.</p>
-                    </div>
-                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
-                        <span class="bt-label">Direction hit-rate</span>
-                        <ul class="hr-list">
-                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
-                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
-                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-            <p class="notes" id="prediction-notes"></p>
-        </section>
 
-        <section class="share-panel panel" id="share-panel" aria-labelledby="share-panel-title">
-            <div class="share-panel-head">
-                <h2 id="share-panel-title">Share the call <span class="muted">(WhatsApp-ready card)</span></h2>
-            </div>
-            <div class="share-panel-body">
-                <div class="share-preview">
-                    <img id="share-preview-img" alt="Preview of the share card">
+                    <!-- 2. Decision -->
+                    <a class="tile tile-decision" href="#/decide" data-nav-tile>
+                        <div class="tile-head">
+                            <h3 class="tile-title">Decision · <span data-active-fuel-label>petrol</span></h3>
+                            <span class="tile-link-hint">Decide →</span>
+                        </div>
+                        <div class="tile-body">
+                            <div class="tile-verdict" id="ov-decision-verdict" data-signal="neutral">
+                                <span class="dot"></span>
+                                <span data-role="verdict">—</span>
+                            </div>
+                            <p class="tile-detail" id="ov-decision-detail">Loading…</p>
+                        </div>
+                    </a>
+
+                    <!-- 3. Forecast -->
+                    <a class="tile tile-forecast" href="#/analyse" data-nav-tile>
+                        <div class="tile-head">
+                            <h3 class="tile-title">Next-week forecast · <span data-active-fuel-label>petrol</span></h3>
+                            <span class="tile-link-hint">Analyse →</span>
+                        </div>
+                        <div class="tile-body">
+                            <div class="tile-metric-row">
+                                <div class="tile-metric">
+                                    <span class="tile-metric-label">Δ / week</span>
+                                    <span class="tile-metric-value" id="ov-forecast-delta" data-sign="flat">—</span>
+                                </div>
+                                <div class="tile-metric">
+                                    <span class="tile-metric-label">Confidence</span>
+                                    <span class="tile-metric-value" id="ov-forecast-conf">—</span>
+                                </div>
+                                <div class="tile-metric">
+                                    <span class="tile-metric-label">Predicted €/L</span>
+                                    <span class="tile-metric-value" id="ov-forecast-price">—</span>
+                                </div>
+                            </div>
+                            <p class="tile-detail" id="ov-forecast-note">Model output for the next weekly bulletin.</p>
+                        </div>
+                    </a>
+
+                    <!-- 4. Map thumbnail -->
+                    <a class="tile tile-map" href="#/map" data-nav-tile>
+                        <div class="tile-head">
+                            <h3 class="tile-title">County outlook</h3>
+                            <span class="tile-link-hint">Map →</span>
+                        </div>
+                        <div class="tile-body">
+                            <p class="tile-detail" id="ov-map-summary">Loading county data…</p>
+                            <ul class="tile-map-list" id="ov-map-list" style="list-style:none;margin:0;padding:0;display:grid;gap:4px;font-family:var(--font-mono);font-size:0.82rem;"></ul>
+                        </div>
+                    </a>
+
+                    <!-- 5. Your 30d spend -->
+                    <a class="tile tile-track" id="ov-track-tile" href="#/track" data-nav-tile hidden>
+                        <div class="tile-head">
+                            <h3 class="tile-title">Your 30d spend</h3>
+                            <span class="tile-link-hint">Track →</span>
+                        </div>
+                        <div class="tile-body">
+                            <div class="tile-metric-row">
+                                <div class="tile-metric">
+                                    <span class="tile-metric-label">Spent</span>
+                                    <span class="tile-metric-value" id="ov-track-spent">€0.00</span>
+                                </div>
+                                <div class="tile-metric">
+                                    <span class="tile-metric-label">Your avg €/L</span>
+                                    <span class="tile-metric-value" id="ov-track-avg">—</span>
+                                </div>
+                                <div class="tile-metric">
+                                    <span class="tile-metric-label">vs national</span>
+                                    <span class="tile-metric-value" id="ov-track-diff" data-sign="flat">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 6. News -->
+                    <div class="tile tile-news">
+                        <div class="tile-head">
+                            <h3 class="tile-title">Oil-relevant news</h3>
+                        </div>
+                        <div class="tile-body">
+                            <ul id="news-list" class="news-list">
+                                <li class="empty">Loading…</li>
+                            </ul>
+                        </div>
+                    </div>
+
                 </div>
-                <div class="share-panel-controls">
-                    <div class="share-controls" id="share-controls">
-                        <div class="share-chip-row" role="tablist" aria-label="Fuel">
-                            <button type="button" class="share-chip is-active" data-share-fuel-chip="petrol" role="tab" aria-selected="true">Petrol</button>
-                            <button type="button" class="share-chip" data-share-fuel-chip="diesel" role="tab" aria-selected="false">Diesel</button>
-                        </div>
-                        <div class="share-chip-row" role="tablist" aria-label="Horizon">
-                            <button type="button" class="share-chip" data-share-horizon="1" role="tab" aria-selected="false">1 week</button>
-                            <button type="button" class="share-chip" data-share-horizon="2" role="tab" aria-selected="false">2 weeks</button>
-                            <button type="button" class="share-chip is-active" data-share-horizon="3" role="tab" aria-selected="true">3 weeks</button>
-                        </div>
-                        <label class="share-litres">
-                            Tank
-                            <input type="number" id="share-litres-input" min="1" max="500" step="1" value="60" inputmode="numeric">
-                            L
+            </section>
+
+            <!-- =========================================================
+                 DECIDE
+                 ========================================================= -->
+            <section class="view" data-view="decide" id="view-decide">
+                <header class="page-header">
+                    <h2 class="page-title">Decide</h2>
+                    <p class="page-sub">Fill now, or wait — model verdict, fill-up impact, and a share card.</p>
+                </header>
+
+                <div class="page-focus-rail">
+                    <div class="page-focus">
+                        <section class="fill-decision">
+                            <h2>When to fill up <span class="muted">(3-week outlook · 60 L reference)</span></h2>
+                            <div class="decision-grid">
+                                <article class="decision-card" data-fuel="petrol" id="decision-petrol">
+                                    <span class="decision-fuel">Petrol (95)</span>
+                                    <span class="decision-light" data-signal="neutral"></span>
+                                    <span class="decision-verdict">—</span>
+                                    <span class="decision-detail">Loading…</span>
+                                    <span class="decision-conf">confidence <b>—</b></span>
+                                    <button type="button" class="decision-share" data-share-fuel="petrol"
+                                            aria-label="Share this petrol call" hidden>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                             stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                            <polyline points="16 6 12 2 8 6"/>
+                                            <line x1="12" y1="2" x2="12" y2="15"/>
+                                        </svg>
+                                        Share
+                                    </button>
+                                </article>
+                                <article class="decision-card" data-fuel="diesel" id="decision-diesel">
+                                    <span class="decision-fuel">Diesel</span>
+                                    <span class="decision-light" data-signal="neutral"></span>
+                                    <span class="decision-verdict">—</span>
+                                    <span class="decision-detail">Loading…</span>
+                                    <span class="decision-conf">confidence <b>—</b></span>
+                                    <button type="button" class="decision-share" data-share-fuel="diesel"
+                                            aria-label="Share this diesel call" hidden>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                             stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                            <polyline points="16 6 12 2 8 6"/>
+                                            <line x1="12" y1="2" x2="12" y2="15"/>
+                                        </svg>
+                                        Share
+                                    </button>
+                                </article>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="page-rail">
+                        <section class="fillup-calc">
+                            <h2>Fill-up impact <span class="muted">(vs chosen outlook)</span></h2>
+                            <div class="calc-row">
+                                <label>Tank litres
+                                    <input id="calc-litres" type="number" min="1" max="500" step="1" value="50">
+                                </label>
+                                <label>Fuel
+                                    <select id="calc-fuel">
+                                        <option value="petrol" selected>Petrol</option>
+                                        <option value="diesel">Diesel</option>
+                                    </select>
+                                </label>
+                                <label>Horizon
+                                    <div class="horizon-chips" id="calc-horizon" role="tablist" aria-label="Forecast horizon">
+                                        <button type="button" class="horizon-chip" data-weeks="1" role="tab">1w</button>
+                                        <button type="button" class="horizon-chip" data-weeks="2" role="tab">2w</button>
+                                        <button type="button" class="horizon-chip is-active" data-weeks="3" role="tab" aria-selected="true">3w</button>
+                                        <button type="button" class="horizon-chip" data-weeks="6" role="tab">6w</button>
+                                    </div>
+                                </label>
+                                <div class="calc-output">
+                                    <span class="calc-line" id="calc-now">Today: —</span>
+                                    <span class="calc-line" id="calc-then">In ~3 weeks: —</span>
+                                    <span class="calc-line strong" id="calc-diff">Difference: —</span>
+                                </div>
+                            </div>
+                            <p class="calc-hint muted">Weekly model — signal fades past ~4 weeks.</p>
+                        </section>
+
+                        <section class="share-panel panel" id="share-panel" aria-labelledby="share-panel-title">
+                            <div class="share-panel-head">
+                                <h2 id="share-panel-title">Share the call <span class="muted">(WhatsApp-ready)</span></h2>
+                            </div>
+                            <div class="share-panel-body">
+                                <div class="share-preview">
+                                    <img id="share-preview-img" alt="Preview of the share card">
+                                </div>
+                                <div class="share-panel-controls">
+                                    <div class="share-controls" id="share-controls">
+                                        <div class="share-chip-row" role="tablist" aria-label="Fuel">
+                                            <button type="button" class="share-chip is-active" data-share-fuel-chip="petrol" role="tab" aria-selected="true">Petrol</button>
+                                            <button type="button" class="share-chip" data-share-fuel-chip="diesel" role="tab" aria-selected="false">Diesel</button>
+                                        </div>
+                                        <div class="share-chip-row" role="tablist" aria-label="Horizon">
+                                            <button type="button" class="share-chip" data-share-horizon="1" role="tab" aria-selected="false">1 week</button>
+                                            <button type="button" class="share-chip" data-share-horizon="2" role="tab" aria-selected="false">2 weeks</button>
+                                            <button type="button" class="share-chip is-active" data-share-horizon="3" role="tab" aria-selected="true">3 weeks</button>
+                                        </div>
+                                        <label class="share-litres">
+                                            Tank
+                                            <input type="number" id="share-litres-input" min="1" max="500" step="1" value="60" inputmode="numeric">
+                                            L
+                                        </label>
+                                    </div>
+                                    <div class="share-actions">
+                                        <button type="button" id="share-native" class="btn primary" hidden>Share…</button>
+                                        <button type="button" id="share-download" class="btn">Download PNG</button>
+                                        <button type="button" id="share-copy" class="btn" hidden>Copy image</button>
+                                    </div>
+                                    <p class="share-hint muted">1200×630 · PNG · optimised for WhatsApp, iMessage &amp; social.</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+
+            <!-- =========================================================
+                 TRACK
+                 ========================================================= -->
+            <section class="view" data-view="track" id="view-track">
+                <header class="page-header">
+                    <h2 class="page-title">Track</h2>
+                    <p class="page-sub">Your fills, stored on this device only — rolling 30-day cost vs national average.</p>
+                </header>
+
+                <section class="fill-log panel" aria-labelledby="fill-log-title">
+                    <div class="fill-log-head">
+                        <h2 id="fill-log-title">Your fill log <span class="muted">(saved on this device)</span></h2>
+                    </div>
+                    <div class="fill-log-stats" id="fill-log-stats" role="group" aria-label="Rolling 30-day stats">
+                        <div class="fl-stat"><span class="fl-stat-label">Fills (30d)</span><span class="fl-stat-value" id="fl-count">0</span></div>
+                        <div class="fl-stat"><span class="fl-stat-label">Litres (30d)</span><span class="fl-stat-value" id="fl-litres">0</span></div>
+                        <div class="fl-stat"><span class="fl-stat-label">Spent (30d)</span><span class="fl-stat-value" id="fl-spent">€0.00</span></div>
+                        <div class="fl-stat"><span class="fl-stat-label">Your avg €/L</span><span class="fl-stat-value" id="fl-avg">—</span></div>
+                        <div class="fl-stat"><span class="fl-stat-label">vs national (30d)</span><span class="fl-stat-value" id="fl-diff" data-sign="flat">—</span></div>
+                    </div>
+                    <form class="fill-log-form" id="fill-log-form" autocomplete="off">
+                        <label>Date
+                            <input type="date" id="fl-date" required>
                         </label>
+                        <label>Fuel
+                            <select id="fl-fuel">
+                                <option value="petrol" selected>Petrol</option>
+                                <option value="diesel">Diesel</option>
+                            </select>
+                        </label>
+                        <label>Litres
+                            <input type="number" id="fl-litres-in" min="0.1" max="500" step="0.1" required inputmode="decimal">
+                        </label>
+                        <label>€/L
+                            <input type="number" id="fl-price-in" min="0.5" max="5" step="0.001" required inputmode="decimal">
+                        </label>
+                        <button type="submit" class="btn primary">Log fill</button>
+                    </form>
+                    <ul class="fill-log-list" id="fill-log-list" aria-label="Recent fills"></ul>
+                    <p class="fill-log-hint muted">Data stays on this device only — nothing sent to a server. Comparison uses the latest national average per fuel, weighted by your fill mix.</p>
+                </section>
+            </section>
+
+            <!-- =========================================================
+                 ANALYSE
+                 ========================================================= -->
+            <section class="view" data-view="analyse" id="view-analyse">
+                <header class="page-header">
+                    <h2 class="page-title">Analyse</h2>
+                    <p class="page-sub">Historical trend, next 1–3-week model call, and past-call hit-rate.</p>
+                </header>
+
+                <div class="page-focus-rail">
+                    <div class="page-focus">
+                        <section class="chart-section">
+                            <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
+                            <div class="chart-controls">
+                                <label>Show
+                                    <select id="chart-range">
+                                        <option value="26" selected>6 months</option>
+                                        <option value="52">1 year</option>
+                                        <option value="156">3 years</option>
+                                        <option value="520">10 years</option>
+                                        <option value="1200">All</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="chart-wrap">
+                                <canvas id="price-chart" role="img"
+                                        aria-label="Historical petrol and diesel pump prices for Ireland"></canvas>
+                                <div class="dc-popup" id="dc-popup" hidden></div>
+                            </div>
+                            <p class="chart-hint">Tip: click and drag between two points to compare.</p>
+                            <p id="chart-a11y-summary" class="sr-only" aria-live="polite"></p>
+                        </section>
                     </div>
-                    <div class="share-actions">
-                        <button type="button" id="share-native" class="btn primary" hidden>
-                            Share…
-                        </button>
-                        <button type="button" id="share-download" class="btn">
-                            Download PNG
-                        </button>
-                        <button type="button" id="share-copy" class="btn" hidden>
-                            Copy image
-                        </button>
+
+                    <div class="page-rail">
+                        <section class="predictions">
+                            <h2>Next 1–3 weeks</h2>
+                            <div class="pred-grid">
+                                <article class="pred-card" id="pred-petrol">
+                                    <header>
+                                        <h3>Petrol</h3>
+                                        <span class="trend-pill" data-trend="flat">…</span>
+                                        <span class="confidence-badge" data-tier="medium" title="Model confidence tier — combines walk-forward skill with ensemble disagreement on today's inputs.">—</span>
+                                    </header>
+                                    <p class="pred-explain">Loading…</p>
+                                    <dl class="pred-meta">
+                                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
+                                        <div><dt>80% band</dt><dd class="pred-band">—</dd></div>
+                                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
+                                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                                    </dl>
+                                    <div class="backtest-strip">
+                                        <div class="bt-header">
+                                            <span class="bt-label">Recent calls</span>
+                                            <span class="bt-legend" aria-hidden="true">
+                                                <span class="bt-swatch" data-hit="true"></span>hit
+                                                <span class="bt-swatch" data-hit="false"></span>miss
+                                            </span>
+                                        </div>
+                                        <ul class="bt-list"></ul>
+                                        <p class="bt-hint">Each square is one past week — green if the model called the direction (up/down) correctly, red if not. Hover any square for the actual vs. predicted move.</p>
+                                    </div>
+                                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
+                                        <span class="bt-label">Direction hit-rate</span>
+                                        <ul class="hr-list">
+                                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
+                                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
+                                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
+                                        </ul>
+                                    </div>
+                                </article>
+                                <article class="pred-card" id="pred-diesel">
+                                    <header>
+                                        <h3>Diesel</h3>
+                                        <span class="trend-pill" data-trend="flat">…</span>
+                                        <span class="confidence-badge" data-tier="medium" title="Model confidence tier — combines walk-forward skill with ensemble disagreement on today's inputs.">—</span>
+                                    </header>
+                                    <p class="pred-explain">Loading…</p>
+                                    <dl class="pred-meta">
+                                        <div><dt>Predicted pump next week</dt><dd class="pred-price">—</dd></div>
+                                        <div><dt>80% band</dt><dd class="pred-band">—</dd></div>
+                                        <div><dt>Predicted weekly Δ</dt><dd class="pred-delta">—</dd></div>
+                                        <div><dt>Confidence</dt><dd class="pred-conf">—</dd></div>
+                                        <div><dt>Predicted price (~3 weeks)</dt><dd class="pred-price-3w">—</dd></div>
+                                        <div><dt>Model R²</dt><dd class="pred-r2">—</dd></div>
+                                    </dl>
+                                    <div class="backtest-strip">
+                                        <div class="bt-header">
+                                            <span class="bt-label">Recent calls</span>
+                                            <span class="bt-legend" aria-hidden="true">
+                                                <span class="bt-swatch" data-hit="true"></span>hit
+                                                <span class="bt-swatch" data-hit="false"></span>miss
+                                            </span>
+                                        </div>
+                                        <ul class="bt-list"></ul>
+                                        <p class="bt-hint">Each square is one past week — green if the model called the direction (up/down) correctly, red if not. Hover any square for the actual vs. predicted move.</p>
+                                    </div>
+                                    <div class="hit-rate" title="Direction hit-rate on 1-week-ahead calls">
+                                        <span class="bt-label">Direction hit-rate</span>
+                                        <ul class="hr-list">
+                                            <li><span class="hr-window">8w</span><span class="hr-value">—</span></li>
+                                            <li><span class="hr-window">26w</span><span class="hr-value">—</span></li>
+                                            <li><span class="hr-window">52w</span><span class="hr-value">—</span></li>
+                                        </ul>
+                                    </div>
+                                </article>
+                            </div>
+                            <p class="notes" id="prediction-notes"></p>
+                        </section>
                     </div>
-                    <p class="share-hint muted">1200×630 · PNG · optimised for WhatsApp, iMessage &amp; social.</p>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <section class="fill-log panel" aria-labelledby="fill-log-title">
-            <div class="fill-log-head">
-                <h2 id="fill-log-title">Your fill log <span class="muted">(saved on this device)</span></h2>
-            </div>
-            <div class="fill-log-stats" id="fill-log-stats" role="group" aria-label="Rolling 30-day stats">
-                <div class="fl-stat"><span class="fl-stat-label">Fills (30d)</span><span class="fl-stat-value" id="fl-count">0</span></div>
-                <div class="fl-stat"><span class="fl-stat-label">Litres (30d)</span><span class="fl-stat-value" id="fl-litres">0</span></div>
-                <div class="fl-stat"><span class="fl-stat-label">Spent (30d)</span><span class="fl-stat-value" id="fl-spent">€0.00</span></div>
-                <div class="fl-stat"><span class="fl-stat-label">Your avg €/L</span><span class="fl-stat-value" id="fl-avg">—</span></div>
-                <div class="fl-stat"><span class="fl-stat-label">vs national (30d)</span><span class="fl-stat-value" id="fl-diff" data-sign="flat">—</span></div>
-            </div>
-            <form class="fill-log-form" id="fill-log-form" autocomplete="off">
-                <label>Date
-                    <input type="date" id="fl-date" required>
-                </label>
-                <label>Fuel
-                    <select id="fl-fuel">
-                        <option value="petrol" selected>Petrol</option>
-                        <option value="diesel">Diesel</option>
-                    </select>
-                </label>
-                <label>Litres
-                    <input type="number" id="fl-litres-in" min="0.1" max="500" step="0.1" required inputmode="decimal">
-                </label>
-                <label>€/L
-                    <input type="number" id="fl-price-in" min="0.5" max="5" step="0.001" required inputmode="decimal">
-                </label>
-                <button type="submit" class="btn primary">Log fill</button>
-            </form>
-            <ul class="fill-log-list" id="fill-log-list" aria-label="Recent fills"></ul>
-            <p class="fill-log-hint muted">Data stays on this device only — nothing sent to a server. Comparison uses the latest national average per fuel, weighted by your fill mix.</p>
-        </section>
+            <!-- =========================================================
+                 MAP
+                 ========================================================= -->
+            <section class="view" data-view="map" id="view-map">
+                <header class="page-header">
+                    <h2 class="page-title">Map</h2>
+                    <p class="page-sub">Per-county 3-week outlook vs the national average.</p>
+                </header>
 
-        <section class="news">
-            <h2>Recent oil-relevant news</h2>
-            <ul id="news-list" class="news-list">
-                <li class="empty">No news items yet — RSS monitor not wired up (step 8).</li>
-            </ul>
-        </section>
-    </main>
+                <section class="ireland-map" id="ireland-map" aria-labelledby="ireland-map-title">
+                    <div class="ireland-map-head">
+                        <h2 id="ireland-map-title">County outlook <span class="muted" id="ireland-map-subtitle">(3-week predicted change)</span></h2>
+                        <div class="ireland-map-fuel" role="tablist" aria-label="Fuel">
+                            <button type="button" class="ireland-fuel-chip is-active" data-fuel="petrol" role="tab" aria-selected="true">Petrol</button>
+                            <button type="button" class="ireland-fuel-chip" data-fuel="diesel" role="tab" aria-selected="false">Diesel</button>
+                        </div>
+                    </div>
+                    <div class="ireland-map-metric" role="tablist" aria-label="Metric">
+                        <button type="button" class="ireland-metric-chip is-active" data-metric="pct3w" role="tab" aria-selected="true">3w Δ%</button>
+                        <button type="button" class="ireland-metric-chip" data-metric="pct1w" role="tab" aria-selected="false">1w Δ%</button>
+                        <button type="button" class="ireland-metric-chip" data-metric="level" role="tab" aria-selected="false">vs nat'l</button>
+                        <button type="button" class="ireland-metric-chip" data-metric="conf" role="tab" aria-selected="false">Confidence</button>
+                        <button type="button" class="ireland-metric-chip" data-metric="stations" role="tab" aria-selected="false">Stations</button>
+                    </div>
+                    <div class="ireland-map-body">
+                        <div class="ireland-map-frame" id="ireland-map-frame" aria-live="polite">
+                            <p class="ireland-map-loading muted">Loading map…</p>
+                        </div>
+                        <div class="ireland-map-legend" id="ireland-map-legend" aria-hidden="true">
+                            <span class="ireland-legend-label" data-role="lo">Cheaper</span>
+                            <span class="ireland-legend-bar" id="ireland-legend-bar"></span>
+                            <span class="ireland-legend-label" data-role="hi">Pricier</span>
+                            <span class="ireland-legend-stops" id="ireland-legend-stops">
+                                <span>−1.5%</span><span>0</span><span>+1.5%</span>
+                            </span>
+                            <span class="ireland-legend-stale"><span class="ireland-legend-swatch is-stale"></span>stale / no data</span>
+                        </div>
+                    </div>
+                    <div class="ireland-map-tip" id="ireland-map-tip" role="tooltip" hidden></div>
+                    <p class="ireland-map-hint muted">Tap or hover a county for detail. Click to open its full page.</p>
+                </section>
+            </section>
 
-    <footer class="site-footer">
-        <div class="wrap">
-            <div class="sources">
-                <span>EU Oil Bulletin</span>
-                <span>ECB</span>
-                <span>Brent · MOCK</span>
-            </div>
-            <div class="colophon">© Raghib Haque</div>
-        </div>
-    </footer>
+        </main>
+    </div>
 
-    <script src="shared.js?v=12"></script>
-    <script src="app.js?v=26"></script>
+    <script src="shared.js?v=13"></script>
+    <script src="app.js?v=27"></script>
     <script>
-        // Register PWA service worker. Guarded so file:// and old browsers stay
-        // quiet — this is progressive enhancement, not a hard dependency.
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
                 navigator.serviceWorker.register("sw.js").catch(err =>
