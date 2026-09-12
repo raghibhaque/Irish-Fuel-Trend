@@ -721,3 +721,130 @@ function mountDevIngestButton({ onDone } = {}) {
 
     strip.appendChild(btn);
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard shell: sidebar (desktop) + bottom nav (mobile).
+// Rendered once by whichever page owns the shell. Nav items in one place so
+// the two entry HTMLs never drift.
+// ---------------------------------------------------------------------------
+
+const SIDEBAR_NAV = [
+    { key: "overview", label: "Overview", href: "index.html#/overview",
+      icon: `<rect x="3" y="3" width="7" height="9" rx="1.2"/><rect x="14" y="3" width="7" height="5" rx="1.2"/><rect x="14" y="12" width="7" height="9" rx="1.2"/><rect x="3" y="16" width="7" height="5" rx="1.2"/>` },
+    { key: "decide",   label: "Decide",   href: "index.html#/decide",
+      icon: `<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>` },
+    { key: "track",    label: "Track",    href: "index.html#/track",
+      icon: `<path d="M4 5h16M4 12h10M4 19h6"/><circle cx="18" cy="15" r="3"/>` },
+    { key: "analyse",  label: "Analyse",  href: "index.html#/analyse",
+      icon: `<path d="M4 20V4"/><path d="M4 20h16"/><path d="M7 15l4-4 3 3 5-6"/>` },
+    { key: "map",      label: "Map",      href: "index.html#/map",
+      icon: `<path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/>` },
+    { key: "county",   label: "County",   href: "county.html",
+      icon: `<circle cx="12" cy="10" r="3"/><path d="M12 22s7-8 7-13a7 7 0 0 0-14 0c0 5 7 13 7 13z"/>` },
+];
+
+function _sidebarHtml(active) {
+    const items = SIDEBAR_NAV.map(n => `
+        <a href="${n.href}" data-nav="${n.key}"
+           class="${n.key === active ? "is-active" : ""}">
+            <svg viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">${n.icon}</svg>
+            <span>${n.label}</span>
+        </a>`).join("");
+    const bottomItems = SIDEBAR_NAV.map(n => `
+        <a href="${n.href}" data-nav="${n.key}"
+           class="${n.key === active ? "is-active" : ""}">
+            <svg viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">${n.icon}</svg>
+            <span>${n.label}</span>
+        </a>`).join("");
+    return {
+        sidebar: `
+            <aside class="sidebar" aria-label="Primary navigation">
+                <div class="sidebar-logo">
+                    <img src="icon.svg" alt="">
+                    <div>
+                        <div class="sidebar-logo-title">Fuel Trend</div>
+                    </div>
+                </div>
+                <nav class="sidebar-nav" id="sidebar-nav">${items}</nav>
+                <div>
+                    <div class="sidebar-section-label">Fuel</div>
+                    <div class="sidebar-fuel" id="sidebar-fuel" role="tablist" aria-label="Active fuel">
+                        <button type="button" data-fuel="petrol" class="is-active" role="tab" aria-selected="true">Petrol</button>
+                        <button type="button" data-fuel="diesel" role="tab" aria-selected="false">Diesel</button>
+                    </div>
+                </div>
+                <div class="sidebar-live" id="sidebar-live" aria-live="polite">
+                    <div class="sidebar-live-row">
+                        <span class="sidebar-live-label">Petrol</span>
+                        <span class="sidebar-live-value" data-fuel="petrol" id="sidebar-live-petrol">—</span>
+                    </div>
+                    <div class="sidebar-live-row">
+                        <span class="sidebar-live-label">Diesel</span>
+                        <span class="sidebar-live-value" data-fuel="diesel" id="sidebar-live-diesel">—</span>
+                    </div>
+                    <div class="sidebar-live-updated status-strip">
+                        <span class="status-chip" id="hdr-updated">Live · fetching</span>
+                    </div>
+                </div>
+            </aside>`,
+        bottomNav: `<nav class="bottom-nav" aria-label="Primary navigation">${bottomItems}</nav>`,
+    };
+}
+
+// Render sidebar + bottom nav into a page that has `.app-shell > .app-main`
+// pre-populated. Idempotent: safe to call once per page load.
+function renderDashboardShell({ active } = {}) {
+    const shell = document.querySelector(".app-shell");
+    if (!shell) return;
+    if (shell.querySelector(".sidebar")) return;    // already rendered
+    const { sidebar, bottomNav } = _sidebarHtml(active || "overview");
+    // Insert sidebar before .app-main so the grid places it in column 1.
+    const main = shell.querySelector(".app-main");
+    if (main) main.insertAdjacentHTML("beforebegin", sidebar);
+    else shell.insertAdjacentHTML("afterbegin", sidebar);
+    shell.insertAdjacentHTML("beforeend", bottomNav);
+}
+
+function setActiveNav(key) {
+    document.querySelectorAll("[data-nav]").forEach(a => {
+        a.classList.toggle("is-active", a.dataset.nav === key);
+    });
+}
+
+// Global fuel toggle — wired here so both pages share it. Broadcasts a
+// `fuel:change` CustomEvent; subscribers update their own UI.
+const FUEL_KEY = "ift.fuel.v1";
+
+function getActiveFuel() {
+    const v = localStorage.getItem(FUEL_KEY);
+    return v === "diesel" ? "diesel" : "petrol";
+}
+function setActiveFuel(fuel) {
+    if (fuel !== "petrol" && fuel !== "diesel") return;
+    localStorage.setItem(FUEL_KEY, fuel);
+    document.querySelectorAll("#sidebar-fuel button").forEach(b => {
+        const on = b.dataset.fuel === fuel;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.dispatchEvent(new CustomEvent("fuel:change", { detail: { fuel } }));
+}
+
+function wireSidebarFuel() {
+    const grp = document.getElementById("sidebar-fuel");
+    if (!grp) return;
+    grp.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-fuel]");
+        if (!btn) return;
+        setActiveFuel(btn.dataset.fuel);
+    });
+    // apply persisted choice at mount
+    setActiveFuel(getActiveFuel());
+}
+
+function updateSidebarLive({ petrol, diesel } = {}) {
+    const p = document.getElementById("sidebar-live-petrol");
+    const d = document.getElementById("sidebar-live-diesel");
+    if (p && petrol != null) p.textContent = fmtEur(petrol);
+    if (d && diesel != null) d.textContent = fmtEur(diesel);
+}

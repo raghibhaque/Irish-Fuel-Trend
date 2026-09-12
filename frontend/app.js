@@ -1051,6 +1051,8 @@ function renderFillLog() {
     const fills = loadFills();
     renderFillStats(computeFillStats(fills));
     renderFillList(fills);
+    // Overview tile mirrors the 30d stats — keep it in sync on every write.
+    if (typeof renderOverviewTrack === "function") renderOverviewTrack();
 }
 
 function newFillId() {
@@ -1559,12 +1561,171 @@ async function initIrelandMap() {
     }
 }
 
-// ------------------ boot ------------------
+// ------------------ overview tile sync ------------------
+// The Overview page is a compact mirror of data rendered fully on the other
+// pages. We update its tiles as their underlying data lands, and again on
+// fuel:change so the active-fuel-scoped tiles switch cleanly.
+
+function _activeFuel() {
+    return (typeof getActiveFuel === "function" ? getActiveFuel() : "petrol");
+}
+
+function updateActiveFuelLabels(fuel) {
+    document.querySelectorAll("[data-active-fuel-label]").forEach(el => {
+        el.textContent = fuel;
+    });
+}
+
+function renderOverviewDecision(fuel) {
+    const src = document.getElementById(`decision-${fuel}`);
+    const tile = document.getElementById("ov-decision-verdict");
+    const detail = document.getElementById("ov-decision-detail");
+    if (!src || !tile || !detail) return;
+    const signal = src.dataset.signal || "neutral";
+    const verdict = src.querySelector(".decision-verdict")?.textContent || "—";
+    const line = src.querySelector(".decision-detail")?.textContent || "";
+    tile.dataset.signal = signal === "fill" ? "fill" : signal === "wait" ? "wait" : "hold";
+    tile.querySelector("[data-role=verdict]").textContent = verdict;
+    detail.textContent = line;
+}
+
+function renderOverviewForecast(fuel) {
+    if (!predictionData || !predictionData[fuel]) return;
+    const p = predictionData[fuel];
+    const dEl = document.getElementById("ov-forecast-delta");
+    const cEl = document.getElementById("ov-forecast-conf");
+    const pEl = document.getElementById("ov-forecast-price");
+    if (dEl) {
+        const pct = p.predicted_weekly_return;
+        dEl.textContent = fmtPct(pct);
+        dEl.dataset.sign = pct > 0.0005 ? "up" : pct < -0.0005 ? "down" : "flat";
+    }
+    if (cEl) cEl.textContent = `${Math.round(p.confidence * 100)}%`;
+    if (pEl) pEl.textContent = `€${p.predicted_pump_eur_per_l.toFixed(3)}`;
+    const note = document.getElementById("ov-forecast-note");
+    if (note && p.trend) note.textContent = `Trend: ${p.trend}. ${p.explanation || ""}`.trim();
+}
+
+function renderOverviewMap() {
+    if (!mapCountiesData) return;
+    const fuel = _activeFuel();
+    const items = mapCountiesData.counties || [];
+    const scored = items
+        .map(c => ({
+            name: c.county,
+            pct: _countyMetric(c, fuel, "pct3w"),
+            level: _countyMetric(c, fuel, "level"),
+        }))
+        .filter(x => Number.isFinite(x.level));
+    scored.sort((a, b) => a.level - b.level);
+    const cheapest = scored.slice(0, 3);
+    const priciest = scored.slice(-3).reverse();
+    const summary = document.getElementById("ov-map-summary");
+    if (summary) summary.textContent = `${scored.length} counties tracked · ${fuel}`;
+    const list = document.getElementById("ov-map-list");
+    if (list) {
+        const row = (label, arr) => arr.map(c =>
+            `<li><span style="color:var(--text-dim)">${label}</span> ${escapeHtml(c.name)} <span style="color:var(--text-dim);float:right">${c.level > 0 ? "+" : ""}${(c.level * 100).toFixed(1)}%</span></li>`
+        ).join("");
+        list.innerHTML = row("cheap", cheapest) + row("pricy", priciest);
+    }
+}
+
+function renderOverviewTrack() {
+    const fills = loadFills();
+    const tile = document.getElementById("ov-track-tile");
+    if (!tile) return;
+    if (!fills.length) { tile.hidden = true; return; }
+    tile.hidden = false;
+    const stats = computeFillStats(fills);
+    document.getElementById("ov-track-spent").textContent = `€${stats.spent.toFixed(2)}`;
+    document.getElementById("ov-track-avg").textContent = stats.avg == null ? "—" : `€${stats.avg.toFixed(3)}`;
+    const diff = document.getElementById("ov-track-diff");
+    if (stats.savedTotal == null) {
+        diff.textContent = "—"; diff.dataset.sign = "flat";
+    } else {
+        const abs = Math.abs(stats.savedTotal).toFixed(2);
+        const sign = stats.savedTotal > 0.005 ? "down" : stats.savedTotal < -0.005 ? "up" : "flat";
+        diff.textContent = sign === "flat" ? "±€0.00"
+            : `${stats.savedTotal > 0 ? "saved" : "over"} €${abs}`;
+        diff.dataset.sign = sign;
+    }
+}
+
+function renderOverviewAll() {
+    const fuel = _activeFuel();
+    updateActiveFuelLabels(fuel);
+    renderOverviewDecision(fuel);
+    renderOverviewForecast(fuel);
+    renderOverviewMap();
+    renderOverviewTrack();
+}
+
+// ------------------ router ------------------
+// Vanilla hash router. Routes: #/overview, #/decide, #/track, #/analyse, #/map.
+// Anything else falls back to overview. On activation of a view, fires a
+// `viewshow` CustomEvent so lazy widgets (chart resize, map init) can catch up.
+
+const ROUTES = new Set(["overview", "decide", "track", "analyse", "map"]);
+let mapInitStarted = false;
+
+function _routeFromHash() {
+    const h = location.hash || "";
+    const m = h.match(/^#\/([a-z]+)/);
+    const route = m && ROUTES.has(m[1]) ? m[1] : "overview";
+    return route;
+}
+
+function _showView(route) {
+    document.querySelectorAll(".view").forEach(v => {
+        v.classList.toggle("is-active", v.dataset.view === route);
+    });
+    setActiveNav(route);
+    document.dispatchEvent(new CustomEvent("viewshow", { detail: { route } }));
+    // Reset scroll on route change so a deep-scrolled Overview does not
+    // leave Analyse mid-chart.
+    window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+function initRouter() {
+    // Legacy anchor links (#ireland-map, #fill-log-title, etc.) predate the
+    // SPA. Rewrite to overview so bookmarks don't 404 into a hidden section.
+    if (location.hash && !location.hash.startsWith("#/")) {
+        history.replaceState(null, "", "#/overview");
+    }
+    _showView(_routeFromHash());
+    window.addEventListener("hashchange", () => _showView(_routeFromHash()));
+}
+
+// Chart draws to a 0×0 canvas while Analyse is hidden. When Analyse first
+// becomes visible, resize forces a re-layout against the now-visible parent.
+// Map SVG is deferred until Map is first visited to avoid an unused network
+// fetch on Overview-only visits.
+document.addEventListener("viewshow", (e) => {
+    const route = e.detail.route;
+    if (route === "analyse" && chart) {
+        // rAF so the layout has committed before Chart.js measures.
+        requestAnimationFrame(() => chart.resize());
+    }
+    if (route === "map" && !mapInitStarted) {
+        mapInitStarted = true;
+        initIrelandMap().then(renderOverviewMap).catch(console.error);
+    }
+});
+
+// ------------------ static event wiring ------------------
+// Everything below existed in the pre-dashboard boot; the DOM elements still
+// live in their route panels, so the listeners work whether or not the panel
+// is currently visible.
 document.getElementById("chart-range").addEventListener("change", (e) => {
     loadPrices(parseInt(e.target.value, 10)).catch(console.error);
 });
 document.getElementById("calc-litres").addEventListener("input", updateCalculator);
-document.getElementById("calc-fuel").addEventListener("change", updateCalculator);
+document.getElementById("calc-fuel").addEventListener("change", (e) => {
+    // Sync the calc fuel with the global toggle when the user changes it here.
+    if (typeof setActiveFuel === "function") setActiveFuel(e.target.value);
+    updateCalculator();
+});
 document.getElementById("calc-horizon").addEventListener("click", (e) => {
     const btn = e.target.closest(".horizon-chip");
     if (!btn) return;
@@ -1579,6 +1740,34 @@ document.getElementById("calc-horizon").addEventListener("click", (e) => {
     updateCalculator();
 });
 
+// Global fuel change: propagate to per-section chips + tiles.
+document.addEventListener("fuel:change", (e) => {
+    const fuel = e.detail.fuel;
+    // Calculator selector.
+    const calcFuel = document.getElementById("calc-fuel");
+    if (calcFuel && calcFuel.value !== fuel) calcFuel.value = fuel;
+    // Share panel focus.
+    if (typeof focusShareCard === "function") focusShareCard(fuel).catch(() => {});
+    // Ireland map fuel chips.
+    document.querySelectorAll(".ireland-fuel-chip").forEach(b => {
+        const on = b.dataset.fuel === fuel;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (typeof mapCurrentFuel !== "undefined") {
+        mapCurrentFuel = fuel;
+        if (mapSvgReady) paintIrelandMap();
+    }
+    // Refresh overview + calc against the new fuel.
+    updateCalculator();
+    renderOverviewAll();
+});
+
+// ------------------ boot ------------------
+renderDashboardShell({ active: _routeFromHash() });
+wireSidebarFuel();
+initRouter();
+
 loadManifest().then(m => {
     if (m && m.generated_at) {
         window.__updatedAtLabel = ` (updated at: ${fmtDateTime(m.generated_at)})`;
@@ -1588,12 +1777,22 @@ loadManifest().then(m => {
         const chip = document.getElementById("hdr-updated");
         if (chip) { chip.textContent = "Awaiting refresh"; chip.dataset.tone = "warn"; }
     }
-    return Promise.all([loadPrices(26), loadPrediction(), loadNews(), initIrelandMap()]);
+    // Map is now lazy-loaded on first #/map visit — see viewshow listener above.
+    return Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
 }).then(() => {
     updateCalculator();
     attachDragCompare("price-chart", "dc-popup");
     wireFillLog();
     renderFillLog();
+    // Now that predictions + prices are in, paint the overview tiles + sidebar
+    // live-price mini card. Everything else self-renders in its own panel.
+    if (priceData) {
+        updateSidebarLive({
+            petrol: priceData.petrol.latest?.price_eur_per_litre,
+            diesel: priceData.diesel.latest?.price_eur_per_litre,
+        });
+    }
+    renderOverviewAll();
     mountDevIngestButton({
         onDone: async () => {
             priceData = null;
@@ -1603,10 +1802,20 @@ loadManifest().then(m => {
                 loadPrices(26),
                 loadPrediction(),
                 loadNews(),
-                jget("data/counties.json").then(c => { mapCountiesData = c; paintIrelandMap(); }),
+                mapInitStarted
+                    ? jget("data/counties.json").then(c => { mapCountiesData = c; paintIrelandMap(); })
+                    : Promise.resolve(),
             ]);
             updateCalculator();
             renderFillLog();
+            if (priceData) {
+                updateSidebarLive({
+                    petrol: priceData.petrol.latest?.price_eur_per_litre,
+                    diesel: priceData.diesel.latest?.price_eur_per_litre,
+                });
+            }
+            renderOverviewAll();
         },
     });
 }).catch(err => console.error("Dashboard load failed:", err));
+

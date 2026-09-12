@@ -2312,3 +2312,475 @@ h2 .muted {
     .fl-item { grid-template-columns: 1fr 1fr auto; }
     .fl-item .fl-item-date { grid-column: 1 / 3; }
 }
+
+/* =====================================================================
+   DASHBOARD SHELL — sidebar, bottom nav, view panels, tile grid
+   Applied over the existing surface tokens; no legacy overrides removed.
+   ===================================================================== */
+
+:root {
+    --sidebar-w:       240px;
+    --sidebar-w-mobile-nav: 0px;
+    --bottom-nav-h:    64px;
+    --tile-bg:         var(--surface);
+    --tile-border:     var(--border);
+    --tile-radius:     8px;
+    --page-gap:        24px;
+    --page-pad:        28px;
+}
+
+/* Hide the classic full-width header + wrap on the app-shell layout. */
+.app-shell .site-header { display: none; }
+
+.app-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    min-height: 100vh;
+    align-items: stretch;
+}
+
+/* ------------------------------------------------------------ sidebar */
+.sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    padding: 22px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    background: linear-gradient(180deg, #0d0f12 0%, #0a0b0d 100%);
+    border-right: 1px solid var(--border);
+    z-index: 5;
+}
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px 14px;
+    border-bottom: 1px solid var(--border);
+}
+.sidebar-logo img {
+    width: 28px; height: 28px;
+    filter: drop-shadow(0 0 4px rgba(255, 182, 72, 0.35));
+}
+.sidebar-logo-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1.15;
+}
+.sidebar-logo-sub {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
+    color: var(--accent);
+    margin-top: 2px;
+    text-transform: uppercase;
+}
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    color: var(--text-mid);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.sidebar-nav a svg {
+    width: 18px; height: 18px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.6;
+    flex-shrink: 0;
+}
+.sidebar-nav a:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.03);
+    text-decoration: none;
+}
+.sidebar-nav a.is-active {
+    color: var(--text);
+    background: rgba(255, 182, 72, 0.10);
+    border-color: var(--accent-line);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+.sidebar-section-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 6px;
+    margin-top: 6px;
+}
+.sidebar-fuel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 3px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+.sidebar-fuel button {
+    all: unset;
+    text-align: center;
+    padding: 8px 4px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.12s ease, background 0.12s ease;
+}
+.sidebar-fuel button:hover { color: var(--text); }
+.sidebar-fuel button.is-active[data-fuel="petrol"] {
+    background: var(--petrol);
+    color: #111;
+    box-shadow: 0 0 10px rgba(255, 182, 72, 0.35);
+}
+.sidebar-fuel button.is-active[data-fuel="diesel"] {
+    background: var(--diesel);
+    color: #0a0b0d;
+    box-shadow: 0 0 10px rgba(123, 211, 207, 0.35);
+}
+.sidebar-live {
+    margin-top: auto;
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+}
+.sidebar-live-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 8px;
+}
+.sidebar-live-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+.sidebar-live-value {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+.sidebar-live-value[data-fuel="petrol"] { color: var(--petrol); }
+.sidebar-live-value[data-fuel="diesel"] { color: var(--diesel); }
+.sidebar-live-updated {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* ------------------------------------------------------------ app main */
+.app-main {
+    min-width: 0;
+    padding: 28px 40px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--page-gap);
+}
+
+.page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+}
+.page-header h2.page-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+.page-header .page-sub {
+    color: var(--text-mid);
+    font-size: 0.92rem;
+    margin: 0;
+    max-width: 68ch;
+}
+
+/* Route panels — one visible at a time. */
+.view {
+    display: none;
+    flex-direction: column;
+    gap: var(--page-gap);
+}
+.view.is-active { display: flex; }
+
+/* ------------------------------------------------------------ overview tile grid */
+.tile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.tile {
+    display: flex;
+    flex-direction: column;
+    background: var(--tile-bg);
+    border: 1px solid var(--tile-border);
+    border-radius: var(--tile-radius);
+    padding: 20px 22px;
+    min-height: 160px;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.12s ease, transform 0.12s ease, background 0.12s ease;
+    position: relative;
+}
+a.tile:hover {
+    border-color: var(--accent-line);
+    background: linear-gradient(180deg, rgba(255,182,72,0.03) 0%, var(--tile-bg) 100%);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+.tile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.tile-title {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0;
+}
+.tile-link-hint {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+a.tile:hover .tile-link-hint { opacity: 1; }
+
+.tile-prices {
+    grid-column: span 2;
+}
+.tile-prices .current-prices {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 0;
+}
+.tile-prices .price-card {
+    margin: 0;
+}
+
+.tile-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+.tile-hero-value {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 1.7rem;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+.tile-verdict {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.15rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.tile-verdict .dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--flat);
+    box-shadow: 0 0 10px currentColor;
+    flex-shrink: 0;
+    color: var(--flat);
+}
+.tile-verdict[data-signal="fill"] .dot { background: var(--down); color: var(--down); }
+.tile-verdict[data-signal="wait"] .dot { background: var(--up);   color: var(--up); }
+.tile-verdict[data-signal="hold"] .dot { background: var(--flat); color: var(--flat); }
+.tile-detail {
+    color: var(--text-mid);
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+.tile-metric-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+.tile-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.tile-metric-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+.tile-metric-value {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 1.15rem;
+    color: var(--text);
+}
+.tile-metric-value[data-sign="up"]   { color: var(--up); }
+.tile-metric-value[data-sign="down"] { color: var(--down); }
+
+.tile-news {
+    grid-column: span 2;
+}
+.tile-news .news-list { margin: 0; padding: 0; }
+
+/* ------------------------------------------------------------ focus + rail */
+.page-focus-rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+    gap: var(--page-gap);
+    align-items: start;
+}
+.page-focus, .page-rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--page-gap);
+    min-width: 0;
+}
+.page-focus > section,
+.page-rail > section,
+.page-focus > .panel,
+.page-rail > .panel {
+    margin: 0 !important;
+}
+
+/* Panels inside app-main should get consistent chrome. Existing section
+   classes (fill-decision, fillup-calc, etc.) already have their own bg —
+   this just ensures alignment / removes double gutters. */
+.app-main section { margin: 0; }
+
+/* ------------------------------------------------------------ bottom nav (mobile) */
+.bottom-nav {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: var(--bottom-nav-h);
+    background: rgba(10, 11, 13, 0.94);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    z-index: 40;
+    padding: 4px 0 max(4px, env(safe-area-inset-bottom));
+}
+.bottom-nav a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 2px 0;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1;
+    transition: color 0.12s ease;
+}
+.bottom-nav a svg {
+    width: 20px; height: 20px;
+    stroke: currentColor; fill: none; stroke-width: 1.6;
+}
+.bottom-nav a.is-active { color: var(--accent); }
+.bottom-nav a:hover { color: var(--text); text-decoration: none; }
+
+/* ------------------------------------------------------------ responsive */
+@media (max-width: 900px) {
+    :root { --sidebar-w: 200px; }
+    .app-main { padding: 22px 22px 96px; }
+    .page-focus-rail { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+    .app-shell {
+        display: block;
+    }
+    .sidebar { display: none; }
+    .bottom-nav { display: flex; }
+    .app-main {
+        padding: 18px 16px calc(var(--bottom-nav-h) + 32px);
+    }
+    .tile-grid { grid-template-columns: 1fr; }
+    .tile-prices { grid-column: auto; }
+    .tile-news { grid-column: auto; }
+}
+
+/* -------- narrow-column overrides (rail always narrow regardless of viewport) */
+.page-rail .calc-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+}
+.page-rail .calc-row label:nth-child(3) {
+    grid-column: 1 / -1;
+}
+.page-rail .calc-row input { width: 100%; }
+.page-rail .calc-output {
+    grid-column: 1 / -1;
+    justify-items: start;
+    margin-top: 8px;
+}
+.page-rail .calc-line.strong { text-align: left; }
+.page-rail .horizon-chips { flex-wrap: wrap; }
+.page-rail .share-panel-body {
+    grid-template-columns: minmax(0, 1fr);
+}
+.page-rail .share-preview {
+    max-width: 320px;
+    justify-self: start;
+}
