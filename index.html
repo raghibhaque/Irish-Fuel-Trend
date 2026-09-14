@@ -3,11 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irish Fuel Trend</title>
+    <title>Irish Fuel Trend — weekly petrol &amp; diesel forecast for Ireland</title>
+    <meta name="description" content="When to fill up in Ireland. Weekly petrol and diesel forecast built on EU Oil Bulletin, ECB and Brent — with per-county outlook, decision light, and share-ready cards.">
+    <link rel="canonical" href="https://raghibhaque.github.io/Irish-Fuel-Trend/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Irish Fuel Trend">
+    <meta property="og:title" content="Irish Fuel Trend — weekly fuel forecast for Ireland">
+    <meta property="og:description" content="Fill now or wait? Weekly petrol &amp; diesel forecast for Ireland with per-county outlook and shareable decision cards.">
+    <meta property="og:url" content="https://raghibhaque.github.io/Irish-Fuel-Trend/">
+    <meta property="og:image" content="https://raghibhaque.github.io/Irish-Fuel-Trend/icon.svg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Irish Fuel Trend — weekly fuel forecast for Ireland">
+    <meta name="twitter:description" content="Fill now or wait? Weekly petrol &amp; diesel forecast for Ireland with per-county outlook and shareable decision cards.">
+    <meta name="twitter:image" content="https://raghibhaque.github.io/Irish-Fuel-Trend/icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=22">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -236,9 +248,9 @@
                                 <h2 id="share-panel-title">Share the call <span class="muted">(WhatsApp-ready)</span></h2>
                             </div>
                             <div class="share-panel-body">
-                                <div class="share-preview">
+                                <a class="share-preview" id="share-preview-link" href="#" target="_blank" rel="noopener" aria-label="Open share card at full size in a new tab">
                                     <img id="share-preview-img" alt="Preview of the share card">
-                                </div>
+                                </a>
                                 <div class="share-panel-controls">
                                     <div class="share-controls" id="share-controls">
                                         <div class="share-chip-row" role="tablist" aria-label="Fuel">
@@ -482,7 +494,7 @@
     </div>
 
     <script src="shared.js?v=13"></script>
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
     <script>
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {

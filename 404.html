@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Not found — Irish Fuel Trend</title>
+    <meta name="description" content="Page not found. Head back to the Irish Fuel Trend dashboard for the weekly petrol and diesel forecast.">
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <meta name="theme-color" content="#0a0b0d">
+    <style>
+        .nf-wrap {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 32px 20px;
+            background: radial-gradient(1200px 800px at 50% -10%, rgba(255,182,72,0.08), transparent 60%), var(--bg);
+        }
+        .nf-card {
+            max-width: 560px;
+            width: 100%;
+            padding: 44px 40px 40px;
+            background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+            position: relative;
+        }
+        .nf-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 24px; right: 24px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-line) 40%, var(--accent-line) 60%, transparent);
+            opacity: 0.6;
+        }
+        .nf-code {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin: 0 0 12px;
+        }
+        .nf-title {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            letter-spacing: 0.04em;
+            margin: 0 0 14px;
+            color: var(--text);
+        }
+        .nf-lede {
+            margin: 0 0 26px;
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+        .nf-cta {
+            display: inline-block;
+            padding: 12px 22px;
+            background: var(--accent);
+            color: #14100a;
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .nf-cta:hover,
+        .nf-cta:focus-visible {
+            background: #ffc76a;
+            border-color: #ffc76a;
+            outline: none;
+        }
+        .nf-secondary {
+            margin-top: 22px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+        }
+        .nf-secondary a {
+            color: var(--text-dim);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 2px;
+        }
+        .nf-secondary a:hover,
+        .nf-secondary a:focus-visible {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="nf-wrap">
+        <main class="nf-card">
+            <p class="nf-code">Error · 404 · route not found</p>
+            <h1 class="nf-title">This pump is dry.</h1>
+            <p class="nf-lede">
+                The page you tried to reach doesn't exist — maybe a stale link, or a route that never shipped.
+                The forecast is still running.
+            </p>
+            <a class="nf-cta" href="/Irish-Fuel-Trend/">Back to dashboard</a>
+            <p class="nf-secondary">
+                or jump to <a href="/Irish-Fuel-Trend/county.html">county view</a>
+            </p>
+        </main>
+    </div>
+</body>
+</html>

@@ -697,6 +697,7 @@ async function _renderShareCard() {
     if (!opts) return;
 
     const img   = document.getElementById("share-preview-img");
+    const link  = document.getElementById("share-preview-link");
     const dlBtn = document.getElementById("share-download");
     const shBtn = document.getElementById("share-native");
     const cpBtn = document.getElementById("share-copy");
@@ -712,6 +713,7 @@ async function _renderShareCard() {
     _shareState.blob = blob;
     _shareState.objUrl = objUrl;
     img.src = objUrl;
+    if (link) link.href = objUrl;
 
     const fname = `irish-fuel-${opts.fuel}-${opts.weeks}w-${opts.signal}.png`;
     const file  = new File([blob], fname, { type: "image/png" });

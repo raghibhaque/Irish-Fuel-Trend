@@ -1773,6 +1773,15 @@ h2 .muted {
     display: grid;
     place-items: center;
     min-height: 160px;
+    cursor: zoom-in;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+}
+.share-preview:hover,
+.share-preview:focus-visible {
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 3px var(--accent-glow, rgba(255, 182, 72, 0.12));
+    outline: none;
 }
 .share-preview img {
     display: block;
@@ -2779,10 +2788,13 @@ a.tile:hover .tile-link-hint { opacity: 1; }
 .page-rail .horizon-chips { flex-wrap: wrap; }
 .page-rail .share-panel-body {
     grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
 }
 .page-rail .share-preview {
-    max-width: 320px;
-    justify-self: start;
+    width: 100%;
+    max-width: 100%;
+    justify-self: stretch;
+    padding: 10px;
 }
 
 /* ------------------------------------------------------------- app footer */
