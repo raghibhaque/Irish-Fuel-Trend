@@ -2784,3 +2784,66 @@ a.tile:hover .tile-link-hint { opacity: 1; }
     max-width: 320px;
     justify-self: start;
 }
+
+/* ------------------------------------------------------------- app footer */
+.app-footer {
+    margin: 56px 0 8px;
+    padding: 22px 0 4px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+}
+.app-footer::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--accent-line) 30%,
+        var(--accent-line) 70%,
+        transparent 100%
+    );
+    opacity: 0.35;
+    pointer-events: none;
+}
+.app-footer-disclaimer {
+    margin: 0;
+    max-width: 72ch;
+    line-height: 1.55;
+    color: var(--text-dim);
+}
+.app-footer-disclaimer strong {
+    color: var(--text);
+    font-weight: 600;
+}
+.app-footer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.app-footer-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 2px;
+    transition: color 120ms ease, border-color 120ms ease;
+}
+.app-footer-link:hover,
+.app-footer-link:focus-visible {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    outline: none;
+}
