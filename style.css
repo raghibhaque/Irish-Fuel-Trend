@@ -2694,6 +2694,13 @@ a.tile:hover .tile-link-hint { opacity: 1; }
     gap: var(--page-gap);
     align-items: start;
 }
+.page-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--page-gap);
+    min-width: 0;
+}
+.page-stack > section { margin: 0 !important; }
 .page-focus, .page-rail {
     display: flex;
     flex-direction: column;
