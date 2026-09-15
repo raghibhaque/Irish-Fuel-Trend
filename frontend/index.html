@@ -333,33 +333,30 @@
                     <p class="page-sub">Historical trend, next 1–3-week model call, and past-call hit-rate.</p>
                 </header>
 
-                <div class="page-focus-rail">
-                    <div class="page-focus">
-                        <section class="chart-section">
-                            <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
-                            <div class="chart-controls">
-                                <label>Show
-                                    <select id="chart-range">
-                                        <option value="26" selected>6 months</option>
-                                        <option value="52">1 year</option>
-                                        <option value="156">3 years</option>
-                                        <option value="520">10 years</option>
-                                        <option value="1200">All</option>
-                                    </select>
-                                </label>
-                            </div>
-                            <div class="chart-wrap">
-                                <canvas id="price-chart" role="img"
-                                        aria-label="Historical petrol and diesel pump prices for Ireland"></canvas>
-                                <div class="dc-popup" id="dc-popup" hidden></div>
-                            </div>
-                            <p class="chart-hint">Tip: click and drag between two points to compare.</p>
-                            <p id="chart-a11y-summary" class="sr-only" aria-live="polite"></p>
-                        </section>
-                    </div>
+                <div class="page-stack">
+                    <section class="chart-section">
+                        <h2>Historical trend <span class="muted">(national weekly average)</span></h2>
+                        <div class="chart-controls">
+                            <label>Show
+                                <select id="chart-range">
+                                    <option value="26" selected>6 months</option>
+                                    <option value="52">1 year</option>
+                                    <option value="156">3 years</option>
+                                    <option value="520">10 years</option>
+                                    <option value="1200">All</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="chart-wrap">
+                            <canvas id="price-chart" role="img"
+                                    aria-label="Historical petrol and diesel pump prices for Ireland"></canvas>
+                            <div class="dc-popup" id="dc-popup" hidden></div>
+                        </div>
+                        <p class="chart-hint">Tip: click and drag between two points to compare.</p>
+                        <p id="chart-a11y-summary" class="sr-only" aria-live="polite"></p>
+                    </section>
 
-                    <div class="page-rail">
-                        <section class="predictions">
+                    <section class="predictions">
                             <h2>Next 1–3 weeks</h2>
                             <div class="pred-grid">
                                 <article class="pred-card" id="pred-petrol">
@@ -433,9 +430,8 @@
                                     </div>
                                 </article>
                             </div>
-                            <p class="notes" id="prediction-notes"></p>
-                        </section>
-                    </div>
+                        <p class="notes" id="prediction-notes"></p>
+                    </section>
                 </div>
             </section>
 
