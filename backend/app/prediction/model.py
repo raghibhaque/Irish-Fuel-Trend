@@ -249,6 +249,11 @@ def _latest_observed_pump(fuel_type: str) -> float | None:
     the whole site; the predicted movement is unaffected because every delta
     below is derived from wholesale, not from the anchor.
 
+    Mock guard: rows with `source LIKE 'MOCK_%'` are excluded. Mock series
+    exist so the pipeline stays runnable offline / on missing keys, but
+    their values are deterministic ballpark numbers — anchoring the
+    headline pump price on them would silently mislead users.
+
     Spike guard: the freshest row is discarded in favour of the trailing
     median when it deviates by more than PUMP_SPIKE_THRESHOLD. A single
     outlier crowd report otherwise anchors every card and county for a day.
@@ -256,7 +261,9 @@ def _latest_observed_pump(fuel_type: str) -> float | None:
     with connection() as conn:
         rows = conn.execute(
             "SELECT price_eur_per_litre FROM fuel_prices "
-            "WHERE country='IE' AND fuel_type=? ORDER BY date DESC LIMIT 8",
+            "WHERE country='IE' AND fuel_type=? "
+            "AND source NOT LIKE 'MOCK\\_%' ESCAPE '\\' "
+            "ORDER BY date DESC LIMIT 8",
             (fuel_type,),
         ).fetchall()
     if not rows:
