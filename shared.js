@@ -294,6 +294,13 @@ const DragComparePlugin = {
         const color = ds.borderColor;
         const { ctx, scales } = chart;
         ctx.save();
+        // Faint span rect between anchor and current so the compared window
+        // reads at a glance without staring at the two vertical dashes.
+        const x0 = Math.min(a.x, b.x);
+        const x1 = Math.max(a.x, b.x);
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.08;
+        ctx.fillRect(x0, scales.y.top, x1 - x0, scales.y.bottom - scales.y.top);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.55;
         ctx.lineWidth = 1;
@@ -638,21 +645,36 @@ function attachDragCompare(canvasId, popupId) {
         }
     }
 
-    canvas.addEventListener("mousedown", (e) => {
+    // Pointer events unify mouse, pen, and touch. touch-action: none on the
+    // canvas (in style.css) blocks native panning while the finger drags, so
+    // the compare gesture works on phones.
+    let activePointerId = null;
+    canvas.addEventListener("pointerdown", (e) => {
         const cur = nearestOnMousedown(e);
         if (!cur) return;
         dragging = true;
+        activePointerId = e.pointerId;
         anchorIndex = cur.index;
         datasetIndex = cur.datasetIndex;
         e.preventDefault();
+        try { canvas.setPointerCapture(e.pointerId); } catch { /* older browsers */ }
         render(e, cur);
     });
-    window.addEventListener("mousemove", (e) => {
+    window.addEventListener("pointermove", (e) => {
         if (!dragging) return;
+        if (activePointerId != null && e.pointerId !== activePointerId) return;
         render(e);
     });
-    window.addEventListener("mouseup", () => { dragging = false; });
-    document.addEventListener("mousedown", (e) => {
+    const endDrag = (e) => {
+        if (!dragging) return;
+        if (activePointerId != null && e.pointerId !== activePointerId) return;
+        dragging = false;
+        try { canvas.releasePointerCapture(activePointerId); } catch { /* noop */ }
+        activePointerId = null;
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    document.addEventListener("pointerdown", (e) => {
         if (dragging) return;
         if (popup.hidden) return;
         if (!canvas.contains(e.target) && !popup.contains(e.target)) clear();

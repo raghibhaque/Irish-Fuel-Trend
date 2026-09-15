@@ -715,7 +715,7 @@ h2 .muted {
     background-size: 24px 24px;
     background-position: 0 0;
 }
-.chart-wrap canvas { cursor: crosshair; }
+.chart-wrap canvas { cursor: crosshair; touch-action: none; }
 
 .dc-popup {
     position: absolute;
