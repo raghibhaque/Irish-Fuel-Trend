@@ -26,6 +26,14 @@ Source: yfinance ticker `BNO`. Free, no API key. Mock fallback (derived
 from the existing Brent series with a small deterministic offset) keeps the
 pipeline runnable offline. Set `IRISH_FUEL_FORCE_MOCK_BRENT_CURVE=1` to
 force the mock.
+
+Second curve point: `USL` (United States 12 Month Oil Fund). USL holds an
+equal-weighted ladder of the next 12 WTI futures — its return vs the
+front-month WTI captures the M1→M12 curve slope, a longer-dated view than
+BNO's M1→M3-ish exposure. When Brent and WTI curve slopes diverge (Brent
+backwardated while WTI is flat, say) that is itself a signal of regional
+supply tightness biting European wholesale. Ingested into the same
+`brent_curve_etf` table via `usl_price_usd` (added by the db migration).
 """
 from __future__ import annotations
 
@@ -42,16 +50,16 @@ logger = logging.getLogger(__name__)
 REAL_SOURCE = "YFINANCE_BNO"
 MOCK_SOURCE = "MOCK_BRENT_CURVE_v1"
 YF_TICKER = "BNO"
+YF_TICKER_USL = "USL"
 
 
 # --------------- REAL: yfinance ---------------
-def fetch_real_daily() -> list[tuple[date, float]]:
-    """Fetch full-history BNO daily close via yfinance. Raises on failure."""
+def _fetch_yf_close(ticker_symbol: str) -> list[tuple[date, float]]:
     import yfinance as yf
-    ticker = yf.Ticker(YF_TICKER)
+    ticker = yf.Ticker(ticker_symbol)
     hist = ticker.history(period="max", interval="1d", auto_adjust=False)
     if hist is None or hist.empty or "Close" not in hist.columns:
-        raise RuntimeError(f"yfinance returned empty history for {YF_TICKER}")
+        raise RuntimeError(f"yfinance returned empty history for {ticker_symbol}")
     hist = hist[hist["Close"].notna()]
     rows: list[tuple[date, float]] = []
     for ts, close in hist["Close"].items():
@@ -59,6 +67,16 @@ def fetch_real_daily() -> list[tuple[date, float]]:
         rows.append((d, round(float(close), 4)))
     rows.sort(key=lambda t: t[0])
     return rows
+
+
+def fetch_real_daily() -> list[tuple[date, float]]:
+    """Fetch full-history BNO daily close via yfinance. Raises on failure."""
+    return _fetch_yf_close(YF_TICKER)
+
+
+def fetch_real_usl_daily() -> list[tuple[date, float]]:
+    """Fetch full-history USL (12-mo WTI ladder ETF) daily close. Raises on failure."""
+    return _fetch_yf_close(YF_TICKER_USL)
 
 
 # --------------- MOCK fallback ---------------
@@ -138,6 +156,26 @@ def upsert_prices(rows: list[tuple[date, float]], source: str) -> int:
     return len(payload)
 
 
+def upsert_usl_prices(rows: list[tuple[date, float]]) -> int:
+    """Store USL closes into the usl_price_usd column of brent_curve_etf.
+
+    USL rows are keyed on date and update the existing row (created by the
+    BNO ingest) so we retain a single row per trading day rather than
+    duplicating storage.
+    """
+    sql = """
+        INSERT INTO brent_curve_etf (date, price_usd, usl_price_usd, source)
+        VALUES (?, 0.0, ?, ?)
+        ON CONFLICT(date) DO UPDATE SET
+            usl_price_usd = excluded.usl_price_usd,
+            inserted_at   = CURRENT_TIMESTAMP;
+    """
+    payload = [(d.isoformat(), price, "YFINANCE_USL") for d, price in rows]
+    with connection() as conn:
+        conn.executemany(sql, payload)
+    return len(payload)
+
+
 def ingest(force_download: bool = False) -> dict:
     _ = force_download
     force_mock = os.environ.get("IRISH_FUEL_FORCE_MOCK_BRENT_CURVE") == "1"
@@ -168,4 +206,56 @@ def ingest(force_download: bool = False) -> dict:
         "rows_written": written,
         "date_range": (series[0][0].isoformat(), series[-1][0].isoformat()),
         "latest_usd": series[-1][1],
+    }
+
+
+def ingest_usl(force_download: bool = False) -> dict:
+    """Fetch USL closes into brent_curve_etf.usl_price_usd. Mock fallback derives
+    a level from the existing BNO series shifted slightly, so a curve-slope
+    feature is defined even offline."""
+    _ = force_download
+    force_mock = os.environ.get("IRISH_FUEL_FORCE_MOCK_BRENT_CURVE") == "1"
+    if not force_mock:
+        try:
+            rows = fetch_real_usl_daily()
+            written = upsert_usl_prices(rows)
+            return {
+                "mock": False,
+                "source": "YFINANCE_USL",
+                "rows_written": written,
+                "date_range": (rows[0][0].isoformat(), rows[-1][0].isoformat()),
+                "latest_usd": rows[-1][1],
+            }
+        except Exception as e:
+            logger.warning("Real USL fetch failed (%s). Falling back to mock.", e)
+
+    with connection() as conn:
+        bno_rows = conn.execute(
+            "SELECT date, price_usd FROM brent_curve_etf ORDER BY date"
+        ).fetchall()
+    if not bno_rows:
+        return {"mock": True, "source": "MOCK_USL_v1", "rows_written": 0}
+    # Mock USL as BNO scaled up ~50% (matches rough $30 vs $45 real levels)
+    # with a small deterministic offset so the two series aren't collinear.
+    mock_rows: list[tuple[date, float]] = []
+    rng = random.Random(9931)
+    for i, r in enumerate(bno_rows):
+        raw = r["date"]
+        if isinstance(raw, date):
+            d = raw
+        elif isinstance(raw, datetime):
+            d = raw.date()
+        else:
+            d = datetime.fromisoformat(str(raw)).date()
+        base = float(r["price_usd"]) * 1.5
+        noise = rng.gauss(0.0, 0.3)
+        seasonal = 0.4 * math.sin(i / 120.0)
+        mock_rows.append((d, round(base + noise + seasonal, 4)))
+    written = upsert_usl_prices(mock_rows)
+    return {
+        "mock": True,
+        "source": "MOCK_USL_v1",
+        "rows_written": written,
+        "date_range": (mock_rows[0][0].isoformat(), mock_rows[-1][0].isoformat()),
+        "latest_usd": mock_rows[-1][1],
     }

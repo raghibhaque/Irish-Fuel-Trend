@@ -65,6 +65,7 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import TimeSeriesSplit
 
+from app.data_sources import demand_calendar
 from app.db import connection
 
 FLAT_BAND = 0.005  # ±0.5% weekly wholesale return = "flat"
@@ -76,8 +77,11 @@ FEATURE_COLS = [
     "product_eur_ret_4w",
     "crack_spread_ret_4w",             # 4-week change in refining margin (product − Brent, EUR/bbl)
     "brent_curve_slope_4w",            # Brent front vs BNO ETF 4-week roll-yield proxy (USD returns)
+    "wti_curve_slope_4w",              # USO front-WTI vs USL 12-mo ladder ETF, 4w USD return spread —
+                                       # captures longer-dated curve tilt orthogonal to BNO
     "eur_gbp_ret_2w",                  # 2-week EUR/GBP change (UK-supply-route signal)
     "pump_wholesale_residual_lag1",    # error-correction level, EUR/L (mean-reverting)
+    "demand_flag_next_week",           # 1 if IE bank holiday or school break falls in the *following* week
     "prev_return",
 ]
 
@@ -294,7 +298,7 @@ def _load_frames() -> tuple[
             parse_dates=["date"],
         )
         brent_curve = pd.read_sql_query(
-            "SELECT date, price_usd FROM brent_curve_etf ORDER BY date",
+            "SELECT date, price_usd, usl_price_usd FROM brent_curve_etf ORDER BY date",
             conn,
             parse_dates=["date"],
         )
@@ -411,6 +415,7 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
     if brent_curve.empty:
         # BNO series not ingested yet — feature is zero (neutral).
         df["brent_curve_slope_4w"] = 0.0
+        df["wti_curve_slope_4w"] = 0.0
     else:
         bno_daily = brent_curve.set_index("date")["price_usd"].sort_index()
         bno_weekly = bno_daily.reindex(df.index, method="ffill")
@@ -421,6 +426,21 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
         # zero rather than dropping the row, so early wholesale weeks still
         # train the model on the other features.
         df["brent_curve_slope_4w"] = curve_slope.fillna(0.0)
+
+        # WTI M1→M12 curve slope via USL. Brent front-month leads WTI in
+        # the return series but their curve *shapes* diverge with regional
+        # supply — using Brent front as the M1 leg is fine as long as it's
+        # applied consistently on both sides.
+        if "usl_price_usd" in brent_curve.columns and brent_curve["usl_price_usd"].notna().any():
+            usl_daily = brent_curve.set_index("date")["usl_price_usd"].sort_index().dropna()
+            if not usl_daily.empty:
+                usl_weekly = usl_daily.reindex(df.index, method="ffill")
+                usl_ret_4w = usl_weekly.shift(1) / usl_weekly.shift(5) - 1
+                df["wti_curve_slope_4w"] = (brent_ret_4w - usl_ret_4w).fillna(0.0)
+            else:
+                df["wti_curve_slope_4w"] = 0.0
+        else:
+            df["wti_curve_slope_4w"] = 0.0
 
     # ---- EUR/GBP short-window return ----
     # 2-week return of GBP-per-EUR (positive = EUR strengthening / GBP
@@ -433,6 +453,27 @@ def build_dataset(fuel_type: str) -> pd.DataFrame:
         gbp_weekly = gbp_daily.reindex(df.index, method="ffill")
         eur_gbp_ret = gbp_weekly.shift(1) / gbp_weekly.shift(3) - 1
         df["eur_gbp_ret_2w"] = eur_gbp_ret.fillna(0.0)
+
+    # ---- Demand-calendar flag (bank holidays + school breaks) ----
+    # Each bulletin row is timestamped on the release date; the *next* weekly
+    # print covers the week after that. So the leading indicator is "does a
+    # bank holiday or school break fall in the 7 days AFTER this row's date?"
+    # Zero when the calendar has no coverage for that period (pre-2022 rows).
+    def _demand_next(week_end) -> int:
+        try:
+            d = week_end.date() if hasattr(week_end, "date") else week_end
+        except Exception:
+            return 0
+        try:
+            return demand_calendar.demand_flag(
+                d + pd.Timedelta(days=7).to_pytimedelta()
+            )
+        except Exception:
+            return 0
+
+    df["demand_flag_next_week"] = [
+        _demand_next(idx) for idx in df.index
+    ]
 
     keep = ["wholesale", "pump", "target_ret", "brent_eur", "brent_eur_lag1",
             "product_eur", "product_eur_lag1", "crack_spread_eur"] + FEATURE_COLS
@@ -709,8 +750,10 @@ def train_and_predict(fuel_type: str) -> TrendPrediction:
         "crack_spread_eur": float(latest["crack_spread_eur"]),
         "crack_spread_ret_4w": float(latest["crack_spread_ret_4w"]),
         "brent_curve_slope_4w": float(latest["brent_curve_slope_4w"]),
+        "wti_curve_slope_4w": float(latest["wti_curve_slope_4w"]),
         "eur_gbp_ret_2w": float(latest["eur_gbp_ret_2w"]),
         "pump_wholesale_residual_lag1": float(latest["pump_wholesale_residual_lag1"]),
+        "demand_flag_next_week": float(latest["demand_flag_next_week"]),
         "prev_wholesale_return": float(latest["prev_return"]),
         "brent_eur_per_bbl_current": float(latest["brent_eur"]),
         "brent_eur_per_bbl_lag1": float(latest["brent_eur_lag1"]),

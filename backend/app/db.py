@@ -43,9 +43,22 @@ CREATE TABLE IF NOT EXISTS fx_rates (
 CREATE TABLE IF NOT EXISTS brent_curve_etf (
     date          DATE PRIMARY KEY,
     price_usd     REAL NOT NULL,
+    usl_price_usd REAL,                       -- USL 12-mo WTI ladder ETF close, added later
     source        TEXT NOT NULL,
     inserted_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- CSO Ireland monthly retail fuel Consumer Price Index (matrix CPM17).
+-- Index base 2016 = 100. One row per month per fuel_type.
+CREATE TABLE IF NOT EXISTS cso_fuel_index (
+    date         DATE    NOT NULL,        -- month-end date
+    fuel_type    TEXT    NOT NULL,        -- 'petrol' | 'diesel'
+    index_value  REAL    NOT NULL,
+    source       TEXT    NOT NULL,
+    inserted_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (date, fuel_type)
+);
+CREATE INDEX IF NOT EXISTS ix_cso_fuel_index_date ON cso_fuel_index(date);
 
 CREATE TABLE IF NOT EXISTS brent_crude (
     date                    DATE PRIMARY KEY,
@@ -169,6 +182,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE fuel_prices ADD COLUMN price_wo_tax_eur_per_litre REAL;")
     if not _column_exists(conn, "fx_rates", "eur_gbp"):
         conn.execute("ALTER TABLE fx_rates ADD COLUMN eur_gbp REAL;")
+    if not _column_exists(conn, "brent_curve_etf", "usl_price_usd"):
+        conn.execute("ALTER TABLE brent_curve_etf ADD COLUMN usl_price_usd REAL;")
 
 
 def init_db() -> None:

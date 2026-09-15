@@ -20,13 +20,16 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.data_sources import (
+    aa_ireland,
     brent_crude,
     brent_curve,
+    cso_fuel_index,
     eu_oil_bulletin,
     fuelwatch_counties,
     fuelwatch_ie,
     fx_rates,
     news_monitor,
+    pumps_ie,
     refined_products,
 )
 
@@ -76,6 +79,10 @@ def start() -> BackgroundScheduler:
                   CronTrigger(hour=22, minute=5),
                   id="brent_curve", replace_existing=True, max_instances=1)
 
+    sched.add_job(_safe(brent_curve.ingest_usl, "brent_curve_usl"),
+                  CronTrigger(hour=22, minute=7),
+                  id="brent_curve_usl", replace_existing=True, max_instances=1)
+
     sched.add_job(_safe(refined_products.ingest, "refined"),
                   CronTrigger(hour=22, minute=15),
                   id="refined", replace_existing=True, max_instances=1)
@@ -83,6 +90,18 @@ def start() -> BackgroundScheduler:
     sched.add_job(_safe(eu_oil_bulletin.ingest, "bulletin"),
                   CronTrigger(day_of_week="mon", hour=10, minute=0),
                   id="bulletin", replace_existing=True, max_instances=1)
+
+    sched.add_job(_safe(pumps_ie.ingest, "pumps"),
+                  CronTrigger(hour=6, minute=20),
+                  id="pumps", replace_existing=True, max_instances=1)
+
+    sched.add_job(_safe(aa_ireland.ingest, "aa"),
+                  CronTrigger(day_of_week="mon", hour=10, minute=20),
+                  id="aa", replace_existing=True, max_instances=1)
+
+    sched.add_job(_safe(cso_fuel_index.ingest, "cso"),
+                  CronTrigger(day=15, hour=10, minute=30),
+                  id="cso", replace_existing=True, max_instances=1)
 
     sched.start()
     _scheduler = sched
