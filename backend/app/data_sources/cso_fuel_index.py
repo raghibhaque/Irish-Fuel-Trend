@@ -1,23 +1,18 @@
-"""CSO Ireland monthly retail fuel price index.
+"""CSO Ireland monthly retail fuel Consumer Price sub-indices.
 
 Source: Central Statistics Office (CSO) PxStat / JSON-Stat API. Public,
-no auth. The "CPM17" table publishes Consumer Price Index components,
-including "Petrol" and "Diesel" per litre indices used to compute the
-official inflation basket. Refreshed monthly, one working-day lag.
+no auth. Matrix `CPM18` ("Consumer Price Index") publishes monthly
+sub-indices for the individual COICOP-classified consumer basket
+items, including "Petrol" (code 07221) and "Diesel" (code 07222).
+Refreshed monthly, one working-day lag.
 
-Endpoint (JSON-Stat 2.0):
-    https://ws.cso.ie/public/api.jsonrpc
-
-Method:
-    PxStat.Data.Cube_API.ReadDataset
-    { "class": "query", "id": [], "dimension": {}, "extension":
-      { "pivot": null, "codes": false, "language": { "code": "en" },
-        "format": { "type": "JSON-stat", "version": "2.0" },
-        "matrix": "CPM17" } }
-
-Index base: 2016 = 100. Not a currency price — a unit-less index. Feed
-into the model as a slow-moving trend indicator (month-on-month change)
-to catch retail-side stickiness that weekly wholesale data misses.
+CSO retired its monthly national-average petrol price series (matrix
+CPM04) in 2011 — CPM18's index is the only monthly CSO series that
+tracks Irish forecourt prices to the current month. Unit-less index
+(rebased periodically; latest base December 2023 = 100 under statistic
+CPM18C01). Stored as `index_value` in cso_fuel_index and fed into the
+model as a slow-moving trend anchor whose month-on-month change catches
+retail-side stickiness that weekly wholesale data misses.
 
 Real fetch is best-effort; on failure we emit a deterministic mock series
 that mirrors typical CPI oscillation so downstream code stays runnable.
@@ -38,22 +33,24 @@ from app.db import connection
 
 logger = logging.getLogger(__name__)
 
-REAL_SOURCE = "CSO_CPM17"
-MOCK_SOURCE = "MOCK_CSO_CPM17_v1"
+REAL_SOURCE = "CSO_CPM18"
+MOCK_SOURCE = "MOCK_CSO_CPM18_v1"
 
 ENDPOINT = "https://ws.cso.ie/public/api.jsonrpc"
-MATRIX = "CPM17"
+MATRIX = "CPM18"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (irish-fuel-trend/0.1; +https://github.com/)",
     "Content-Type": "application/json",
 }
 
-# Product codes inside the CSO CPM17 matrix. These strings are the
-# canonical labels the CSO uses; if their layout ever changes we log and
-# fall back to the mock.
-PRODUCT_PETROL_LABELS = {"Petrol", "Petrol (per litre)"}
-PRODUCT_DIESEL_LABELS = {"Diesel", "Auto Diesel", "Diesel (per litre)"}
+# COICOP sub-index codes inside CPM18. Stable across quarterly rebasings.
+PRODUCT_CODE_PETROL = "07221"
+PRODUCT_CODE_DIESEL = "07222"
+
+# STATISTIC slot to read (CPM18C01 = the raw index; C02/C03 are month-on-month
+# and year-on-year percentage-change derivatives which we don't need).
+STATISTIC_CODE_INDEX = "CPM18C01"
 
 
 def _month_end(year: int, month: int) -> date:
@@ -65,18 +62,49 @@ def _month_start(year: int, month: int) -> date:
 
 
 def _parse_period(code: str) -> date | None:
-    """CSO period codes look like '2024M03'. Return month-end date."""
-    if "M" not in code:
-        return None
-    try:
-        y_str, m_str = code.split("M", 1)
-        return _month_end(int(y_str), int(m_str))
-    except (ValueError, IndexError):
-        return None
+    """Parse a CSO period code. Two shapes observed:
+       * '2024M03'  (older matrices)
+       * '202403'   (CPM04 and newer, no separator)
+    Both map to the same month-end date.
+    """
+    if "M" in code:
+        try:
+            y_str, m_str = code.split("M", 1)
+            return _month_end(int(y_str), int(m_str))
+        except (ValueError, IndexError):
+            return None
+    if len(code) == 6 and code.isdigit():
+        try:
+            return _month_end(int(code[:4]), int(code[4:]))
+        except ValueError:
+            return None
+    return None
 
 
 def fetch_real_series() -> list[tuple[date, str, float]] | None:
-    """Best-effort call to the CSO JSON-RPC endpoint. Returns None on failure."""
+    """Best-effort call to the CSO JSON-RPC endpoint. Returns None on failure.
+
+    JSON-Stat 2.0 allows `category.index` to be either an ordered dict
+    ({code: position}) or a plain array (position implied by list index).
+    Both shapes handled below. Any parse failure downgrades to mock.
+    """
+    try:
+        return _fetch_real_series_impl()
+    except Exception as e:
+        logger.warning("CSO parse failed: %s", e)
+        return None
+
+
+def _index_as_map(index_field) -> dict[str, int]:
+    """Coerce category.index (dict or list) into {code: position}."""
+    if isinstance(index_field, dict):
+        return {k: int(v) for k, v in index_field.items()}
+    if isinstance(index_field, list):
+        return {code: pos for pos, code in enumerate(index_field)}
+    return {}
+
+
+def _fetch_real_series_impl() -> list[tuple[date, str, float]] | None:
     payload = {
         "jsonrpc": "2.0",
         "method": "PxStat.Data.Cube_API.ReadDataset",
@@ -117,20 +145,26 @@ def fetch_real_series() -> list[tuple[date, str, float]] | None:
     if not dim_ids or not sizes or len(dim_ids) != len(sizes):
         logger.warning("CSO response layout unexpected")
         return None
-    # Product & time dim indices.
+    # Product & time dim indices. Time dims in PxStat carry "TLIST" in the
+    # code and class="time"; product dims carry a "C…V…" code.
     time_idx = next((i for i, d in enumerate(dim_ids)
                      if dims.get(d, {}).get("class") == "time"
-                     or d.upper().startswith("T")), None)
+                     or "TLIST" in d.upper() or d.upper().startswith("T")), None)
     prod_idx = next((i for i, d in enumerate(dim_ids)
-                     if d.lower().startswith("cpm") or "product" in d.lower()),
-                    None)
+                     if d.upper().startswith("C") and "V" in d.upper()
+                     and i != time_idx), None)
     if time_idx is None or prod_idx is None:
-        # Fall back to positional guess: first dim = product, last = time.
-        prod_idx, time_idx = 0, len(dim_ids) - 1
-    time_cats = list(((dims[dim_ids[time_idx]] or {}).get("category", {}).get("index") or {}).keys())
+        # Fall back to positional guess: last dim = time, first non-STATISTIC = product.
+        time_idx = len(dim_ids) - 1
+        prod_idx = next((i for i, d in enumerate(dim_ids)
+                         if d.upper() != "STATISTIC" and i != time_idx), 0)
+    time_index_raw = (dims[dim_ids[time_idx]] or {}).get("category", {}).get("index")
+    time_index_map = _index_as_map(time_index_raw)
+    # Order codes by their declared position so slice indices align with the flat value array.
+    time_cats = [code for code, _ in sorted(time_index_map.items(), key=lambda kv: kv[1])]
     prod_cats_map = ((dims[dim_ids[prod_idx]] or {}).get("category") or {})
     prod_labels = prod_cats_map.get("label") or {}
-    prod_index_map = prod_cats_map.get("index") or {}
+    prod_index_map = _index_as_map(prod_cats_map.get("index"))
     if not time_cats or not prod_index_map:
         logger.warning("CSO response missing time or product categories")
         return None
@@ -145,13 +179,13 @@ def fetch_real_series() -> list[tuple[date, str, float]] | None:
 
     rows: list[tuple[date, str, float]] = []
     for prod_code, prod_pos in prod_index_map.items():
-        label = prod_labels.get(prod_code, "")
-        if label in PRODUCT_PETROL_LABELS:
+        if prod_code == PRODUCT_CODE_PETROL:
             fuel = "petrol"
-        elif label in PRODUCT_DIESEL_LABELS:
+        elif prod_code == PRODUCT_CODE_DIESEL:
             fuel = "diesel"
         else:
             continue
+        _ = prod_labels.get(prod_code, "")  # label carried by CSO — unused after code match
         for t_pos, t_code in enumerate(time_cats):
             d = _parse_period(t_code)
             if d is None:
@@ -177,7 +211,7 @@ MOCK_SEED_BASE = 5719
 
 
 def generate_mock_series() -> list[tuple[date, str, float]]:
-    """Mock CPI series: base 100 in 2016, gently rising with seasonal ripple."""
+    """Mock CPI index series: base 100 in Dec 2023, gently rising with seasonal ripple."""
     today = date.today()
     year, month = 2020, 1
     out: list[tuple[date, str, float]] = []
@@ -186,8 +220,8 @@ def generate_mock_series() -> list[tuple[date, str, float]]:
         d = _month_end(year, month)
         seasonal = 3.0 * math.sin(i / 6.0 * math.pi)
         drift = 0.6 * i
-        petrol = round(120.0 + drift + seasonal, 3)
-        diesel = round(118.0 + drift + seasonal * 0.85, 3)
+        petrol = round(90.0 + drift + seasonal, 3)
+        diesel = round(88.0 + drift + seasonal * 0.85, 3)
         out.append((d, "petrol", petrol))
         out.append((d, "diesel", diesel))
         month += 1

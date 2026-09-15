@@ -157,23 +157,27 @@ def upsert_prices(rows: list[tuple[date, float]], source: str) -> int:
 
 
 def upsert_usl_prices(rows: list[tuple[date, float]]) -> int:
-    """Store USL closes into the usl_price_usd column of brent_curve_etf.
+    """Update usl_price_usd on existing brent_curve_etf rows.
 
-    USL rows are keyed on date and update the existing row (created by the
-    BNO ingest) so we retain a single row per trading day rather than
-    duplicating storage.
+    USL-only rows (i.e. dates before BNO began trading in 2010-06) are
+    dropped rather than inserted with a stub price_usd — the model uses
+    the BNO/Brent spread as one slope proxy and would treat a zero price
+    as a real value, producing infinite returns. The USL leg is only
+    useful *alongside* BNO, so gating updates on existing BNO rows is
+    the correct behaviour.
     """
     sql = """
-        INSERT INTO brent_curve_etf (date, price_usd, usl_price_usd, source)
-        VALUES (?, 0.0, ?, ?)
-        ON CONFLICT(date) DO UPDATE SET
-            usl_price_usd = excluded.usl_price_usd,
-            inserted_at   = CURRENT_TIMESTAMP;
+        UPDATE brent_curve_etf
+           SET usl_price_usd = ?,
+               inserted_at   = CURRENT_TIMESTAMP
+         WHERE date = ?;
     """
-    payload = [(d.isoformat(), price, "YFINANCE_USL") for d, price in rows]
+    updated = 0
     with connection() as conn:
-        conn.executemany(sql, payload)
-    return len(payload)
+        for d, price in rows:
+            cur = conn.execute(sql, (price, d.isoformat()))
+            updated += cur.rowcount
+    return updated
 
 
 def ingest(force_download: bool = False) -> dict:
