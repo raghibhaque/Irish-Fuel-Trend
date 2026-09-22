@@ -20,6 +20,7 @@ Data path:
 from __future__ import annotations
 
 import logging
+from datetime import date
 from typing import Iterable
 
 from app.data_sources import fuelwatch_client
@@ -50,11 +51,19 @@ def fetch_daily_snapshots(limit: int = DEFAULT_LOOKBACK_DAYS) -> list[dict]:
 
 
 def _iter_rows(snapshots: list[dict]) -> Iterable[tuple[str, str, float]]:
+    # Upstream has occasionally returned rows dated in the future (typo /
+    # timezone bug in the crowd app). Silently ignore anything past today —
+    # a future-dated point poisons the "latest" pointer everywhere downstream
+    # (charts, decision light, share cards).
+    today_iso = date.today().isoformat()
     for row in snapshots:
         d = row.get("snapshot_date")
         p = row.get("petrol_avg")
         di = row.get("diesel_avg")
         if not d:
+            continue
+        if d > today_iso:
+            logger.warning("dropping future-dated fuelwatch snapshot: %s", d)
             continue
         if p is not None:
             yield d, "petrol", float(p)
@@ -90,6 +99,12 @@ def upsert_prices(snapshots: list[dict]) -> int:
     """
     with connection() as conn:
         cutoff = _latest_bulletin_date(conn)
+        # Also purge any legacy future-dated rows already in the DB from
+        # before the guard in _iter_rows landed. One-shot cleanup — cheap.
+        conn.execute(
+            "DELETE FROM fuel_prices WHERE country=? AND source=? AND date > ?",
+            (COUNTRY, SOURCE_NAME, date.today().isoformat()),
+        )
         payload = [
             (d, COUNTRY, fuel, price, SOURCE_NAME)
             for d, fuel, price in _iter_rows(snapshots)

@@ -66,7 +66,11 @@ def main() -> int:
         summary = news_monitor.ingest()
         print("News (RSS):", summary)
 
-    if args.source in ("all", "fuelwatch"):
+    # FuelWatch daily is intentionally out of the "all" bucket — its basket
+    # is systematically ~15c below the EU Bulletin, and blending the two
+    # produced a phantom price collapse on the chart. Keep the sub-command
+    # available for manual comparison work.
+    if args.source == "fuelwatch":
         summary = fuelwatch_ie.ingest()
         print("FuelWatch.ie (daily crowd-sourced):", summary)
 
