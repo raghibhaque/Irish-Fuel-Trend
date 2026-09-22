@@ -14,7 +14,7 @@
 //
 // Bump SW_VERSION on any change here — activate handler purges old caches.
 
-const SW_VERSION = "ift-v1";
+const SW_VERSION = "ift-v2";
 const CACHE = `ift-${SW_VERSION}`;
 
 // Precache the app shell so the first offline load has something to render.
@@ -25,10 +25,10 @@ const PRECACHE = [
     "./",
     "./index.html",
     "./county.html",
-    "./style.css?v=12",
-    "./shared.js?v=10",
-    "./app.js?v=17",
-    "./county.js?v=8",
+    "./style.css?v=23",
+    "./shared.js?v=14",
+    "./app.js?v=29",
+    "./county.js?v=9",
     "./manifest.webmanifest",
     "./icon.svg",
     "./icon-maskable.svg",
