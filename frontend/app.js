@@ -1779,8 +1779,17 @@ loadManifest().then(m => {
         const chip = document.getElementById("hdr-updated");
         if (chip) { chip.textContent = "Awaiting refresh"; chip.dataset.tone = "warn"; }
     }
-    // Map is now lazy-loaded on first #/map visit — see viewshow listener above.
-    return Promise.all([loadPrices(26), loadPrediction(), loadNews()]);
+    // Map SVG is lazy — see viewshow listener above — but the Overview tile
+    // needs the counties payload up front so it does not sit on "Loading…"
+    // forever when the user never opens the Map tab.
+    return Promise.all([
+        loadPrices(26),
+        loadPrediction(),
+        loadNews(),
+        jget("data/counties.json").then(c => { mapCountiesData = c; }).catch(err => {
+            console.warn("Overview counties load failed:", err);
+        }),
+    ]);
 }).then(() => {
     updateCalculator();
     attachDragCompare("price-chart", "dc-popup");
