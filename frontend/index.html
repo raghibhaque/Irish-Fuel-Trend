@@ -494,10 +494,31 @@
     <script src="shared.js?v=14"></script>
     <script src="app.js?v=29"></script>
     <script>
+        // Service worker + auto-update. When a returning user hits a deploy
+        // with a bumped SW_VERSION, the old default (skipWaiting only) still
+        // required a manual second refresh before fresh assets served. Ping
+        // any waiting worker with SKIP_WAITING, then reload once its
+        // controllerchange fires so returning users always see the new build.
         if ("serviceWorker" in navigator) {
+            let swReloaded = false;
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+                if (swReloaded) return;
+                swReloaded = true;
+                location.reload();
+            });
             window.addEventListener("load", () => {
-                navigator.serviceWorker.register("sw.js").catch(err =>
-                    console.warn("SW registration failed:", err));
+                navigator.serviceWorker.register("sw.js").then((reg) => {
+                    if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                    reg.addEventListener("updatefound", () => {
+                        const nw = reg.installing;
+                        if (!nw) return;
+                        nw.addEventListener("statechange", () => {
+                            if (nw.state === "installed" && navigator.serviceWorker.controller) {
+                                nw.postMessage({ type: "SKIP_WAITING" });
+                            }
+                        });
+                    });
+                }).catch(err => console.warn("SW registration failed:", err));
             });
         }
     </script>

@@ -219,9 +219,25 @@
         renderDashboardShell({ active: "county" });
         wireSidebarFuel();
         if ("serviceWorker" in navigator) {
+            let swReloaded = false;
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+                if (swReloaded) return;
+                swReloaded = true;
+                location.reload();
+            });
             window.addEventListener("load", () => {
-                navigator.serviceWorker.register("sw.js").catch(err =>
-                    console.warn("SW registration failed:", err));
+                navigator.serviceWorker.register("sw.js").then((reg) => {
+                    if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                    reg.addEventListener("updatefound", () => {
+                        const nw = reg.installing;
+                        if (!nw) return;
+                        nw.addEventListener("statechange", () => {
+                            if (nw.state === "installed" && navigator.serviceWorker.controller) {
+                                nw.postMessage({ type: "SKIP_WAITING" });
+                            }
+                        });
+                    });
+                }).catch(err => console.warn("SW registration failed:", err));
             });
         }
     </script>

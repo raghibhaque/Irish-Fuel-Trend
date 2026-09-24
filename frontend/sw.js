@@ -14,7 +14,7 @@
 //
 // Bump SW_VERSION on any change here — activate handler purges old caches.
 
-const SW_VERSION = "ift-v2";
+const SW_VERSION = "ift-v3";
 const CACHE = `ift-${SW_VERSION}`;
 
 // Precache the app shell so the first offline load has something to render.
@@ -38,6 +38,12 @@ self.addEventListener("install", (event) => {
     event.waitUntil(
         caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()),
     );
+});
+
+// Page can ping us to activate a waiting SW immediately after a version bump —
+// avoids the "one manual refresh needed" trap for returning users.
+self.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
