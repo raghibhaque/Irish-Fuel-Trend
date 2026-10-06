@@ -757,6 +757,8 @@ const SIDEBAR_NAV = [
       icon: `<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>` },
     { key: "track",    label: "Track",    href: "index.html#/track",
       icon: `<path d="M4 5h16M4 12h10M4 19h6"/><circle cx="18" cy="15" r="3"/>` },
+    { key: "plan",     label: "Plan",     href: "index.html#/plan",
+      icon: `<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="12" cy="15" r="1.6"/>` },
     { key: "analyse",  label: "Analyse",  href: "index.html#/analyse",
       icon: `<path d="M4 20V4"/><path d="M4 20h16"/><path d="M7 15l4-4 3 3 5-6"/>` },
     { key: "map",      label: "Map",      href: "index.html#/map",

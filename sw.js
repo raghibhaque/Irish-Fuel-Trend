@@ -14,7 +14,7 @@
 //
 // Bump SW_VERSION on any change here — activate handler purges old caches.
 
-const SW_VERSION = "ift-v3";
+const SW_VERSION = "ift-v6";
 const CACHE = `ift-${SW_VERSION}`;
 
 // Precache the app shell so the first offline load has something to render.
