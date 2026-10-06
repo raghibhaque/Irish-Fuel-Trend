@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
-    <link rel="stylesheet" href="style.css?v=23">
+    <link rel="stylesheet" href="style.css?v=26">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -325,6 +325,52 @@
             </section>
 
             <!-- =========================================================
+                 PLAN
+                 ========================================================= -->
+            <section class="view" data-view="plan" id="view-plan">
+                <header class="page-header">
+                    <h2 class="page-title">Plan</h2>
+                    <p class="page-sub">Four-week fill-up calendar — the cheapest week to top up on current forecast.</p>
+                </header>
+
+                <section class="plan-controls panel" aria-label="Plan controls">
+                    <div class="plan-controls-row">
+                        <label>Tank litres
+                            <input id="plan-litres" type="number" min="1" max="500" step="1" value="60" inputmode="numeric">
+                        </label>
+                        <label>Fuel
+                            <select id="plan-fuel">
+                                <option value="petrol" selected>Petrol</option>
+                                <option value="diesel">Diesel</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="plan-verdict panel" id="plan-verdict" data-signal="neutral" aria-live="polite">
+                    <span class="plan-verdict-dot"></span>
+                    <div class="plan-verdict-body">
+                        <strong id="plan-verdict-headline">Loading forecast…</strong>
+                        <span class="muted" id="plan-verdict-detail"></span>
+                    </div>
+                </section>
+
+                <section class="plan-calendar panel" id="plan-calendar" aria-label="Four-week fill-up calendar">
+                    <div class="plan-cal-head" aria-hidden="true">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                    <div class="plan-cal-grid" id="plan-cal-grid"></div>
+                    <div class="plan-cal-legend" aria-hidden="true">
+                        <span class="plan-legend-label">Cheaper</span>
+                        <span class="plan-legend-bar"></span>
+                        <span class="plan-legend-label">Pricier</span>
+                    </div>
+                </section>
+
+                <p class="plan-hint muted">Based on the national weekly model. Signal fades past ~4 weeks — later weeks carry wider uncertainty than earlier ones.</p>
+            </section>
+
+            <!-- =========================================================
                  ANALYSE
                  ========================================================= -->
             <section class="view" data-view="analyse" id="view-analyse">
@@ -491,8 +537,8 @@
         </main>
     </div>
 
-    <script src="shared.js?v=14"></script>
-    <script src="app.js?v=29"></script>
+    <script src="shared.js?v=15"></script>
+    <script src="app.js?v=32"></script>
     <script>
         // Service worker + auto-update. When a returning user hits a deploy
         // with a bumped SW_VERSION, the old default (skipWaiting only) still

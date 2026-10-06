@@ -366,6 +366,7 @@ async function loadPrediction() {
     initSharePanel().catch(err => console.error(err));
     document.getElementById("prediction-notes").textContent = (data.notes || []).join("  ");
     updateCalculator();
+    renderPlan();
     // If the historical chart already rendered before predictionData arrived,
     // redraw it so the forecast tail + confidence band appear.
     if (priceData) {
@@ -899,6 +900,178 @@ function predictedPumpAtWeeks(p, weeks) {
     const oneWeekDelta = p.predicted_pump_eur_per_l - now;
     const factor = oneWeekDelta / ret;
     return now + factor * (Math.pow(1 + ret, weeks) - 1);
+}
+
+// ------------------ plan (fill-up calendar) ------------------
+// Four weekly cards: predicted pump price for each of the next 4 weeks.
+// Cheapest week flagged; verdict compares that week to today so the user
+// gets a one-line "fill now" / "wait N weeks" call.
+let planLitres = 60;
+
+function _weekLabel(idx) {
+    const start = new Date();
+    start.setDate(start.getDate() + idx * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const opts = { month: "short", day: "numeric" };
+    const s = start.toLocaleDateString("en-IE", opts);
+    const e = end.toLocaleDateString("en-IE", opts);
+    const prefix = ["This week", "Next week", "In 2 weeks", "In 3 weeks"][idx] || `Week +${idx}`;
+    return { prefix, range: `${s} – ${e}` };
+}
+
+// Monday of the ISO week containing `d`. Mutates a copy, not `d`.
+function _mondayOf(d) {
+    const out = new Date(d);
+    const dow = out.getDay(); // 0=Sun..6=Sat
+    const diff = (dow === 0 ? -6 : 1 - dow);
+    out.setDate(out.getDate() + diff);
+    out.setHours(0, 0, 0, 0);
+    return out;
+}
+
+// Map a normalised 0..1 "pricey" score to one of five price-band swatches.
+// Bands keep the colour scale readable at a glance; a continuous HSL gradient
+// looked muddy across the four weekly means in testing.
+function _priceBandClass(norm) {
+    if (norm <= 0.2) return "p-cheapest";
+    if (norm <= 0.4) return "p-cheap";
+    if (norm <= 0.6) return "p-mid";
+    if (norm <= 0.8) return "p-pricey";
+    return "p-priciest";
+}
+
+function renderPlan() {
+    const gridEl = document.getElementById("plan-cal-grid");
+    const verdictEl = document.getElementById("plan-verdict");
+    const headlineEl = document.getElementById("plan-verdict-headline");
+    const detailEl = document.getElementById("plan-verdict-detail");
+    if (!gridEl || !verdictEl) return;
+
+    const fuelSelect = document.getElementById("plan-fuel");
+    const fuel = fuelSelect ? fuelSelect.value : (typeof getActiveFuel === "function" ? getActiveFuel() : "petrol");
+    const litresInput = document.getElementById("plan-litres");
+    const litres = Math.max(1, parseFloat(litresInput?.value) || planLitres);
+    planLitres = litres;
+
+    if (!predictionData || !predictionData[fuel]) {
+        headlineEl.textContent = "Loading forecast…";
+        detailEl.textContent = "";
+        verdictEl.setAttribute("data-signal", "neutral");
+        gridEl.innerHTML = "";
+        return;
+    }
+    const p = predictionData[fuel];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = today.toISOString().slice(0, 10);
+    const monday0 = _mondayOf(today);
+
+    if (p.trend === "unknown") {
+        headlineEl.textContent = "Forecast unavailable";
+        detailEl.textContent = "Model is on synthetic fallback — plan paused until live inputs resume.";
+        verdictEl.setAttribute("data-signal", "neutral");
+        gridEl.innerHTML = "";
+        return;
+    }
+
+    // Weekly predicted prices: week 0 = this week (today's pump), weeks 1..3 =
+    // model's forward pump prices. The weekly model has no intra-week signal,
+    // so every day in a given row inherits that week's price — colour bands
+    // honour the model's actual resolution instead of fabricating daily drift.
+    const nowPrice = p.current_pump_eur_per_l;
+    const weekPrices = [
+        nowPrice,
+        predictedPumpAtWeeks(p, 1),
+        predictedPumpAtWeeks(p, 2),
+        predictedPumpAtWeeks(p, 3),
+    ];
+    const minPrice = Math.min(...weekPrices);
+    const maxPrice = Math.max(...weekPrices);
+    const span = Math.max(maxPrice - minPrice, 1e-9);
+    const bestWeek = weekPrices.indexOf(minPrice);
+    const worstWeek = weekPrices.indexOf(maxPrice);
+    const savedVsWorst = (maxPrice - minPrice) * litres;
+    const costVsBest = (nowPrice - minPrice) * litres;
+
+    // Build 4 × 7 grid starting at this week's Monday.
+    const dayFmt = new Intl.DateTimeFormat("en-IE", { day: "numeric" });
+    const monthFmt = new Intl.DateTimeFormat("en-IE", { month: "short" });
+    const htmlRows = [];
+    for (let w = 0; w < 4; w++) {
+        const wkPrice = weekPrices[w];
+        const norm = (wkPrice - minPrice) / span;
+        const bandCls = _priceBandClass(norm);
+        const isBest = w === bestWeek;
+        const isWorst = w === worstWeek && worstWeek !== bestWeek;
+        const rowCells = [];
+        for (let d = 0; d < 7; d++) {
+            const day = new Date(monday0);
+            day.setDate(day.getDate() + (w * 7) + d);
+            const iso = day.toISOString().slice(0, 10);
+            const isToday = iso === todayIso;
+            const isPast = day < today;
+            const dayNum = dayFmt.format(day);
+            const monthLabel = day.getDate() === 1 ? ` ${monthFmt.format(day)}` : "";
+            const cls = [
+                "plan-cal-cell",
+                bandCls,
+                isToday ? "is-today" : "",
+                isPast ? "is-past" : "",
+                isBest && d === 0 ? "has-badge" : "",
+            ].filter(Boolean).join(" ");
+            const badge = (isBest && d === 0) ? `<span class="plan-cell-badge">Fill</span>` : "";
+            const title = isPast
+                ? `${iso}`
+                : `${iso} · €${wkPrice.toFixed(3)}/L · ${litres} L ≈ €${(wkPrice * litres).toFixed(2)}`;
+            rowCells.push(
+                `<button type="button" class="${cls}" title="${title}" aria-label="${title}">
+                    <span class="plan-cell-day">${dayNum}${monthLabel}</span>
+                    ${badge}
+                </button>`
+            );
+        }
+        const rowCls = ["plan-cal-row", isBest ? "is-best" : "", isWorst ? "is-worst" : ""].filter(Boolean).join(" ");
+        const wkLabel = ["This week", "Next week", "In 2 weeks", "In 3 weeks"][w];
+        const deltaFromToday = wkPrice - nowPrice;
+        const deltaSign = deltaFromToday > 0.001 ? "up" : deltaFromToday < -0.001 ? "down" : "flat";
+        const deltaTxt = w === 0 ? "today" :
+            (deltaSign === "flat" ? "flat" :
+             `${deltaFromToday > 0 ? "+" : ""}${deltaFromToday.toFixed(3)} vs today`);
+        const wkCost = wkPrice * litres;
+        htmlRows.push(`
+            <div class="${rowCls}">
+                <div class="plan-row-meta">
+                    <span class="plan-row-when">${wkLabel}</span>
+                    <span class="plan-row-price">€${wkPrice.toFixed(3)}<span class="plan-row-unit"> /L</span></span>
+                    <span class="plan-row-tank">${litres} L ≈ €${wkCost.toFixed(2)}</span>
+                    <span class="plan-row-delta" data-sign="${deltaSign}">${deltaTxt}</span>
+                </div>
+                <div class="plan-row-days">${rowCells.join("")}</div>
+            </div>
+        `);
+    }
+    gridEl.innerHTML = htmlRows.join("");
+
+    let headline, detail, signal;
+    if (bestWeek === 0) {
+        headline = `Fill now — cheapest week in the next month.`;
+        detail = savedVsWorst > 0.01
+            ? `Saves about €${savedVsWorst.toFixed(2)} on a ${litres} L tank vs the worst week ahead.`
+            : `Prices look flat across the next 4 weeks.`;
+        signal = "now";
+    } else {
+        const label = ["", "next week", "in 2 weeks", "in 3 weeks"][bestWeek];
+        headline = `Wait — cheapest to fill ${label}.`;
+        detail = costVsBest > 0.01
+            ? `Filling today costs about €${costVsBest.toFixed(2)} more on a ${litres} L tank than waiting.`
+            : `Only a few cents in it — fill when it suits you.`;
+        signal = "wait";
+    }
+    headlineEl.textContent = headline;
+    detailEl.textContent = detail;
+    verdictEl.setAttribute("data-signal", signal);
 }
 
 function updateCalculator() {
@@ -1668,7 +1841,7 @@ function renderOverviewAll() {
 // Anything else falls back to overview. On activation of a view, fires a
 // `viewshow` CustomEvent so lazy widgets (chart resize, map init) can catch up.
 
-const ROUTES = new Set(["overview", "decide", "track", "analyse", "map"]);
+const ROUTES = new Set(["overview", "decide", "track", "plan", "analyse", "map"]);
 let mapInitStarted = false;
 
 function _routeFromHash() {
@@ -1728,6 +1901,15 @@ document.getElementById("calc-fuel").addEventListener("change", (e) => {
     if (typeof setActiveFuel === "function") setActiveFuel(e.target.value);
     updateCalculator();
 });
+// Plan view inputs: fuel + litres both just redraw the four cards and verdict.
+const planLitresEl = document.getElementById("plan-litres");
+if (planLitresEl) planLitresEl.addEventListener("input", renderPlan);
+const planFuelEl = document.getElementById("plan-fuel");
+if (planFuelEl) planFuelEl.addEventListener("change", (e) => {
+    if (typeof setActiveFuel === "function") setActiveFuel(e.target.value);
+    renderPlan();
+});
+
 document.getElementById("calc-horizon").addEventListener("click", (e) => {
     const btn = e.target.closest(".horizon-chip");
     if (!btn) return;
@@ -1763,6 +1945,10 @@ document.addEventListener("fuel:change", (e) => {
     // Refresh overview + calc against the new fuel.
     updateCalculator();
     renderOverviewAll();
+    // Keep Plan's fuel select in sync with the global toggle, then redraw.
+    const planFuel = document.getElementById("plan-fuel");
+    if (planFuel && planFuel.value !== fuel) planFuel.value = fuel;
+    renderPlan();
 });
 
 // ------------------ boot ------------------
