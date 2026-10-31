@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-30T12:50:12.337557Z",
-  "snapshot_date": "2026-10-30",
+  "generated_at": "2026-10-31T12:20:46.199485Z",
+  "snapshot_date": "2026-10-31",
   "counties": [
     {
       "county": "Carlow",
@@ -11,17 +11,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.01007622950819691,
-        "basis_raw_eur_per_litre": 0.01679371584699485,
+        "basis_eur_per_litre": 0.009524689655172613,
+        "basis_raw_eur_per_litre": 0.015874482758621022,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9808762295081968,
-        "predicted_pump_eur_per_l": 2.002847880435856,
-        "predicted_pump_low_eur_per_l": 1.9644884986664644,
-        "predicted_pump_high_eur_per_l": 2.0412072622052473,
-        "predicted_pump_3w_eur_per_l": 2.0478689628732223,
+        "current_pump_eur_per_l": 1.9803246896551725,
+        "predicted_pump_eur_per_l": 2.0022963405828316,
+        "predicted_pump_low_eur_per_l": 1.96393695881344,
+        "predicted_pump_high_eur_per_l": 2.040655722352223,
+        "predicted_pump_3w_eur_per_l": 2.047317423020198,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -398,6 +398,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.997,
             "station_count": 6
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.997,
+            "station_count": 6
           }
         ],
         "stations": []
@@ -409,17 +414,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.006899743905909562,
-        "basis_raw_eur_per_litre": 0.011212083847103038,
+        "basis_eur_per_litre": 0.005346105948846094,
+        "basis_raw_eur_per_litre": 0.008687422166874903,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1435997439059093,
-        "predicted_pump_eur_per_l": 2.1755484863901895,
-        "predicted_pump_low_eur_per_l": 2.1244366649479565,
-        "predicted_pump_high_eur_per_l": 2.2266603078324225,
-        "predicted_pump_3w_eur_per_l": 2.241282339730485,
+        "current_pump_eur_per_l": 2.142046105948846,
+        "predicted_pump_eur_per_l": 2.173994848433126,
+        "predicted_pump_low_eur_per_l": 2.122883026990893,
+        "predicted_pump_high_eur_per_l": 2.225106669875359,
+        "predicted_pump_3w_eur_per_l": 2.2397287017734215,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -796,6 +801,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.154,
             "station_count": 4
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.154,
+            "station_count": 4
           }
         ],
         "stations": []
@@ -888,22 +898,22 @@
       "county": "Cavan",
       "petrol": {
         "fuel_type": "petrol",
-        "crowd_median_eur_per_litre": 1.999,
-        "station_count": 9,
+        "crowd_median_eur_per_litre": 1.998,
+        "station_count": 8,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.006790533380431078,
-        "basis_raw_eur_per_litre": 0.014335570469798942,
+        "basis_eur_per_litre": 0.006167984934086768,
+        "basis_raw_eur_per_litre": 0.013877966101695227,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.977590533380431,
-        "predicted_pump_eur_per_l": 1.99956218430809,
-        "predicted_pump_low_eur_per_l": 1.960047096433584,
-        "predicted_pump_high_eur_per_l": 2.039077272182596,
-        "predicted_pump_3w_eur_per_l": 2.044583266745456,
+        "current_pump_eur_per_l": 1.9769679849340867,
+        "predicted_pump_eur_per_l": 1.9989396358617457,
+        "predicted_pump_low_eur_per_l": 1.9590702595218792,
+        "predicted_pump_high_eur_per_l": 2.0388090122016123,
+        "predicted_pump_3w_eur_per_l": 2.043960718299112,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -1150,28 +1160,33 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 9
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.998,
+            "station_count": 8
           }
         ],
         "stations": []
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.149,
-        "station_count": 9,
+        "crowd_median_eur_per_litre": 2.144,
+        "station_count": 8,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.006003189792663239,
-        "basis_raw_eur_per_litre": 0.01267340067340017,
+        "basis_eur_per_litre": 0.003185185185184933,
+        "basis_raw_eur_per_litre": 0.007166666666666099,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.142703189792663,
-        "predicted_pump_eur_per_l": 2.174651932276943,
-        "predicted_pump_low_eur_per_l": 2.1225860529398695,
-        "predicted_pump_high_eur_per_l": 2.2267178116140167,
-        "predicted_pump_3w_eur_per_l": 2.2403857856172387,
+        "current_pump_eur_per_l": 2.1398851851851846,
+        "predicted_pump_eur_per_l": 2.1718339276694647,
+        "predicted_pump_low_eur_per_l": 2.1194986547539374,
+        "predicted_pump_high_eur_per_l": 2.224169200584992,
+        "predicted_pump_3w_eur_per_l": 2.2375677810097603,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -1493,6 +1508,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.149,
             "station_count": 9
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.144,
+            "station_count": 8
           }
         ],
         "stations": [
@@ -1579,17 +1599,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.006100795913518825,
-        "basis_raw_eur_per_litre": 0.010793715846994845,
+        "basis_eur_per_litre": 0.005581229385307532,
+        "basis_raw_eur_per_litre": 0.009874482758621017,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9769007959135187,
-        "predicted_pump_eur_per_l": 1.9988724468411778,
-        "predicted_pump_low_eur_per_l": 1.9602432946307145,
-        "predicted_pump_high_eur_per_l": 2.037501599051641,
-        "predicted_pump_3w_eur_per_l": 2.043893529278544,
+        "current_pump_eur_per_l": 1.9763812293853074,
+        "predicted_pump_eur_per_l": 1.9983528803129664,
+        "predicted_pump_low_eur_per_l": 1.959723728102503,
+        "predicted_pump_high_eur_per_l": 2.03698203252343,
+        "predicted_pump_3w_eur_per_l": 2.0433739627503327,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -1996,6 +2016,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.969,
             "station_count": 5
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.969,
+            "station_count": 5
           }
         ],
         "stations": []
@@ -2007,17 +2032,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.0013367003366999697,
-        "basis_raw_eur_per_litre": 0.0026734006733999394,
+        "basis_eur_per_litre": 0.001083333333332881,
+        "basis_raw_eur_per_litre": 0.002166666666665762,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1380367003367,
-        "predicted_pump_eur_per_l": 2.16998544282098,
-        "predicted_pump_low_eur_per_l": 2.1181360861119263,
-        "predicted_pump_high_eur_per_l": 2.2218347995300336,
-        "predicted_pump_3w_eur_per_l": 2.2357192961612755,
+        "current_pump_eur_per_l": 2.1377833333333327,
+        "predicted_pump_eur_per_l": 2.169732075817613,
+        "predicted_pump_low_eur_per_l": 2.117882719108559,
+        "predicted_pump_high_eur_per_l": 2.2215814325266665,
+        "predicted_pump_3w_eur_per_l": 2.2354659291579084,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -2424,6 +2449,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.139,
             "station_count": 10
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.139,
+            "station_count": 10
           }
         ],
         "stations": []
@@ -2589,21 +2619,21 @@
       "petrol": {
         "fuel_type": "petrol",
         "crowd_median_eur_per_litre": 1.979,
-        "station_count": 10,
+        "station_count": 11,
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.00408080808080824,
-        "basis_raw_eur_per_litre": 0.00816161616161648,
+        "basis_eur_per_litre": 0.004620551378446292,
+        "basis_raw_eur_per_litre": 0.008821052631579285,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9748808080808082,
-        "predicted_pump_eur_per_l": 1.9968524590084673,
-        "predicted_pump_low_eur_per_l": 1.9576231055887394,
-        "predicted_pump_high_eur_per_l": 2.036081812428195,
-        "predicted_pump_3w_eur_per_l": 2.0418735414458333,
+        "current_pump_eur_per_l": 1.9754205513784462,
+        "predicted_pump_eur_per_l": 1.9973922023061053,
+        "predicted_pump_low_eur_per_l": 1.9583981889345528,
+        "predicted_pump_high_eur_per_l": 2.0363862156776578,
+        "predicted_pump_3w_eur_per_l": 2.0424132847434713,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -3010,28 +3040,40 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.989,
             "station_count": 48
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.989,
+            "station_count": 49
           }
         ],
-        "stations": []
+        "stations": [
+          {
+            "name": "Lake View Service Station",
+            "brand": "Circle K",
+            "price_eur_per_litre": 1.949,
+            "reported_at": "2026-10-30T20:15:10.85604+00:00"
+          }
+        ]
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.144,
-        "station_count": 10,
+        "crowd_median_eur_per_litre": 2.139,
+        "station_count": 11,
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.011201149425287271,
-        "basis_raw_eur_per_litre": 0.022402298850574542,
+        "basis_eur_per_litre": 0.010987378083763192,
+        "basis_raw_eur_per_litre": 0.020975903614457003,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1479011494252873,
-        "predicted_pump_eur_per_l": 2.1798498919095675,
-        "predicted_pump_low_eur_per_l": 2.128000535200514,
-        "predicted_pump_high_eur_per_l": 2.231699248618621,
-        "predicted_pump_3w_eur_per_l": 2.2455837452498626,
+        "current_pump_eur_per_l": 2.147687378083763,
+        "predicted_pump_eur_per_l": 2.179636120568043,
+        "predicted_pump_low_eur_per_l": 2.1279645935900873,
+        "predicted_pump_high_eur_per_l": 2.2313076475459988,
+        "predicted_pump_3w_eur_per_l": 2.2453699739083386,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -3436,6 +3478,11 @@
           },
           {
             "date": "2026-10-30",
+            "median_eur_per_litre": 2.149,
+            "station_count": 55
+          },
+          {
+            "date": "2026-10-31",
             "median_eur_per_litre": 2.149,
             "station_count": 55
           }
@@ -3878,17 +3925,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.007167785234899471,
-        "basis_raw_eur_per_litre": 0.014335570469798942,
+        "basis_eur_per_litre": 0.0074389830508476695,
+        "basis_raw_eur_per_litre": 0.014877966101695339,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9779677852348994,
-        "predicted_pump_eur_per_l": 1.9999394361625584,
-        "predicted_pump_low_eur_per_l": 1.9607100827428305,
-        "predicted_pump_high_eur_per_l": 2.0391687895822863,
-        "predicted_pump_3w_eur_per_l": 2.0449605185999244,
+        "current_pump_eur_per_l": 1.9782389830508476,
+        "predicted_pump_eur_per_l": 2.0002106339785066,
+        "predicted_pump_low_eur_per_l": 1.9609812805587787,
+        "predicted_pump_high_eur_per_l": 2.0394399873982345,
+        "predicted_pump_3w_eur_per_l": 2.0452317164158726,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -4280,6 +4327,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 10
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.999,
+            "station_count": 10
           }
         ],
         "stations": []
@@ -4291,17 +4343,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.0014582185491272396,
-        "basis_raw_eur_per_litre": 0.0026734006733999394,
+        "basis_eur_per_litre": 0.0011818181818176884,
+        "basis_raw_eur_per_litre": 0.002166666666665762,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.138158218549127,
-        "predicted_pump_eur_per_l": 2.170106961033407,
-        "predicted_pump_low_eur_per_l": 2.118584094351295,
-        "predicted_pump_high_eur_per_l": 2.2216298277155193,
-        "predicted_pump_3w_eur_per_l": 2.2358408143737027,
+        "current_pump_eur_per_l": 2.1378818181818176,
+        "predicted_pump_eur_per_l": 2.1698305606660977,
+        "predicted_pump_low_eur_per_l": 2.1183076939839856,
+        "predicted_pump_high_eur_per_l": 2.22135342734821,
+        "predicted_pump_3w_eur_per_l": 2.2355644140063933,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -4693,6 +4745,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.139,
             "station_count": 12
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.139,
+            "station_count": 12
           }
         ],
         "stations": [
@@ -5071,22 +5128,22 @@
       "county": "Dublin",
       "petrol": {
         "fuel_type": "petrol",
-        "crowd_median_eur_per_litre": 1.954,
-        "station_count": 32,
+        "crowd_median_eur_per_litre": 1.959,
+        "station_count": 34,
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.012829244829244687,
-        "basis_raw_eur_per_litre": -0.016838383838383653,
+        "basis_eur_per_litre": -0.008638277511961475,
+        "basis_raw_eur_per_litre": -0.011178947368420733,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9579707551707553,
-        "predicted_pump_eur_per_l": 1.9799424060984143,
-        "predicted_pump_low_eur_per_l": 1.9425295283725574,
-        "predicted_pump_high_eur_per_l": 2.017355283824271,
-        "predicted_pump_3w_eur_per_l": 2.0249634885357803,
+        "current_pump_eur_per_l": 1.9621617224880383,
+        "predicted_pump_eur_per_l": 1.9841333734156974,
+        "predicted_pump_low_eur_per_l": 1.9467702767391728,
+        "predicted_pump_high_eur_per_l": 2.021496470092222,
+        "predicted_pump_3w_eur_per_l": 2.029154455853064,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -5493,6 +5550,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.978,
             "station_count": 73
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.978,
+            "station_count": 74
           }
         ],
         "stations": [
@@ -5530,22 +5592,22 @@
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.124,
-        "station_count": 32,
+        "crowd_median_eur_per_litre": 2.119,
+        "station_count": 33,
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.0018303229337710664,
-        "basis_raw_eur_per_litre": 0.0024022988505745246,
+        "basis_eur_per_litre": 0.0007489492855138412,
+        "basis_raw_eur_per_litre": 0.0009759036144574296,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.138530322933771,
-        "predicted_pump_eur_per_l": 2.1704790654180512,
-        "predicted_pump_low_eur_per_l": 2.1199900860151883,
-        "predicted_pump_high_eur_per_l": 2.220968044820914,
-        "predicted_pump_3w_eur_per_l": 2.236212918758347,
+        "current_pump_eur_per_l": 2.1374489492855138,
+        "predicted_pump_eur_per_l": 2.169397691769794,
+        "predicted_pump_low_eur_per_l": 2.1189277063576073,
+        "predicted_pump_high_eur_per_l": 2.2198676771819805,
+        "predicted_pump_3w_eur_per_l": 2.2351315451100895,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -5952,6 +6014,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.138,
             "station_count": 71
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.138,
+            "station_count": 74
           }
         ],
         "stations": [
@@ -6620,17 +6687,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.000590198963150006,
-        "basis_raw_eur_per_litre": 0.0007937158469948358,
+        "basis_eur_per_litre": -9.333333333309646e-05,
+        "basis_raw_eur_per_litre": -0.00012551724137899178,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.97139019896315,
-        "predicted_pump_eur_per_l": 1.993361849890809,
-        "predicted_pump_low_eur_per_l": 1.9558615864792432,
-        "predicted_pump_high_eur_per_l": 2.0308621133023745,
-        "predicted_pump_3w_eur_per_l": 2.038382932328175,
+        "current_pump_eur_per_l": 1.9707066666666668,
+        "predicted_pump_eur_per_l": 1.992678317594326,
+        "predicted_pump_low_eur_per_l": 1.9551780541827601,
+        "predicted_pump_high_eur_per_l": 2.0301785810058917,
+        "predicted_pump_3w_eur_per_l": 2.037699400031692,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -7037,6 +7104,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.968,
             "station_count": 6
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.968,
+            "station_count": 6
           }
         ],
         "stations": [
@@ -7061,17 +7133,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.008145155256266653,
-        "basis_raw_eur_per_litre": -0.018326599326599968,
+        "basis_eur_per_litre": -0.00837037037037073,
+        "basis_raw_eur_per_litre": -0.018833333333334146,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.128554844743733,
-        "predicted_pump_eur_per_l": 2.160503587228013,
-        "predicted_pump_low_eur_per_l": 2.1081683143124863,
-        "predicted_pump_high_eur_per_l": 2.21283886014354,
-        "predicted_pump_3w_eur_per_l": 2.2262374405683087,
+        "current_pump_eur_per_l": 2.1283296296296292,
+        "predicted_pump_eur_per_l": 2.1602783721139094,
+        "predicted_pump_low_eur_per_l": 2.1079430991983825,
+        "predicted_pump_high_eur_per_l": 2.2126136450294362,
+        "predicted_pump_3w_eur_per_l": 2.226012225454205,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -7478,6 +7550,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.118,
             "station_count": 8
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.118,
+            "station_count": 8
           }
         ],
         "stations": []
@@ -7638,17 +7715,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.007832214765100542,
-        "basis_raw_eur_per_litre": -0.015664429530201085,
+        "basis_eur_per_litre": -0.007561016949152344,
+        "basis_raw_eur_per_litre": -0.015122033898304688,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9629677852348992,
-        "predicted_pump_eur_per_l": 1.9849394361625583,
-        "predicted_pump_low_eur_per_l": 1.9457100827428304,
-        "predicted_pump_high_eur_per_l": 2.024168789582286,
-        "predicted_pump_3w_eur_per_l": 2.0299605185999248,
+        "current_pump_eur_per_l": 1.9632389830508474,
+        "predicted_pump_eur_per_l": 1.9852106339785065,
+        "predicted_pump_low_eur_per_l": 1.9459812805587786,
+        "predicted_pump_high_eur_per_l": 2.0244399873982344,
+        "predicted_pump_3w_eur_per_l": 2.030231716415873,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -8055,6 +8132,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.969,
             "station_count": 10
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.969,
+            "station_count": 10
           }
         ],
         "stations": [
@@ -8085,17 +8167,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.0037007108118221055,
-        "basis_raw_eur_per_litre": -0.008326599326599737,
+        "basis_eur_per_litre": -0.003925925925926184,
+        "basis_raw_eur_per_litre": -0.008833333333333915,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1329992891881777,
-        "predicted_pump_eur_per_l": 2.164948031672458,
-        "predicted_pump_low_eur_per_l": 2.1126127587569306,
-        "predicted_pump_high_eur_per_l": 2.217283304587985,
-        "predicted_pump_3w_eur_per_l": 2.2306818850127534,
+        "current_pump_eur_per_l": 2.1327740740740735,
+        "predicted_pump_eur_per_l": 2.1647228165583536,
+        "predicted_pump_low_eur_per_l": 2.1123875436428268,
+        "predicted_pump_high_eur_per_l": 2.2170580894738805,
+        "predicted_pump_3w_eur_per_l": 2.230456669898649,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -8502,6 +8584,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.128,
             "station_count": 8
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.128,
+            "station_count": 8
           }
         ],
         "stations": [
@@ -8642,17 +8729,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.009026099925428964,
-        "basis_raw_eur_per_litre": 0.014335570469798942,
+        "basis_eur_per_litre": 0.00936760828625262,
+        "basis_raw_eur_per_litre": 0.014877966101695339,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.979826099925429,
-        "predicted_pump_eur_per_l": 2.001797750853088,
-        "predicted_pump_low_eur_per_l": 1.9636459511997462,
-        "predicted_pump_high_eur_per_l": 2.03994955050643,
-        "predicted_pump_3w_eur_per_l": 2.046818833290454,
+        "current_pump_eur_per_l": 1.9801676082862525,
+        "predicted_pump_eur_per_l": 2.002139259213912,
+        "predicted_pump_low_eur_per_l": 1.96398745956057,
+        "predicted_pump_high_eur_per_l": 2.0402910588672536,
+        "predicted_pump_3w_eur_per_l": 2.047160341651278,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -9059,6 +9146,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 17
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.999,
+            "station_count": 17
           }
         ],
         "stations": [
@@ -9077,17 +9169,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.0004144004144000982,
-        "basis_raw_eur_per_litre": 0.0006734006734001596,
+        "basis_eur_per_litre": 0.00010256410256368135,
+        "basis_raw_eur_per_litre": 0.00016666666666598218,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1371144004144,
-        "predicted_pump_eur_per_l": 2.16906314289868,
-        "predicted_pump_low_eur_per_l": 2.117951321456447,
-        "predicted_pump_high_eur_per_l": 2.220174964340913,
-        "predicted_pump_3w_eur_per_l": 2.2347969962389755,
+        "current_pump_eur_per_l": 2.1368025641025636,
+        "predicted_pump_eur_per_l": 2.168751306586844,
+        "predicted_pump_low_eur_per_l": 2.1176394851446108,
+        "predicted_pump_high_eur_per_l": 2.219863128029077,
+        "predicted_pump_3w_eur_per_l": 2.2344851599271394,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -9494,6 +9586,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.137,
             "station_count": 16
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.137,
+            "station_count": 16
           }
         ],
         "stations": []
@@ -9771,17 +9868,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.006733179644808879,
-        "basis_raw_eur_per_litre": 0.009793715846994733,
+        "basis_eur_per_litre": 0.006101206896551872,
+        "basis_raw_eur_per_litre": 0.008874482758620905,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9775331796448088,
-        "predicted_pump_eur_per_l": 1.9995048305724679,
-        "predicted_pump_low_eur_per_l": 1.9617094919144353,
-        "predicted_pump_high_eur_per_l": 2.0373001692305004,
-        "predicted_pump_3w_eur_per_l": 2.044525913009834,
+        "current_pump_eur_per_l": 1.9769012068965517,
+        "predicted_pump_eur_per_l": 1.9988728578242108,
+        "predicted_pump_low_eur_per_l": 1.9610775191661782,
+        "predicted_pump_high_eur_per_l": 2.0366681964822435,
+        "predicted_pump_3w_eur_per_l": 2.0438939402615772,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -10188,6 +10285,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.994,
             "station_count": 6
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.994,
+            "station_count": 6
           }
         ],
         "stations": [
@@ -10206,17 +10308,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.002640062773230993,
-        "basis_raw_eur_per_litre": -0.003787916152896642,
+        "basis_eur_per_litre": -0.004399675459450602,
+        "basis_raw_eur_per_litre": -0.006312577833124777,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.134059937226769,
-        "predicted_pump_eur_per_l": 2.166008679711049,
-        "predicted_pump_low_eur_per_l": 2.1152750688657367,
-        "predicted_pump_high_eur_per_l": 2.216742290556361,
-        "predicted_pump_3w_eur_per_l": 2.2317425330513445,
+        "current_pump_eur_per_l": 2.1323003245405494,
+        "predicted_pump_eur_per_l": 2.1642490670248296,
+        "predicted_pump_low_eur_per_l": 2.1135154561795173,
+        "predicted_pump_high_eur_per_l": 2.214982677870142,
+        "predicted_pump_3w_eur_per_l": 2.229982920365125,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -10623,6 +10725,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.144,
             "station_count": 4
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.144,
+            "station_count": 4
           }
         ],
         "stations": []
@@ -10693,17 +10800,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.0052035519125681415,
-        "basis_raw_eur_per_litre": -0.009206284153005173,
+        "basis_eur_per_litre": -0.005723118440779435,
+        "basis_raw_eur_per_litre": -0.010125517241379,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9655964480874317,
-        "predicted_pump_eur_per_l": 1.9875680990150908,
-        "predicted_pump_low_eur_per_l": 1.9489389468046274,
-        "predicted_pump_high_eur_per_l": 2.026197251225554,
-        "predicted_pump_3w_eur_per_l": 2.0325891814524573,
+        "current_pump_eur_per_l": 1.9650768815592206,
+        "predicted_pump_eur_per_l": 1.9870485324868796,
+        "predicted_pump_low_eur_per_l": 1.9484193802764163,
+        "predicted_pump_high_eur_per_l": 2.0256776846973428,
+        "predicted_pump_3w_eur_per_l": 2.0320696149242456,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -10906,17 +11013,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.008863660384005132,
-        "basis_raw_eur_per_litre": -0.013787916152896873,
+        "basis_eur_per_litre": -0.010486657178437506,
+        "basis_raw_eur_per_litre": -0.016312577833125008,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1278363396159947,
-        "predicted_pump_eur_per_l": 2.159785082100275,
-        "predicted_pump_low_eur_per_l": 2.1088110123084416,
-        "predicted_pump_high_eur_per_l": 2.210759151892108,
-        "predicted_pump_3w_eur_per_l": 2.2255189354405704,
+        "current_pump_eur_per_l": 2.126213342821562,
+        "predicted_pump_eur_per_l": 2.1581620853058423,
+        "predicted_pump_low_eur_per_l": 2.107188015514009,
+        "predicted_pump_high_eur_per_l": 2.2091361550976756,
+        "predicted_pump_3w_eur_per_l": 2.223895938646138,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -11343,21 +11450,21 @@
       "petrol": {
         "fuel_type": "petrol",
         "crowd_median_eur_per_litre": 1.999,
-        "station_count": 10,
+        "station_count": 9,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.007167785234899471,
-        "basis_raw_eur_per_litre": 0.014335570469798942,
+        "basis_eur_per_litre": 0.007047457627118845,
+        "basis_raw_eur_per_litre": 0.014877966101695339,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9779677852348994,
-        "predicted_pump_eur_per_l": 1.9999394361625584,
-        "predicted_pump_low_eur_per_l": 1.9607100827428305,
-        "predicted_pump_high_eur_per_l": 2.0391687895822863,
-        "predicted_pump_3w_eur_per_l": 2.0449605185999244,
+        "current_pump_eur_per_l": 1.9778474576271188,
+        "predicted_pump_eur_per_l": 1.9998191085547778,
+        "predicted_pump_low_eur_per_l": 1.960304020680272,
+        "predicted_pump_high_eur_per_l": 2.0393341964292837,
+        "predicted_pump_3w_eur_per_l": 2.044840190992144,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -11764,28 +11871,33 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 10
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.999,
+            "station_count": 9
           }
         ],
         "stations": []
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.119,
-        "station_count": 13,
+        "crowd_median_eur_per_litre": 2.124,
+        "station_count": 12,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.009793295271556314,
-        "basis_raw_eur_per_litre": -0.017326599326599634,
+        "basis_eur_per_litre": -0.007000000000000319,
+        "basis_raw_eur_per_litre": -0.012833333333333918,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1269067047284436,
-        "predicted_pump_eur_per_l": 2.1588554472127237,
-        "predicted_pump_low_eur_per_l": 2.1074587058577317,
-        "predicted_pump_high_eur_per_l": 2.2102521885677158,
-        "predicted_pump_3w_eur_per_l": 2.2245893005530193,
+        "current_pump_eur_per_l": 2.1296999999999997,
+        "predicted_pump_eur_per_l": 2.16164874248428,
+        "predicted_pump_low_eur_per_l": 2.1101258758021677,
+        "predicted_pump_high_eur_per_l": 2.213171609166392,
+        "predicted_pump_3w_eur_per_l": 2.2273825958245754,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -12187,6 +12299,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.119,
             "station_count": 13
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.124,
+            "station_count": 12
           }
         ],
         "stations": [
@@ -12521,22 +12638,22 @@
       "county": "Louth",
       "petrol": {
         "fuel_type": "petrol",
-        "crowd_median_eur_per_litre": 1.928,
-        "station_count": 14,
+        "crowd_median_eur_per_litre": 1.968,
+        "station_count": 11,
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.029286999089253102,
-        "basis_raw_eur_per_litre": -0.05020628415300532,
+        "basis_eur_per_litre": -0.00582765188834144,
+        "basis_raw_eur_per_litre": -0.011125517241379113,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9415130009107469,
-        "predicted_pump_eur_per_l": 1.963484651838406,
-        "predicted_pump_low_eur_per_l": 1.924999784333466,
-        "predicted_pump_high_eur_per_l": 2.0019695193433455,
-        "predicted_pump_3w_eur_per_l": 2.008505734275772,
+        "current_pump_eur_per_l": 1.9649723481116586,
+        "predicted_pump_eur_per_l": 1.9869439990393176,
+        "predicted_pump_low_eur_per_l": 1.9479499856677651,
+        "predicted_pump_high_eur_per_l": 2.02593801241087,
+        "predicted_pump_3w_eur_per_l": 2.0319650814766836,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -12933,28 +13050,33 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.984,
             "station_count": 4
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.984,
+            "station_count": 4
           }
         ],
         "stations": []
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.08,
-        "station_count": 20,
+        "crowd_median_eur_per_litre": 2.099,
+        "station_count": 17,
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.028525277435264524,
-        "basis_raw_eur_per_litre": -0.04278791615289679,
+        "basis_eur_per_litre": -0.016567178635671167,
+        "basis_raw_eur_per_litre": -0.026312577833124795,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.108174722564735,
-        "predicted_pump_eur_per_l": 2.1401234650490153,
-        "predicted_pump_low_eur_per_l": 2.089259865184842,
-        "predicted_pump_high_eur_per_l": 2.1909870649131884,
-        "predicted_pump_3w_eur_per_l": 2.205857318389311,
+        "current_pump_eur_per_l": 2.1201328213643285,
+        "predicted_pump_eur_per_l": 2.1520815638486086,
+        "predicted_pump_low_eur_per_l": 2.101042623438354,
+        "predicted_pump_high_eur_per_l": 2.2031205042588633,
+        "predicted_pump_3w_eur_per_l": 2.217815417188904,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -13361,6 +13483,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.158,
             "station_count": 3
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.158,
+            "station_count": 3
           }
         ],
         "stations": []
@@ -13575,17 +13702,17 @@
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.005607655502392202,
-        "basis_raw_eur_per_litre": -0.011838383838383537,
+        "basis_eur_per_litre": -0.00529529085872561,
+        "basis_raw_eur_per_litre": -0.011178947368420733,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9651923444976076,
-        "predicted_pump_eur_per_l": 1.9871639954252667,
-        "predicted_pump_low_eur_per_l": 1.9476489075507608,
-        "predicted_pump_high_eur_per_l": 2.0266790832997725,
-        "predicted_pump_3w_eur_per_l": 2.032185077862633,
+        "current_pump_eur_per_l": 1.9655047091412743,
+        "predicted_pump_eur_per_l": 1.9874763600689334,
+        "predicted_pump_low_eur_per_l": 1.9479612721944275,
+        "predicted_pump_high_eur_per_l": 2.026991447943439,
+        "predicted_pump_3w_eur_per_l": 2.0324974425062994,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -13992,6 +14119,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.959,
             "station_count": 16
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.959,
+            "station_count": 16
           }
         ],
         "stations": [
@@ -14028,17 +14160,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.03195334421968136,
-        "basis_raw_eur_per_litre": -0.04378791615289668,
+        "basis_eur_per_litre": -0.03379566490525324,
+        "basis_raw_eur_per_litre": -0.04631257783312481,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1047466557803185,
-        "predicted_pump_eur_per_l": 2.1366953982645986,
-        "predicted_pump_low_eur_per_l": 2.08609049937978,
-        "predicted_pump_high_eur_per_l": 2.187300297149417,
-        "predicted_pump_3w_eur_per_l": 2.2024292516048942,
+        "current_pump_eur_per_l": 2.1029043350947467,
+        "predicted_pump_eur_per_l": 2.134853077579027,
+        "predicted_pump_low_eur_per_l": 2.0842481786942084,
+        "predicted_pump_high_eur_per_l": 2.1854579764638453,
+        "predicted_pump_3w_eur_per_l": 2.2005869309193224,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -14445,6 +14577,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.079,
             "station_count": 7
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.079,
+            "station_count": 7
           }
         ],
         "stations": [
@@ -14703,22 +14840,22 @@
       "county": "Meath",
       "petrol": {
         "fuel_type": "petrol",
-        "crowd_median_eur_per_litre": 1.984,
-        "station_count": 20,
+        "crowd_median_eur_per_litre": 1.978,
+        "station_count": 18,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.0004429530201341218,
-        "basis_raw_eur_per_litre": -0.0006644295302011827,
+        "basis_eur_per_litre": -0.003935593220338794,
+        "basis_raw_eur_per_litre": -0.006122033898304791,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9703570469798657,
-        "predicted_pump_eur_per_l": 1.9923286979075248,
-        "predicted_pump_low_eur_per_l": 1.9544117865126087,
-        "predicted_pump_high_eur_per_l": 2.030245609302441,
-        "predicted_pump_3w_eur_per_l": 2.0373497803448912,
+        "current_pump_eur_per_l": 1.966864406779661,
+        "predicted_pump_eur_per_l": 1.98883605770732,
+        "predicted_pump_low_eur_per_l": 1.9507710847041784,
+        "predicted_pump_high_eur_per_l": 2.026901030710462,
+        "predicted_pump_3w_eur_per_l": 2.0338571401446863,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -15125,28 +15262,33 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.984,
             "station_count": 20
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.978,
+            "station_count": 18
           }
         ],
         "stations": []
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.139,
-        "station_count": 17,
+        "crowd_median_eur_per_litre": 2.134,
+        "station_count": 14,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.0016832522758444062,
-        "basis_raw_eur_per_litre": 0.0026734006733999394,
+        "basis_eur_per_litre": -0.0016527777777782433,
+        "basis_raw_eur_per_litre": -0.0028333333333341315,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1383832522758444,
-        "predicted_pump_eur_per_l": 2.1703319947601245,
-        "predicted_pump_low_eur_per_l": 2.11929305434987,
-        "predicted_pump_high_eur_per_l": 2.221370935170379,
-        "predicted_pump_3w_eur_per_l": 2.23606584810042,
+        "current_pump_eur_per_l": 2.1350472222222217,
+        "predicted_pump_eur_per_l": 2.166995964706502,
+        "predicted_pump_low_eur_per_l": 2.1157075776360785,
+        "predicted_pump_high_eur_per_l": 2.218284351776925,
+        "predicted_pump_3w_eur_per_l": 2.2327298180467974,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -15553,6 +15695,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.139,
             "station_count": 17
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.134,
+            "station_count": 14
           }
         ],
         "stations": [
@@ -15756,17 +15903,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": true,
-        "basis_eur_per_litre": 0.020503294760527258,
-        "basis_raw_eur_per_litre": 0.04979371584699477,
+        "basis_eur_per_litre": 0.02012478701825568,
+        "basis_raw_eur_per_litre": 0.04887448275862094,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9913032947605271,
-        "predicted_pump_eur_per_l": 2.0132749456881864,
-        "predicted_pump_low_eur_per_l": 1.9729546296674056,
-        "predicted_pump_high_eur_per_l": 2.053595261708967,
-        "predicted_pump_3w_eur_per_l": 2.0582960281255525,
+        "current_pump_eur_per_l": 1.9909247870182556,
+        "predicted_pump_eur_per_l": 2.0128964379459147,
+        "predicted_pump_low_eur_per_l": 1.9725761219251339,
+        "predicted_pump_high_eur_per_l": 2.0532167539666952,
+        "predicted_pump_3w_eur_per_l": 2.0579175203832807,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -15929,17 +16076,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.020094259487601462,
-        "basis_raw_eur_per_litre": 0.04521208384710329,
+        "basis_eur_per_litre": 0.01897218762972229,
+        "basis_raw_eur_per_litre": 0.042687422166875155,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1567942594876013,
-        "predicted_pump_eur_per_l": 2.1887430019718814,
-        "predicted_pump_low_eur_per_l": 2.136407729056354,
-        "predicted_pump_high_eur_per_l": 2.2410782748874087,
-        "predicted_pump_3w_eur_per_l": 2.254476855312177,
+        "current_pump_eur_per_l": 2.155672187629722,
+        "predicted_pump_eur_per_l": 2.187620930114002,
+        "predicted_pump_low_eur_per_l": 2.135285657198475,
+        "predicted_pump_high_eur_per_l": 2.2399562030295295,
+        "predicted_pump_3w_eur_per_l": 2.2533547834542977,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -16170,17 +16317,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": true,
-        "basis_eur_per_litre": 0.00018316519546034672,
-        "basis_raw_eur_per_litre": 0.0007937158469948358,
+        "basis_eur_per_litre": -2.8965517241305798e-05,
+        "basis_raw_eur_per_litre": -0.00012551724137899178,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9709831651954601,
-        "predicted_pump_eur_per_l": 1.9929548161231192,
-        "predicted_pump_low_eur_per_l": 1.9481057116757625,
-        "predicted_pump_high_eur_per_l": 2.037803920570476,
-        "predicted_pump_3w_eur_per_l": 2.0379758985604854,
+        "current_pump_eur_per_l": 1.9707710344827585,
+        "predicted_pump_eur_per_l": 1.9927426854104175,
+        "predicted_pump_low_eur_per_l": 1.9478935809630609,
+        "predicted_pump_high_eur_per_l": 2.0375917898577742,
+        "predicted_pump_3w_eur_per_l": 2.037763767847784,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -16393,22 +16540,22 @@
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.039,
-        "station_count": 14,
+        "crowd_median_eur_per_litre": 2.079,
+        "station_count": 13,
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.048876284422523085,
-        "basis_raw_eur_per_litre": -0.08378791615289671,
+        "basis_eur_per_litre": -0.026176674427418372,
+        "basis_raw_eur_per_litre": -0.04631257783312481,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.0878237155774766,
-        "predicted_pump_eur_per_l": 2.1197724580617567,
-        "predicted_pump_low_eur_per_l": 2.0684840709913335,
-        "predicted_pump_high_eur_per_l": 2.17106084513218,
-        "predicted_pump_3w_eur_per_l": 2.1855063114020523,
+        "current_pump_eur_per_l": 2.1105233255725815,
+        "predicted_pump_eur_per_l": 2.1424720680568616,
+        "predicted_pump_low_eur_per_l": 2.0910753267018696,
+        "predicted_pump_high_eur_per_l": 2.1938688094118537,
+        "predicted_pump_3w_eur_per_l": 2.208205921397157,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -16938,17 +17085,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.008614754098360766,
-        "basis_raw_eur_per_litre": 0.015793715846994738,
+        "basis_eur_per_litre": 0.008113354231975041,
+        "basis_raw_eur_per_litre": 0.01487448275862091,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9794147540983607,
-        "predicted_pump_eur_per_l": 2.00138640502602,
-        "predicted_pump_low_eur_per_l": 1.962589598846517,
-        "predicted_pump_high_eur_per_l": 2.0401832112055227,
-        "predicted_pump_3w_eur_per_l": 2.046407487463386,
+        "current_pump_eur_per_l": 1.978913354231975,
+        "predicted_pump_eur_per_l": 2.000885005159634,
+        "predicted_pump_low_eur_per_l": 1.9620881989801309,
+        "predicted_pump_high_eur_per_l": 2.0396818113391366,
+        "predicted_pump_3w_eur_per_l": 2.0459060875970003,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -17140,6 +17287,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 7
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.999,
+            "station_count": 7
           }
         ],
         "stations": [
@@ -17158,17 +17310,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.019752045734783428,
-        "basis_raw_eur_per_litre": 0.03621208384710295,
+        "basis_eur_per_litre": 0.01837495754556808,
+        "basis_raw_eur_per_litre": 0.033687422166874814,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1564520457347833,
-        "predicted_pump_eur_per_l": 2.1884007882190635,
-        "predicted_pump_low_eur_per_l": 2.1368779215369513,
-        "predicted_pump_high_eur_per_l": 2.2399236549011756,
-        "predicted_pump_3w_eur_per_l": 2.254134641559359,
+        "current_pump_eur_per_l": 2.155074957545568,
+        "predicted_pump_eur_per_l": 2.1870237000298482,
+        "predicted_pump_low_eur_per_l": 2.135500833347736,
+        "predicted_pump_high_eur_per_l": 2.2385465667119604,
+        "predicted_pump_3w_eur_per_l": 2.252757553370144,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -17535,6 +17687,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.159,
             "station_count": 4
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.159,
+            "station_count": 4
           }
         ],
         "stations": []
@@ -17582,22 +17739,22 @@
       "county": "Sligo",
       "petrol": {
         "fuel_type": "petrol",
-        "crowd_median_eur_per_litre": 1.949,
-        "station_count": 8,
+        "crowd_median_eur_per_litre": 1.959,
+        "station_count": 7,
         "window_days": 180,
         "stale": true,
-        "low_sample": false,
-        "basis_eur_per_litre": -0.012980570734668974,
-        "basis_raw_eur_per_litre": -0.02920628415300519,
+        "low_sample": true,
+        "basis_eur_per_litre": -0.008286977687626651,
+        "basis_raw_eur_per_litre": -0.02012551724137901,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9578194292653308,
-        "predicted_pump_eur_per_l": 1.9797910801929899,
-        "predicted_pump_low_eur_per_l": 1.9399217038531233,
-        "predicted_pump_high_eur_per_l": 2.0196604565328564,
-        "predicted_pump_3w_eur_per_l": 2.024812162630356,
+        "current_pump_eur_per_l": 1.9625130223123732,
+        "predicted_pump_eur_per_l": 1.9844846732400323,
+        "predicted_pump_low_eur_per_l": 1.9441643572192515,
+        "predicted_pump_high_eur_per_l": 2.024804989260813,
+        "predicted_pump_3w_eur_per_l": 2.0295057556773983,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -17835,22 +17992,22 @@
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.1,
-        "station_count": 11,
+        "crowd_median_eur_per_litre": 2.124,
+        "station_count": 10,
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.011936527508660214,
-        "basis_raw_eur_per_litre": -0.02278791615289677,
+        "basis_eur_per_litre": -0.0006562889165624419,
+        "basis_raw_eur_per_litre": -0.0013125778331248839,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1247634724913396,
-        "predicted_pump_eur_per_l": 2.1567122149756197,
-        "predicted_pump_low_eur_per_l": 2.105040687997664,
-        "predicted_pump_high_eur_per_l": 2.2083837419535755,
-        "predicted_pump_3w_eur_per_l": 2.2224460683159153,
+        "current_pump_eur_per_l": 2.1360437110834374,
+        "predicted_pump_eur_per_l": 2.1679924535677175,
+        "predicted_pump_low_eur_per_l": 2.116143096858664,
+        "predicted_pump_high_eur_per_l": 2.219841810276771,
+        "predicted_pump_3w_eur_per_l": 2.233726306908013,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -18270,17 +18427,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": -0.013386198046033915,
-        "basis_raw_eur_per_litre": -0.019206284153005182,
+        "basis_eur_per_litre": -0.01402687565308234,
+        "basis_raw_eur_per_litre": -0.02012551724137901,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.957413801953966,
-        "predicted_pump_eur_per_l": 1.979385452881625,
-        "predicted_pump_low_eur_per_l": 1.9416430940789378,
-        "predicted_pump_high_eur_per_l": 2.017127811684312,
-        "predicted_pump_3w_eur_per_l": 2.0244065353189913,
+        "current_pump_eur_per_l": 1.9567731243469175,
+        "predicted_pump_eur_per_l": 1.9787447752745766,
+        "predicted_pump_low_eur_per_l": 1.9410024164718893,
+        "predicted_pump_high_eur_per_l": 2.0164871340772637,
+        "predicted_pump_3w_eur_per_l": 2.023765857711943,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -18687,28 +18844,33 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 7
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.999,
+            "station_count": 6
           }
         ],
         "stations": []
       },
       "diesel": {
         "fuel_type": "diesel",
-        "crowd_median_eur_per_litre": 2.119,
-        "station_count": 13,
+        "crowd_median_eur_per_litre": 2.134,
+        "station_count": 12,
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.009793295271556314,
-        "basis_raw_eur_per_litre": -0.017326599326599634,
+        "basis_eur_per_litre": -0.0015454545454549808,
+        "basis_raw_eur_per_litre": -0.0028333333333341315,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1269067047284436,
-        "predicted_pump_eur_per_l": 2.1588554472127237,
-        "predicted_pump_low_eur_per_l": 2.1074587058577317,
-        "predicted_pump_high_eur_per_l": 2.2102521885677158,
-        "predicted_pump_3w_eur_per_l": 2.2245893005530193,
+        "current_pump_eur_per_l": 2.1351545454545446,
+        "predicted_pump_eur_per_l": 2.167103287938825,
+        "predicted_pump_low_eur_per_l": 2.1155804212567126,
+        "predicted_pump_high_eur_per_l": 2.218626154620937,
+        "predicted_pump_3w_eur_per_l": 2.2328371412791204,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -19115,15 +19277,14 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.119,
             "station_count": 13
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.134,
+            "station_count": 12
           }
         ],
         "stations": [
-          {
-            "name": "Go",
-            "brand": "Go",
-            "price_eur_per_litre": 2.059,
-            "reported_at": "2026-10-01T12:06:22.806434+00:00"
-          },
           {
             "name": "Inver",
             "brand": "Inver",
@@ -19378,17 +19539,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.008728986896772055,
-        "basis_raw_eur_per_litre": -0.016664429530201197,
+        "basis_eur_per_litre": -0.008444874899112038,
+        "basis_raw_eur_per_litre": -0.0161220338983048,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9620710131032277,
-        "predicted_pump_eur_per_l": 1.9840426640308868,
-        "predicted_pump_low_eur_per_l": 1.9450486506593343,
-        "predicted_pump_high_eur_per_l": 2.0230366774024393,
-        "predicted_pump_3w_eur_per_l": 2.0290637464682533,
+        "current_pump_eur_per_l": 1.962355125100888,
+        "predicted_pump_eur_per_l": 1.984326776028547,
+        "predicted_pump_low_eur_per_l": 1.9453327626569945,
+        "predicted_pump_high_eur_per_l": 2.0233207894000995,
+        "predicted_pump_3w_eur_per_l": 2.029347858465913,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -19795,6 +19956,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.968,
             "station_count": 11
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.968,
+            "station_count": 11
           }
         ],
         "stations": [
@@ -19813,17 +19979,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.004541781450872584,
-        "basis_raw_eur_per_litre": -0.008326599326599737,
+        "basis_eur_per_litre": -0.004818181818182135,
+        "basis_raw_eur_per_litre": -0.008833333333333915,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1321582185491272,
-        "predicted_pump_eur_per_l": 2.1641069610334074,
-        "predicted_pump_low_eur_per_l": 2.1125840943512952,
-        "predicted_pump_high_eur_per_l": 2.2156298277155195,
-        "predicted_pump_3w_eur_per_l": 2.229840814373703,
+        "current_pump_eur_per_l": 2.1318818181818178,
+        "predicted_pump_eur_per_l": 2.163830560666098,
+        "predicted_pump_low_eur_per_l": 2.1123076939839858,
+        "predicted_pump_high_eur_per_l": 2.21535342734821,
+        "predicted_pump_3w_eur_per_l": 2.2295644140063935,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -20230,6 +20396,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.128,
             "station_count": 12
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.128,
+            "station_count": 12
           }
         ],
         "stations": [
@@ -20374,22 +20545,22 @@
       "county": "Westmeath",
       "petrol": {
         "fuel_type": "petrol",
-        "crowd_median_eur_per_litre": 1.994,
-        "station_count": 12,
+        "crowd_median_eur_per_litre": 1.989,
+        "station_count": 11,
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.012633608815427117,
-        "basis_raw_eur_per_litre": 0.023161616161616383,
+        "basis_eur_per_litre": 0.009858646616541535,
+        "basis_raw_eur_per_litre": 0.018821052631579294,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.983433608815427,
-        "predicted_pump_eur_per_l": 2.0054052597430863,
-        "predicted_pump_low_eur_per_l": 1.9666084535635833,
-        "predicted_pump_high_eur_per_l": 2.044202065922589,
-        "predicted_pump_3w_eur_per_l": 2.0504263421804523,
+        "current_pump_eur_per_l": 1.9806586466165415,
+        "predicted_pump_eur_per_l": 2.0026302975442003,
+        "predicted_pump_low_eur_per_l": 1.9636362841726478,
+        "predicted_pump_high_eur_per_l": 2.041624310915753,
+        "predicted_pump_3w_eur_per_l": 2.0476513799815668,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -20796,6 +20967,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.999,
             "station_count": 19
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.999,
+            "station_count": 19
           }
         ],
         "stations": [
@@ -20814,17 +20990,17 @@
         "window_days": 14,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.006798850574712745,
-        "basis_raw_eur_per_litre": -0.01359770114942549,
+        "basis_eur_per_litre": -0.005012048192771346,
+        "basis_raw_eur_per_litre": -0.010024096385542691,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.129901149425287,
-        "predicted_pump_eur_per_l": 2.1618498919095672,
-        "predicted_pump_low_eur_per_l": 2.1100005352005136,
-        "predicted_pump_high_eur_per_l": 2.213699248618621,
-        "predicted_pump_3w_eur_per_l": 2.227583745249863,
+        "current_pump_eur_per_l": 2.1316879518072285,
+        "predicted_pump_eur_per_l": 2.1636366942915086,
+        "predicted_pump_low_eur_per_l": 2.111787337582455,
+        "predicted_pump_high_eur_per_l": 2.2154860510005623,
+        "predicted_pump_3w_eur_per_l": 2.229370547631804,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -21231,6 +21407,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.139,
             "station_count": 17
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.139,
+            "station_count": 17
           }
         ],
         "stations": [
@@ -21239,6 +21420,12 @@
             "brand": "Top",
             "price_eur_per_litre": 1.969,
             "reported_at": "2026-10-18T18:18:37.23971+00:00"
+          },
+          {
+            "name": "Circle K",
+            "brand": "Circle K",
+            "price_eur_per_litre": 2.069,
+            "reported_at": "2026-10-18T18:04:52.388778+00:00"
           }
         ]
       },
@@ -21416,17 +21603,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.01508092635961504,
-        "basis_raw_eur_per_litre": 0.01979371584699474,
+        "basis_eur_per_litre": 0.0143805582922826,
+        "basis_raw_eur_per_litre": 0.018874482758620914,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9858809263596149,
-        "predicted_pump_eur_per_l": 2.007852577287274,
-        "predicted_pump_low_eur_per_l": 1.9704396995614173,
-        "predicted_pump_high_eur_per_l": 2.045265455013131,
-        "predicted_pump_3w_eur_per_l": 2.05287365972464,
+        "current_pump_eur_per_l": 1.9851805582922826,
+        "predicted_pump_eur_per_l": 2.0071522092199414,
+        "predicted_pump_low_eur_per_l": 1.9697393314940845,
+        "predicted_pump_high_eur_per_l": 2.044565086945798,
+        "predicted_pump_3w_eur_per_l": 2.052173291657308,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -21833,6 +22020,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.969,
             "station_count": 5
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.969,
+            "station_count": 5
           }
         ],
         "stations": [
@@ -21851,17 +22043,17 @@
         "window_days": 180,
         "stale": true,
         "low_sample": false,
-        "basis_eur_per_litre": 0.016969667077682615,
-        "basis_raw_eur_per_litre": 0.02121208384710327,
+        "basis_eur_per_litre": 0.014949937733500108,
+        "basis_raw_eur_per_litre": 0.018687422166875134,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.1536696670776823,
-        "predicted_pump_eur_per_l": 2.1856184095619624,
-        "predicted_pump_low_eur_per_l": 2.1352549228762423,
-        "predicted_pump_high_eur_per_l": 2.2359818962476825,
-        "predicted_pump_3w_eur_per_l": 2.251352262902258,
+        "current_pump_eur_per_l": 2.1516499377335,
+        "predicted_pump_eur_per_l": 2.1835986802177803,
+        "predicted_pump_low_eur_per_l": 2.13323519353206,
+        "predicted_pump_high_eur_per_l": 2.2339621669035004,
+        "predicted_pump_3w_eur_per_l": 2.249332533558076,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -22268,6 +22460,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.109,
             "station_count": 6
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.109,
+            "station_count": 6
           }
         ],
         "stations": [
@@ -22444,17 +22641,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": 0.0020536912751679156,
-        "basis_raw_eur_per_litre": 0.004335570469798933,
+        "basis_eur_per_litre": 0.0023106155218556826,
+        "basis_raw_eur_per_litre": 0.00487796610169533,
         "trend": "up",
         "predicted_weekly_return": 0.016262917891284468,
         "confidence": 0.6109826478171667,
         "r2": 0.09495250697657476,
-        "current_pump_eur_per_l": 1.9728536912751677,
-        "predicted_pump_eur_per_l": 1.9948253422028268,
-        "predicted_pump_low_eur_per_l": 1.955310254328321,
-        "predicted_pump_high_eur_per_l": 2.0343404300773327,
-        "predicted_pump_3w_eur_per_l": 2.039846424640193,
+        "current_pump_eur_per_l": 1.9731106155218556,
+        "predicted_pump_eur_per_l": 1.9950822664495147,
+        "predicted_pump_low_eur_per_l": 1.9555671785750088,
+        "predicted_pump_high_eur_per_l": 2.0345973543240206,
+        "predicted_pump_3w_eur_per_l": 2.040103348886881,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -22861,6 +23058,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 1.989,
             "station_count": 9
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 1.989,
+            "station_count": 9
           }
         ],
         "stations": []
@@ -22872,17 +23074,17 @@
         "window_days": 30,
         "stale": false,
         "low_sample": false,
-        "basis_eur_per_litre": -0.0010340441451555352,
-        "basis_raw_eur_per_litre": -0.002326599326599954,
+        "basis_eur_per_litre": -0.001259259259259614,
+        "basis_raw_eur_per_litre": -0.0028333333333341315,
         "trend": "up",
         "predicted_weekly_return": 0.019038702816962894,
         "confidence": 0.6520464939312257,
         "r2": 0.13747782425399224,
-        "current_pump_eur_per_l": 2.135665955854844,
-        "predicted_pump_eur_per_l": 2.1676146983391242,
-        "predicted_pump_low_eur_per_l": 2.115279425423597,
-        "predicted_pump_high_eur_per_l": 2.2199499712546515,
-        "predicted_pump_3w_eur_per_l": 2.23334855167942,
+        "current_pump_eur_per_l": 2.1354407407407403,
+        "predicted_pump_eur_per_l": 2.1673894832250205,
+        "predicted_pump_low_eur_per_l": 2.115054210309493,
+        "predicted_pump_high_eur_per_l": 2.2197247561405478,
+        "predicted_pump_3w_eur_per_l": 2.233123336565316,
         "origin_snapshot_date": null,
         "observations": [
           {
@@ -23289,6 +23491,11 @@
             "date": "2026-10-30",
             "median_eur_per_litre": 2.134,
             "station_count": 8
+          },
+          {
+            "date": "2026-10-31",
+            "median_eur_per_litre": 2.134,
+            "station_count": 8
           }
         ],
         "stations": [
@@ -23389,38 +23596,38 @@
     {
       "fuel_type": "diesel",
       "window_days": 14,
-      "median_eur_per_litre": 2.1215977011494256,
-      "station_count": 87
+      "median_eur_per_litre": 2.118024096385543,
+      "station_count": 83
     },
     {
       "fuel_type": "diesel",
       "window_days": 30,
-      "median_eur_per_litre": 2.1363265993266,
-      "station_count": 297
+      "median_eur_per_litre": 2.136833333333334,
+      "station_count": 294
     },
     {
       "fuel_type": "diesel",
       "window_days": 180,
-      "median_eur_per_litre": 2.122787916152897,
-      "station_count": 811
+      "median_eur_per_litre": 2.125312577833125,
+      "station_count": 803
     },
     {
       "fuel_type": "petrol",
       "window_days": 14,
-      "median_eur_per_litre": 1.9708383838383836,
-      "station_count": 99
+      "median_eur_per_litre": 1.9701789473684208,
+      "station_count": 95
     },
     {
       "fuel_type": "petrol",
       "window_days": 30,
-      "median_eur_per_litre": 1.9846644295302012,
-      "station_count": 298
+      "median_eur_per_litre": 1.9841220338983048,
+      "station_count": 295
     },
     {
       "fuel_type": "petrol",
       "window_days": 180,
-      "median_eur_per_litre": 1.9782062841530053,
-      "station_count": 732
+      "median_eur_per_litre": 1.979125517241379,
+      "station_count": 725
     }
   ],
   "counties_without_data": [],
