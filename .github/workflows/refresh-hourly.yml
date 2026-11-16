@@ -1,19 +1,24 @@
-name: Hourly light refresh
+name: Intra-day light refresh
 
 # Only touches sources that actually change intra-day: news (RSS) and Brent
 # (market ticks during trading hours). Skips FuelWatch, ECB and the EU
-# Bulletin — those publish once a day or less, so hourly polling would just
+# Bulletin — those publish once a day or less, so frequent polling would just
 # burn API calls.
 #
 # Deploy target is the `data` branch (JSON only), NOT gh-pages. The frontend
-# fetches snapshots via jsDelivr's mirror of that branch, so hourly refreshes
-# never trigger a Pages deployment — the site's build queue stays clear and
-# the hourly cadence stays truthful.
+# fetches snapshots via jsDelivr's mirror of that branch, so these refreshes
+# never trigger a Pages deployment — the site's build queue stays clear.
+#
+# Cadence is randomised per day: the cron still fires hourly, but a gate job
+# picks 0–4 random UTC hours for each date and only those hours publish. With
+# the daily workflow's own push, the data branch gets 1–5 commits a day.
+# The pick is seeded by the date, so every run that day agrees on the same
+# hours without needing any saved state.
 
 on:
   schedule:
-    - cron: "5 * * * *"   # every hour at :05
-  workflow_dispatch: {}
+    - cron: "5 * * * *"   # every hour at :05; the gate decides if it publishes
+  workflow_dispatch: {}   # manual runs always publish
 
 permissions:
   contents: write
@@ -23,7 +28,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.pick.outputs.publish }}
+    steps:
+      - name: Pick today's publish hours
+        id: pick
+        env:
+          MIN_RUNS: "0"   # plus the daily workflow's push = 1 minimum
+          MAX_RUNS: "4"   # plus the daily workflow's push = 5 maximum
+        run: |
+          python3 - <<'EOF'
+          import datetime, hashlib, os, random
+
+          now = datetime.datetime.now(datetime.timezone.utc)
+          seed_src = f"{os.environ['GITHUB_REPOSITORY']}:{now.date().isoformat()}"
+          rng = random.Random(int(hashlib.sha256(seed_src.encode()).hexdigest(), 16))
+
+          n = rng.randint(int(os.environ["MIN_RUNS"]), int(os.environ["MAX_RUNS"]))
+          hours = sorted(rng.sample(range(24), n))
+
+          manual = os.environ["GITHUB_EVENT_NAME"] == "workflow_dispatch"
+          publish = manual or now.hour in hours
+
+          print(f"{now.date()}: {n} intra-day publish(es) at UTC hours {hours}")
+          print(f"current hour {now.hour} -> publish={publish}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"publish={'true' if publish else 'false'}\n")
+          EOF
+
   refresh:
+    needs: gate
+    if: needs.gate.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +75,8 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
-      # Restore the DB the daily workflow built. Without this the hourly job
-      # starts from an empty DB, has no bulletin/counties/fuelwatch rows for
+      # Restore the DB the daily workflow built. Without this the job starts
+      # from an empty DB, has no bulletin/counties/fuelwatch rows for
       # export_static to run the model against, and republishes a degraded
       # prediction.json with `trend=unknown` for both fuels.
       - name: Restore fuel_trend.db cache
@@ -68,7 +105,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/data
           publish_branch: data
-          commit_message: "data: hourly refresh"
+          commit_message: "data: intra-day refresh"
           # force_orphan is safe here — the data branch has no history worth
           # keeping (each push is a full snapshot) and this keeps the branch
           # size flat over time. jsDelivr resolves the branch tip each fetch,
